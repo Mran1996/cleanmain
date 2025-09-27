@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { isLocalhost, config } from './config';
 
 export interface SubscriptionStatus {
   hasActiveSubscription: boolean;
@@ -7,41 +8,43 @@ export interface SubscriptionStatus {
 }
 
 export async function checkSubscriptionStatus(userId: string): Promise<SubscriptionStatus> {
-  // Check if running on localhost
-  const isLocalhost = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || 
-     window.location.hostname === '127.0.0.1' ||
-     window.location.hostname.includes('localhost'));
-
-  // If on localhost, allow access
-  if (isLocalhost) {
+  // If in development mode or on localhost, allow access
+  if (isLocalhost() || config.features.debugMode) {
     return {
       hasActiveSubscription: true,
-      isLocalhost: true,
+      isLocalhost: isLocalhost(),
       shouldRedirect: false
     };
   }
-  // Always allow access for all users
-  return {
-    hasActiveSubscription: true,
-    isLocalhost: false,
-    shouldRedirect: false
-  };
+  
+  // In production, check actual subscription status
+  try {
+    return await checkSubscriptionStatusServerEnhanced(userId);
+  } catch (error) {
+    console.error('Error checking subscription status:', error);
+    // Default to allowing access if there's an error checking status
+    return {
+      hasActiveSubscription: true,
+      isLocalhost: false,
+      shouldRedirect: false
+    };
+  }
 }
 
 // Server-side version for API routes
 export async function checkSubscriptionStatusServer(userId: string): Promise<SubscriptionStatus> {
-  // For server-side, we'll use a placeholder check
-  // In production, you'd want to check the actual database
-  
-  // Placeholder: assume user has paid (for development)
-  const userHasPaid = true;
-  
-  return {
-    hasActiveSubscription: userHasPaid,
-    isLocalhost: false,
-    shouldRedirect: !userHasPaid
-  };
+  try {
+    // Use the enhanced version that actually checks the database
+    return checkSubscriptionStatusServerEnhanced(userId);
+  } catch (error) {
+    console.error('Error in checkSubscriptionStatusServer:', error);
+    // Default to not allowing access if there's an error
+    return {
+      hasActiveSubscription: false,
+      isLocalhost: false,
+      shouldRedirect: true
+    };
+  }
 }
 
 // Enhanced server-side function that actually checks the database

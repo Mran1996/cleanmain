@@ -4,11 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSupabase } from '@/components/SupabaseProvider'
 import AccountClient from "./AccountClient"
+import { BillingService } from '@/services/billing'
+import { BillingData } from '@/types/billing'
 
 export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [billingData, setBillingData] = useState<BillingData | undefined>(undefined)
+  const [loadingBilling, setLoadingBilling] = useState(false)
   const supabase = useSupabase()
   const router = useRouter()
 
@@ -81,6 +85,27 @@ export default function AccountPage() {
       // Clear the error from URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+    
+    // Fetch billing data if user is logged in
+    if (user) {
+      const fetchBillingData = async () => {
+        try {
+          setLoadingBilling(true);
+          // Use the billing service with retry logic
+          const data = await BillingService.retryWithBackoff(
+            () => BillingService.getBillingData()
+          );
+          console.log('💳 Billing data loaded:', data);
+          setBillingData(data);
+        } catch (err) {
+          console.error('❌ Error fetching billing data:', err);
+        } finally {
+          setLoadingBilling(false);
+        }
+      };
+      
+      fetchBillingData();
+    }
   }, [user]);
 
   // Show loading state
@@ -130,17 +155,7 @@ export default function AccountPage() {
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
-      }),
-      planName: "AI Legal Premium",
-      nextBilling: "August 21, 2025",
-      features: [
-        "Unlimited legal documents (up to 150 pages each)",
-        "Unlimited AI-powered revisions",
-        "Real case law embedded",
-        "Case Success Analysis",
-        "Delivered in PDF + DOCX",
-        "Email + Phone Support"
-      ]
+      })
     }
 
     return (
@@ -152,9 +167,8 @@ export default function AccountPage() {
           lastName={userData.lastName}
           email={userData.email}
           createdAt={userData.createdAt}
-          planName={userData.planName}
-          nextBilling={userData.nextBilling}
-          features={userData.features}
+          subscription={billingData?.subscription}
+          billingData={billingData}
         />
       </div>
     )
