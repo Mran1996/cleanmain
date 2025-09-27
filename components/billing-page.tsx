@@ -1,6 +1,36 @@
 "use client"
 
 import { useState, useEffect } from "react"
+
+type StripeCard = {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+};
+
+type StripeSubscription = {
+  plan?: {
+    nickname?: string;
+    amount?: number;
+  };
+  status?: string;
+};
+
+type StripeInvoice = {
+  id: string;
+  created: number;
+  amount_paid: number;
+  status: string;
+  number?: string;
+  invoice_pdf?: string;
+};
+
+type BillingData = {
+  subscription?: StripeSubscription;
+  paymentMethods?: { card: StripeCard }[];
+  invoices?: StripeInvoice[];
+};
 import {
   BadgeCheck,
   CreditCard,
@@ -17,9 +47,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function BillingPage() {
   const [isPaymentExpanded, setIsPaymentExpanded] = useState(false)
-  const [billingData, setBillingData] = useState(null)
+  const [billingData, setBillingData] = useState<BillingData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchBilling() {
@@ -30,7 +60,7 @@ export default function BillingPage() {
         const data = await res.json()
         setBillingData(data)
       } catch (err) {
-        setError(err.message)
+  setError(err instanceof Error ? err.message : null)
       } finally {
         setLoading(false)
       }
@@ -120,41 +150,42 @@ export default function BillingPage() {
         </TabsContent>
 
         <TabsContent value="payment-methods">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Your Payment Methods</CardTitle>
-              <CardDescription>Manage your saved payment methods</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
-                  <div className="flex items-center">
-                    <div className="w-12 h-8 bg-blue-600 rounded mr-4 flex items-center justify-center text-white font-bold">
-                      VISA
+          {billingData && billingData.paymentMethods && billingData.paymentMethods.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Your Payment Methods</CardTitle>
+                <CardDescription>Manage your saved payment methods</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {billingData.paymentMethods.map((pm: { card: StripeCard }, i: number) => (
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4">
+                      <div className="flex items-center">
+                        <div className="w-12 h-8 bg-blue-600 rounded mr-4 flex items-center justify-center text-white font-bold">
+                          {pm.card.brand.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium">{pm.card.brand} ending in {pm.card.last4}</p>
+                          <p className="text-sm text-gray-500">Expires {pm.card.exp_month}/{pm.card.exp_year}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">Remove</Button>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Visa ending in 4242</p>
-                      <p className="text-sm text-gray-500">Expires 03/27 • Default</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                      Remove
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Add Payment Method
-              </Button>
-            </CardFooter>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Your Payment Methods</CardTitle>
+                <CardDescription>No payment methods found.</CardDescription>
+              </CardHeader>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="history">
@@ -167,7 +198,7 @@ export default function BillingPage() {
               <CardContent>
                 <div className="space-y-4">
                   {billingData.invoices.length === 0 && <div>No invoices found.</div>}
-                  {billingData.invoices.map((invoice, i) => (
+                  {billingData.invoices.map((invoice: StripeInvoice, i: number) => (
                     <div
                       key={invoice.id}
                       className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-3"

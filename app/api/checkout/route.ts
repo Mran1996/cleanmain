@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Always initialize Stripe client if secret key is present
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2025-08-27.basil',
 }) : null;
 import { NextResponse } from 'next/server';
 import { PRICE_MAP, PRODUCTS } from '@/lib/stripe-config';
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     // any known single-price env vars (your env uses STRIPE_PREMIUM_MONTHLY_PRICE_ID).
     // This avoids checkout failing when the exact env name expected by older code
     // isn't present.
-    const priceId = PRICE_MAP[plan as any] ||
+  const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP] ||
       process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PRICE_ID ||
       process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID ||
       process.env.STRIPE_COURT_READY_PRICE_ID;

@@ -53,10 +53,7 @@ export default function BillingSection() {
     <div>
       {!showHistory ? (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">AI-Legal Document Bundle</h2>
-          <p>$179 — One-time payment</p>
-          <p>Includes access to 1 legal document, court formatting, and optional case analysis.</p>
-
+          {/* Only show real Stripe data, no placeholders */}
           <Button onClick={handleDownloadReceipt} disabled={loading}>
             {loading ? "Downloading..." : "Download Receipt"}
           </Button>
@@ -70,7 +67,7 @@ export default function BillingSection() {
           <Button variant="ghost" onClick={() => setShowHistory(false)}>
             ← Back to Billing
           </Button>
-          <ViewPurchaseHistory userId={user?.id} />
+          <ViewPurchaseHistory />
         </div>
       )}
     </div>
