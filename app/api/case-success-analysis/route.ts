@@ -2,10 +2,10 @@ import { OpenAI } from 'openai';
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
+// Initialize OpenAI client with error handling
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
-});
+}) : null;
 
 async function getCaseLaw(state: string, category: string) {
   try {
@@ -35,6 +35,11 @@ async function getCaseLaw(state: string, category: string) {
 
 export async function POST(req: Request) {
   try {
+    // Check if OpenAI is configured
+    if (!openai) {
+      return NextResponse.json({ error: "OpenAI not configured" }, { status: 503 });
+    }
+
     console.log('🔍 Case analysis API called');
     const data = await req.json();
     const { 
