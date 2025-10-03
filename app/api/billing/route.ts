@@ -4,12 +4,18 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from "next/headers";
 import { BillingData, StripeSubscription, StripePlan, StripePaymentMethod, StripeInvoice } from '@/types/billing';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Initialize Stripe client with error handling
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-08-27.basil',
-});
+}) : null;
 
 export async function GET(req: NextRequest) {
   try {
+    // Check if Stripe is configured
+    if (!stripe) {
+      return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+    }
+
     // Get user from Supabase auth - using route handler client
     const supabase = createRouteHandlerClient({ cookies });
 
