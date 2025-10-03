@@ -70,6 +70,8 @@ export const config = {
     apiVersion: '2025-08-27.basil' as const,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     publicKey: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || '',
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    isLiveMode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || false,
   },
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -86,6 +88,6 @@ export const config = {
   features: {
     enableAnalytics: getEnvironment() === 'production',
     debugMode: getEnvironment() !== 'production',
-    stripeTestMode: getEnvironment() !== 'production',
+    stripeTestMode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') || false,
   }
 };

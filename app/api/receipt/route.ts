@@ -2,25 +2,20 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-// Check if we're in build time and skip operations
-const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
-const isVercelBuild = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production';
-
-// Initialize clients only if not in build time
-const stripe = (!isBuildTime && !isVercelBuild && process.env.STRIPE_SECRET_KEY) ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+// Initialize Stripe client
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-08-16",
 }) : null;
 
-const supabase = (!isBuildTime && !isVercelBuild) ? createClient(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-) : null;
+);
 
 export async function GET(req: Request) {
   try {
-    // Skip during build time
     if (!stripe || !supabase) {
-      return NextResponse.json({ error: 'Clients not available during build time' }, { status: 503 });
+      return NextResponse.json({ error: 'Stripe or Supabase not configured' }, { status: 503 });
     }
 
     const { searchParams } = new URL(req.url);
