@@ -43,6 +43,9 @@ export default function BillingPage() {
   }, [supabase.auth]);
 
   useEffect(() => {
+    // Only run in browser, not during build
+    if (typeof window === 'undefined') return;
+    
     async function fetchBilling() {
       try {
         setLoading(true);

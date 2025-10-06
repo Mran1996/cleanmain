@@ -116,6 +116,9 @@ export default function AccountClient({
 
   // Load purchase history when billing tab is opened
   useEffect(() => {
+    // Only run in browser, not during build
+    if (typeof window === 'undefined') return;
+    
     if (activeTab === 'billing' && purchases.length === 0 && !loadingPurchases) {
       fetchPurchaseHistory(1);
     }
