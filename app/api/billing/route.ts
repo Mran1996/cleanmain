@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from "next/headers";
+import { createClient } from '@/utils/supabase/server';
 import { BillingData, StripeSubscription, StripePlan, StripePaymentMethod, StripeInvoice } from '@/types/billing';
 
 // Initialize Stripe client with error handling
@@ -16,21 +15,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
     }
 
-    // Get user from Supabase auth - using route handler client
-    const supabase = createRouteHandlerClient({ cookies });
+    // Get user from Supabase auth - using server client
+    const supabase = await createClient();
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     
-    // Try to get Stripe customer ID from user metadata or profile
+    // Try to get Stripe customer ID from multiple sources
     let stripeCustomerId = null;
+    
+    // First check user metadata
     if (user.user_metadata && user.user_metadata.stripeCustomerId) {
       stripeCustomerId = user.user_metadata.stripeCustomerId;
     }
+    
+    // Then check users table (where webhook stores it)
     if (!stripeCustomerId) {
-      // Try to fetch from profiles table if not in metadata
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('stripe_customer_id')
+        .eq('id', user.id)
+        .single();
+      if (userData && userData.stripe_customer_id) {
+        stripeCustomerId = userData.stripe_customer_id;
+      }
+    }
+    
+    // Finally check profiles table
+    if (!stripeCustomerId) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('stripeCustomerId')
@@ -40,6 +54,29 @@ export async function GET(req: NextRequest) {
         stripeCustomerId = profile.stripeCustomerId;
       }
     }
+    
+    // If still no customer ID, try to find by email in Stripe
+    if (!stripeCustomerId) {
+      try {
+        const customers = await stripe.customers.list({
+          email: user.email,
+          limit: 1,
+        });
+        if (customers.data.length > 0) {
+          stripeCustomerId = customers.data[0].id;
+          console.log(`Found customer by email: ${user.email} -> ${stripeCustomerId}`);
+          
+          // Store the customer ID for future use
+          await supabase
+            .from('users')
+            .update({ stripe_customer_id: stripeCustomerId })
+            .eq('id', user.id);
+        }
+      } catch (error) {
+        console.error('Error searching for customer by email:', error);
+      }
+    }
+    
     if (!stripeCustomerId) {
       return NextResponse.json({ error: "No Stripe customer ID found." }, { status: 401 });
     }

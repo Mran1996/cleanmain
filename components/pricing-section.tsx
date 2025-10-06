@@ -35,7 +35,7 @@ export function PricingSection() {
               plan={PRODUCTS.COURT_READY}
               className="w-full mt-4 text-white bg-green-600 hover:bg-green-700"
             >
-              Get Help Now
+              Purchase Now
             </StripeCheckoutButton>
           </CardContent>
         </Card>

@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import { Navigation } from "@/components/navigation"
+import { SubscriptionGuard } from "@/components/subscription-guard"
 import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -622,7 +623,7 @@ function ChatBubble({
   )
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -721,4 +722,15 @@ export default function ChatPage() {
       <Footer />
     </div>
   )
+}
+
+export default function ChatPage() {
+  return (
+    <SubscriptionGuard
+      fallbackTitle="AI Chat Assistant"
+      fallbackMessage="Access to the AI chat assistant requires an active subscription. Upgrade to start chatting with our legal AI."
+    >
+      <ChatPageContent />
+    </SubscriptionGuard>
+  );
 }

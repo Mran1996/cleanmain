@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
+import { SubscriptionGuard } from "@/components/subscription-guard";
 import { Button } from "@/components/ui/button";
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
 import { ProgressSteps } from "@/components/ProgressSteps";
@@ -13,7 +14,7 @@ import { DocumentData } from "@/types/document";
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 
-export default function AIAssistantStep1Page() {
+function AIAssistantStep1Content() {
   const router = useRouter();
   const [isWaiting, setIsWaiting] = useState(false);
   const [suggestedResponses, setSuggestedResponses] = useState<string[]>([]);
@@ -387,5 +388,16 @@ Key rules:
         </div>
       </div>
     </StepLayout>
+  );
+}
+
+export default function AIAssistantStep1Page() {
+  return (
+    <SubscriptionGuard
+      fallbackTitle="AI Legal Assistant - Step 1"
+      fallbackMessage="Access to the AI legal assistant requires an active subscription. This interactive chat helps gather information for your legal case."
+    >
+      <AIAssistantStep1Content />
+    </SubscriptionGuard>
   );
 } 

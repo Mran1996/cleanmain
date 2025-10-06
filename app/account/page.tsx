@@ -76,6 +76,7 @@ export default function AccountPage() {
     console.log('🏠 Account page loaded successfully');
     console.log('👤 User data:', user);
     console.log('🔐 User authenticated:', !!user);
+    console.log('📊 Loading states:', { isLoading, loadingBilling });
     
     // Clear any OAuth errors from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -91,20 +92,41 @@ export default function AccountPage() {
       const fetchBillingData = async () => {
         try {
           setLoadingBilling(true);
-          // Use the billing service with retry logic
-          const data = await BillingService.retryWithBackoff(
-            () => BillingService.getBillingData()
-          );
+          
+          // Set a timeout for billing data loading
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Billing data loading timeout')), 8000);
+          });
+          
+          // Race between billing data fetch and timeout
+          const data = await Promise.race([
+            BillingService.retryWithBackoff(() => BillingService.getBillingData()),
+            timeoutPromise
+          ]);
+          
           console.log('💳 Billing data loaded:', data);
           setBillingData(data);
         } catch (err) {
           console.error('❌ Error fetching billing data:', err);
+          // Set empty billing data instead of leaving it null
+          setBillingData({
+            subscription: undefined,
+            paymentMethods: [],
+            invoices: []
+          });
         } finally {
           setLoadingBilling(false);
         }
       };
       
       fetchBillingData();
+    } else {
+      // If no user, set empty billing data immediately
+      setBillingData({
+        subscription: undefined,
+        paymentMethods: [],
+        invoices: []
+      });
     }
   }, [user]);
 

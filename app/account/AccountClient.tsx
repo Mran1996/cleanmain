@@ -1,8 +1,8 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BillingData, StripeSubscription } from "@/types/billing";
+import { BillingData, StripeSubscription, Purchase } from "@/types/billing";
 import { getPlanFeatures } from "@/lib/plan-features";
 import { BillingService } from "@/services/billing";
 
@@ -34,6 +34,17 @@ export default function AccountClient({
   const [saving, setSaving] = useState(false);
   const [first, setFirst] = useState<string>(firstName || "");
   const [last, setLast] = useState<string>(lastName || "");
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const itemsPerPage = 5;
   
   // Handle download receipt
   const handleDownloadReceipt = () => {
@@ -59,6 +70,94 @@ export default function AccountClient({
   const handleSaveChanges = async () => {
     setSaving(true);
     setTimeout(() => setSaving(false), 1000);
+  };
+
+  // Fetch purchase history with Stripe cursor-based pagination
+  const fetchPurchaseHistory = async (page: number = 1, cursor?: string) => {
+    try {
+      setLoadingPurchases(true);
+      setPurchaseError(null);
+      
+      console.log('🔄 Fetching purchase history:', { page, cursor, itemsPerPage });
+      
+      const data = await BillingService.retryWithBackoff(
+        () => BillingService.getPurchaseHistory(page, itemsPerPage, cursor)
+      );
+      
+      console.log('✅ Purchase history response:', data);
+      
+      // Set purchases from server response
+      setPurchases(data.purchases || []);
+      
+      // Update pagination state from server response
+      if (data.pagination) {
+        setCurrentPage(data.pagination.page);
+        setTotalPages(data.pagination.totalPages);
+        setTotalCount(data.pagination.total);
+        setHasNext(data.pagination.hasNext);
+        setHasPrev(data.pagination.hasPrev);
+        setNextCursor(data.pagination.nextCursor);
+        setCurrentCursor(data.pagination.currentCursor);
+      }
+      
+    } catch (error) {
+      console.error("❌ Failed to load purchase history", error);
+      setPurchaseError("Failed to load purchase history. Please try again later.");
+      // Set empty state on error
+      setPurchases([]);
+      setTotalCount(0);
+      setTotalPages(0);
+      setHasNext(false);
+      setHasPrev(false);
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
+
+  // Load purchase history when billing tab is opened
+  useEffect(() => {
+    if (activeTab === 'billing' && purchases.length === 0 && !loadingPurchases) {
+      fetchPurchaseHistory(1);
+    }
+  }, [activeTab]);
+
+  // Handle load more purchases (not needed for server-side pagination)
+  // Removed as we're using page-based navigation instead
+
+  // Handle page navigation with cursor support
+  const handlePageChange = (page: number) => {
+    if (page !== currentPage && !loadingPurchases) {
+      if (page > currentPage && nextCursor) {
+        // Going forward - use next cursor
+        fetchPurchaseHistory(page, nextCursor);
+      } else if (page < currentPage) {
+        // Going backward - reset to page 1 and navigate
+        // Note: Stripe doesn't support backward cursors, so we reset
+        if (page === 1) {
+          fetchPurchaseHistory(1);
+        } else {
+          // For now, just fetch the requested page without cursor
+          fetchPurchaseHistory(page);
+        }
+      } else {
+        // Same page or other cases
+        fetchPurchaseHistory(page);
+      }
+    }
+  };
+
+  // Handle next page specifically
+  const handleNextPage = () => {
+    if (hasNext && !loadingPurchases && nextCursor) {
+      fetchPurchaseHistory(currentPage + 1, nextCursor);
+    }
+  };
+
+  // Handle previous page
+  const handlePrevPage = () => {
+    if (hasPrev && !loadingPurchases) {
+      fetchPurchaseHistory(currentPage - 1);
+    }
   };
 
   return (
@@ -159,16 +258,28 @@ export default function AccountClient({
                 <h1 className="text-lg md:text-xl font-bold mb-4">Billing & Payments</h1>
                 
                 {!billingData ? (
-                  <div className="text-center py-8">Loading billing information...</div>
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                    <p className="text-gray-600">Loading billing information...</p>
+                    <p className="text-xs text-gray-500 mt-1">This may take a moment</p>
+                  </div>
                 ) : (
                   <>
+                    {/* Subscription Status */}
                     <div className="rounded-md border border-green-200 bg-green-50 p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4">
                       <span className="text-lg md:text-xl mr-2">💼</span>
-                      <div>
+                      <div className="flex-1">
                         <div className="text-sm md:text-base font-medium">
-                          {billingData?.subscription?.plan?.nickname ? (
+                          {billingData?.subscription ? (
                             <>
-                              You're on the <span className="font-extrabold">{billingData.subscription.plan.nickname}</span> Plan
+                              You're on the <span className="font-extrabold">{billingData.subscription.items?.data?.[0]?.plan?.nickname || "Premium"}</span> Plan
+                              <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                                billingData.subscription.status === 'active' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {billingData.subscription.status?.toUpperCase()}
+                              </span>
                             </>
                           ) : (
                             "You don't have an active subscription"
@@ -179,9 +290,135 @@ export default function AccountClient({
                             Next billing: <span className="font-normal">
                               {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString()}
                             </span>
+                            {billingData.subscription.cancel_at_period_end && (
+                              <span className="ml-2 text-red-600">(Cancels at period end)</span>
+                            )}
+                          </div>
+                        )}
+                        {billingData?.subscription?.items?.data?.[0]?.plan?.amount && (
+                          <div className="text-xs md:text-sm mt-1 text-gray-600">
+                            ${(billingData.subscription.items.data[0].plan.amount / 100).toFixed(2)} / {billingData.subscription.items.data[0].plan.interval}
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Payment Methods */}
+                    {billingData.paymentMethods && billingData.paymentMethods.length > 0 && (
+                      <div className="bg-gray-50 rounded-md p-3 md:p-4 mb-4">
+                        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                          💳 Payment Methods
+                        </h3>
+                        {billingData.paymentMethods.map((pm, index) => (
+                          <div key={pm.id} className="flex items-center gap-2 text-sm">
+                            <span className="capitalize">{pm.card?.brand}</span>
+                            <span>•••• {pm.card?.last4}</span>
+                            <span className="text-gray-500">
+                              {pm.card?.exp_month}/{pm.card?.exp_year}
+                            </span>
+                            {index === 0 && (
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 text-xs rounded">Default</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Purchase History with Pagination */}
+                    <div className="bg-gray-50 rounded-md p-3 md:p-4 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          🛒 Purchase History
+                        </h3>
+                        {(totalPages > 1 || totalCount > 0) && (
+                          <div className="text-xs text-gray-500">
+                            {totalCount > 0 ? (
+                              <>Page {currentPage} of ~{totalPages} ({totalCount} total)</>
+                            ) : (
+                              <>Page {currentPage}</>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {loadingPurchases ? (
+                        <div className="text-center py-4">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mx-auto mb-2"></div>
+                          <p className="text-gray-600 text-xs">Loading purchases...</p>
+                        </div>
+                      ) : purchaseError ? (
+                        <div className="text-center py-4">
+                          <p className="text-red-500 text-xs">{purchaseError}</p>
+                          <button 
+                            onClick={() => fetchPurchaseHistory(1)}
+                            className="mt-2 text-green-600 hover:text-green-700 text-xs underline"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                      ) : purchases.length === 0 ? (
+                        <div className="text-center py-4">
+                          <p className="text-gray-500 text-xs">No purchases found</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-2 mb-3">
+                            {purchases.map((purchase) => (
+                              <div key={purchase.id} className="flex items-center justify-between text-sm bg-white p-2 rounded border">
+                                <div>
+                                  <div className="font-medium">
+                                    {purchase.document_name || 'Subscription Payment'}
+                                  </div>
+                                  <div className="text-gray-500 text-xs">
+                                    {purchase.created_at ? new Date(purchase.created_at).toLocaleDateString() : 'Unknown date'}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium">
+                                    ${purchase.price?.toFixed(2) || '0.00'}
+                                  </div>
+                                  <div className="text-green-600 text-xs">
+                                    PAID
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Pagination Controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between pt-2 border-t">
+                              <button
+                                onClick={handlePrevPage}
+                                disabled={!hasPrev || loadingPurchases}
+                                className="text-xs px-2 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
+                              >
+                                Previous
+                              </button>
+                              
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">
+                                  Page {currentPage}
+                                  {totalCount > 0 && ` of ~${totalPages}`}
+                                </span>
+                                {totalCount > 0 && (
+                                  <span className="text-xs text-gray-400">
+                                    ({totalCount} total)
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <button
+                                onClick={handleNextPage}
+                                disabled={!hasNext || loadingPurchases}
+                                className="text-xs px-2 py-1 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                     
                     {/* Features based on subscription plan using shared utility */}
@@ -196,22 +433,35 @@ export default function AccountClient({
                     )}
                     
                     <div className="flex flex-wrap gap-3 mt-6">
+                      {billingData?.subscription ? (
+                        <button 
+                          className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto"
+                          onClick={() => window.location.href = '/pricing'}
+                        >
+                          <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' /><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' /></svg>
+                          Manage Subscription
+                        </button>
+                      ) : (
+                        <button 
+                          className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto"
+                          onClick={() => window.location.href = '/pricing'}
+                        >
+                          <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v6m0 0v6m0-6h6m-6 0H6' /></svg>
+                          Subscribe Now
+                        </button>
+                      )}
+                      
                       <button 
                         className="flex items-center justify-center gap-2 border rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold text-black bg-white hover:bg-gray-100 hover:ring-1 hover:ring-gray-300 transition w-full sm:w-auto"
                         onClick={handleDownloadReceipt}
                         disabled={!billingData?.invoices?.[0]?.invoice_pdf}
                       >
-                        <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' /></svg>
+                        <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>
                         Download Receipt
                       </button>
-                      <button 
-                        className="flex items-center justify-center gap-2 border rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold text-black bg-white hover:bg-gray-100 hover:ring-1 hover:ring-gray-300 transition w-full sm:w-auto"
-                        onClick={() => window.location.href = '/account/billing'}
-                      >
-                        <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' /></svg>
-                        View Purchase History
-                      </button>
+                      
                     </div>
+
                   </>
                 )}
               </div>

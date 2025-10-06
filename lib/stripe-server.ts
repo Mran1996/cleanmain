@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2025-07-30.basil',
 }); 
 
 // Add this function to support create-checkout/route.ts
@@ -16,7 +16,7 @@ export async function createCheckoutSession(priceId: string, userId: string) {
       },
     ],
     metadata: { userId },
-    success_url: process.env.STRIPE_SUCCESS_URL || 'http://localhost:3000/success',
-    cancel_url: process.env.STRIPE_CANCEL_URL || 'http://localhost:3000/cancel',
+    success_url: process.env.STRIPE_SUCCESS_URL || 'https://askailegal.com/payment/success?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: process.env.STRIPE_CANCEL_URL || 'https://askailegal.com/payment/cancelled?session_id={CHECKOUT_SESSION_ID}',
   });
 } 

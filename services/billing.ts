@@ -28,12 +28,25 @@ export const BillingService = {
   },
 
   /**
-   * Fetch user's purchase history
-   * @returns Promise resolving to purchase history data
+   * Fetch user's purchase history with pagination
+   * @param page Page number (default: 1)
+   * @param limit Items per page (default: 5)
+   * @param startingAfter Cursor for pagination (optional)
+   * @returns Promise resolving to purchase history data with pagination
    */
-  async getPurchaseHistory() {
+  async getPurchaseHistory(page: number = 1, limit: number = 5, startingAfter?: string) {
     try {
-      const res = await fetch('/api/purchase-history', {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      // Add cursor-based pagination if provided
+      if (startingAfter) {
+        params.set('starting_after', startingAfter);
+      }
+      
+      const res = await fetch(`/api/purchase-history?${params}`, {
         headers: {
           'Cache-Control': 'no-cache',
         },

@@ -17,6 +17,7 @@
 import { ReactNode } from 'react'
 import { LanguageProvider } from '../components/context/language-context'
 import { SupabaseProvider } from '../components/SupabaseProvider'
+import { AuthProvider } from '../components/auth-provider'
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -25,9 +26,11 @@ interface ClientLayoutProps {
 export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <SupabaseProvider>
-      <LanguageProvider>
-        {children}
-      </LanguageProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
+      </AuthProvider>
     </SupabaseProvider>
   )
 } 
