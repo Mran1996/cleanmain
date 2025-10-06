@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from '@/utils/supabase/server';
 import { Purchase } from "@/types/billing";
+import { getServerUser } from '@/utils/server-auth';
+import { createClient } from '@/utils/supabase/server';
 import Stripe from 'stripe';
 
 // Initialize Stripe client
@@ -23,9 +24,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
   }
 
-  // Create a Supabase client using centralized server client
-  const supabase = await createClient();
-  
   // Parse URL parameters for pagination
   const url = new URL(req.url);
   const page = parseInt(url.searchParams.get('page') || '1');
@@ -33,12 +31,18 @@ export async function GET(req: Request) {
   const startingAfter = url.searchParams.get('starting_after') || undefined;
 
   try {
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get authenticated user using the new server auth utility
+    const { user, error: authError, isAuthenticated } = await getServerUser();
     
-    if (userError || !user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (!isAuthenticated || !user) {
+      return NextResponse.json({ 
+        error: "Not authenticated",
+        details: authError 
+      }, { status: 401 });
     }
+
+    // Create Supabase client for database operations
+    const supabase = await createClient();
 
     console.log('🔍 Fetching purchase history from Stripe for user:', user.email, 'Page:', page, 'Limit:', limit);
 
@@ -163,8 +167,18 @@ export async function GET(req: Request) {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Purchase history error:", error);
+    
+    // Handle specific cookie parsing errors
+    if (error?.message?.includes('Failed to parse cookie string')) {
+      return NextResponse.json({ 
+        purchases: [],
+        error: 'Authentication data corrupted. Please log out and log in again.',
+        code: 'COOKIE_PARSE_ERROR'
+      }, { status: 401 });
+    }
+    
     // Provide more detailed error information
     const errorMessage = error instanceof Error 
       ? error.message 
