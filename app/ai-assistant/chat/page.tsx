@@ -5,8 +5,9 @@ import Footer from "@/components/footer"
 import { ChatInterface } from "@/components/chat-interface"
 import { Button } from "@/components/ui/button"
 import { FileUp, Download, Save } from "lucide-react"
+import { SubscriptionGuard } from "@/components/subscription-guard"
 
-export default function ChatPage() {
+function ChatPageContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -78,4 +79,15 @@ export default function ChatPage() {
       <Footer />
     </div>
   )
+}
+
+export default function ChatPage() {
+  return (
+    <SubscriptionGuard
+      fallbackTitle="AI Legal Chat"
+      fallbackMessage="Access to the AI legal chat requires an active subscription. This premium feature provides unlimited conversations with your AI legal assistant."
+    >
+      <ChatPageContent />
+    </SubscriptionGuard>
+  );
 }

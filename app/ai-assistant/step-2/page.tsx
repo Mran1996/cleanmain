@@ -39,7 +39,7 @@ function estimatePageCount(textLength: number): number {
   return Math.ceil(textLength / 2000);
 }
 
-export default function Step2() {
+function Step2Content() {
   const router = useRouter();
   const [generating, setGenerating] = useState(false);
   const [documentText, setDocumentText] = useState("");
@@ -774,4 +774,8 @@ export default function Step2() {
       </div>
     </StepLayout>
   );
+}
+
+export default function Step2() {
+  return <Step2Content />;
 } 

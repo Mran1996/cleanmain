@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { User } from '@supabase/supabase-js';
+import { useSupabase } from './SupabaseProvider';
 
 interface AuthContextType {
   user: User | null;
@@ -19,24 +19,26 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
+  const supabase = useSupabase();
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session using Supabase's native method
     const getInitialSession = async () => {
       try {
         console.log('🔄 AuthProvider: Getting initial session...');
+        
+        // Use Supabase's getSession method
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('❌ AuthProvider session error:', error);
+          console.log('⚠️ AuthProvider session error:', error.message);
           setUser(null);
         } else {
-          console.log('✅ AuthProvider initial session:', session?.user?.email || 'No user');
+          console.log('✅ AuthProvider session result:', session?.user?.email || 'No user');
           setUser(session?.user ?? null);
         }
       } catch (error) {
-        console.error('❌ AuthProvider error getting session:', error);
+        console.error('❌ AuthProvider error:', error);
         setUser(null);
       } finally {
         setLoading(false);
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: any, session: any) => {
         console.log('🔄 AuthProvider auth change:', event, session?.user?.email || 'No user');
         setUser(session?.user ?? null);
         setLoading(false);

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
-import { SubscriptionGuard } from "@/components/subscription-guard";
 import { Button } from "@/components/ui/button";
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
 import { ProgressSteps } from "@/components/ProgressSteps";
@@ -10,9 +9,10 @@ import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "./prompts/attorney-interview";
 import { Loader2, FileText, Trash2 } from "lucide-react";
-import { DocumentData } from "@/types/document";
+import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
+import { SubscriptionGuard } from "@/components/subscription-guard";
 
 function AIAssistantStep1Content() {
   const router = useRouter();
@@ -394,8 +394,8 @@ Key rules:
 export default function AIAssistantStep1Page() {
   return (
     <SubscriptionGuard
-      fallbackTitle="AI Legal Assistant - Step 1"
-      fallbackMessage="Access to the AI legal assistant requires an active subscription. This interactive chat helps gather information for your legal case."
+      fallbackTitle="AI Legal Assistant - Premium Feature"
+      fallbackMessage="Access to the AI legal assistant requires an active subscription. This interactive chat helps gather information for your legal case and generates professional legal documents."
     >
       <AIAssistantStep1Content />
     </SubscriptionGuard>
