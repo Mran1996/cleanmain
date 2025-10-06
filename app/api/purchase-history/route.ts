@@ -14,10 +14,6 @@ const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL
 const isVercelBuild = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production';
 
 export async function GET(req: Request) {
-  // Skip during build time
-  if (isBuildTime || isVercelBuild) {
-    return NextResponse.json({ error: 'API not available during build time' }, { status: 503 });
-  }
 
   // Check if Stripe is configured
   if (!stripe) {
