@@ -136,6 +136,7 @@ When a user asks for legal research, case information, or current legal developm
       content: msg.text || msg.content
     }));
 
+    
     console.log('📝 Converted messages:', openaiMessages.length, 'messages');
 
     const completion = await openai.chat.completions.create({
