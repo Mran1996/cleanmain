@@ -1,6 +1,9 @@
  'use client';
  
  import { useEffect, useState } from 'react';
+ import NextDynamic from 'next/dynamic';
+
+ 
  import { useSearchParams } from 'next/navigation';
  import Link from 'next/link';
  import { CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
@@ -29,6 +32,7 @@ interface PaymentInfo {
 
 export default function CancelledPage() {
   const searchParams = useSearchParams();
+
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [loading, setLoading] = useState(true);
  
