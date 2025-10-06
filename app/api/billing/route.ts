@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@/utils/supabase/server';
 import { BillingData, StripeSubscription, StripePlan, StripePaymentMethod, StripeInvoice } from '@/types/billing';
+import { getServerUser } from '@/utils/server-auth';
+import { createClient } from '@/utils/supabase/server';
 
 // Initialize Stripe client with error handling
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -15,13 +16,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
     }
 
-    // Get user from Supabase auth - using server client
-    const supabase = await createClient();
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    // Get user from server-side auth
+    const { user, error: authError, isAuthenticated } = await getServerUser();
+    
+    if (!isAuthenticated || !user) {
+      return NextResponse.json({ 
+        error: "Not authenticated",
+        details: authError 
+      }, { status: 401 });
     }
+
+    // Create Supabase client for database operations
+    const supabase = await createClient();
     
     // Try to get Stripe customer ID from multiple sources
     let stripeCustomerId = null;
@@ -204,8 +210,17 @@ export async function GET(req: NextRequest) {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[STRIPE BILLING API ERROR]', error);
+    
+    // Handle specific cookie parsing errors
+    if (error?.message?.includes('Failed to parse cookie string')) {
+      return NextResponse.json({ 
+        error: 'Authentication data corrupted. Please log out and log in again.',
+        code: 'COOKIE_PARSE_ERROR'
+      }, { status: 401 });
+    }
+    
     // Provide more detailed error information
     const errorMessage = error instanceof Error 
       ? error.message 
