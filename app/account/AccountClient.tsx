@@ -1112,12 +1112,7 @@ export default function AccountClient({
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
                     <p className="text-gray-500 mb-4">Documents you save from the AI assistant will appear here.</p>
-                    <button 
-                      onClick={() => window.location.href = '/ai-assistant'}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-                    >
-                      Create Your First Document
-                    </button>
+                  
                   </div>
                 ) : (
                   <>
