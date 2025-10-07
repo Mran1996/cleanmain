@@ -76,6 +76,57 @@ export const BillingService = {
   },
 
   /**
+   * Manage subscription using dedicated subscription management API
+   * @param action The action to perform ('cancel' or 'reactivate')
+   * @returns Promise resolving to subscription management result
+   */
+  async manageSubscription(action: 'cancel' | 'reactivate') {
+    try {
+      console.log(`🔄 Attempting to ${action} subscription...`);
+      
+      const res = await fetch('/api/subscription-manage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify({ action }),
+      });
+      
+      console.log(`📡 API Response status: ${res.status} ${res.statusText}`);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error(`❌ API Error:`, errorData);
+        throw new Error(errorData.error || `Failed to ${action} subscription: ${res.status} ${res.statusText}`);
+      }
+      
+      const result = await res.json();
+      console.log(`✅ Subscription ${action} successful:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Subscription ${action} error:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Cancel subscription at period end
+   * @returns Promise resolving to cancellation result
+   */
+  async cancelSubscription() {
+    return this.manageSubscription('cancel');
+  },
+
+  /**
+   * Reactivate a canceled subscription
+   * @returns Promise resolving to reactivation result
+   */
+  async reactivateSubscription() {
+    return this.manageSubscription('reactivate');
+  },
+
+  /**
    * Retry a function with exponential backoff
    * @param fn Function to retry
    * @param maxRetries Maximum number of retries

@@ -53,7 +53,38 @@ export async function GET(req: Request) {
       .single();
     
     if (userData && userData.stripe_customer_id) {
-      stripeCustomerId = userData.stripe_customer_id;
+      // Verify the customer ID is valid in the current Stripe environment
+      try {
+        await stripe.customers.retrieve(userData.stripe_customer_id);
+        stripeCustomerId = userData.stripe_customer_id;
+        console.log('✅ Verified existing Stripe customer:', stripeCustomerId);
+      } catch (error) {
+        console.error('❌ Error retrieving customer from Stripe:', error);
+        
+        // Check if it's a test/live mode mismatch or invalid customer
+        if (error instanceof Error && error.message.includes('similar object exists in test mode')) {
+          console.log('🔄 Test/Live mode mismatch detected, clearing invalid customer ID');
+        } else if (error instanceof Error && error.message.includes('No such customer')) {
+          console.log('🔄 Invalid customer ID detected, clearing from database');
+        }
+        
+        // Clear the invalid customer ID from Supabase
+        try {
+          await supabase
+            .from('users')
+            .update({ 
+              stripe_customer_id: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+          console.log('🧹 Cleared invalid customer ID from Supabase');
+        } catch (updateError) {
+          console.error('❌ Error clearing invalid customer ID:', updateError);
+        }
+        
+        // Will search by email below
+        stripeCustomerId = null;
+      }
     }
     
     // If not found, try to find by email in Stripe

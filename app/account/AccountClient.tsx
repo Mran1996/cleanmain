@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BillingData, StripeSubscription, Purchase } from "@/types/billing";
@@ -27,7 +28,27 @@ export default function AccountClient({
   subscription,
   billingData
 }: AccountClientProps) {
-  const [activeTab, setActiveTab] = useState<'settings' | 'billing'>('settings');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL params, default to 'settings' (account)
+  const getInitialTab = (): 'settings' | 'billing' => {
+    if (!searchParams) return 'settings';
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'billing') return 'billing';
+    if (tabParam === 'account') return 'settings';
+    return 'settings'; // Default to account/settings tab
+  };
+  
+  const [activeTab, setActiveTab] = useState<'settings' | 'billing'>(getInitialTab());
+  
+  // Function to handle tab changes and update URL
+  const handleTabChange = (tab: 'settings' | 'billing') => {
+    setActiveTab(tab);
+    const tabParam = tab === 'settings' ? 'account' : 'billing';
+    const newUrl = `/account?tab=${tabParam}`;
+    router.push(newUrl, { scroll: false });
+  };
   const [avatar, setAvatar] = useState<string | null>(avatarUrl || null);
   const [showImg, setShowImg] = useState(!!avatarUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +66,13 @@ export default function AccountClient({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const itemsPerPage = 5;
+  
+  // Subscription management state
+  const [managingSubscription, setManagingSubscription] = useState(false);
+  const [subscriptionAction, setSubscriptionAction] = useState<'cancel' | 'reactivate' | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [subscriptionMessage, setSubscriptionMessage] = useState<string | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   
   // Handle download receipt
   const handleDownloadReceipt = () => {
@@ -163,6 +191,105 @@ export default function AccountClient({
     }
   };
 
+  // Handle subscription management
+  const handleSubscriptionAction = async (action: 'cancel' | 'reactivate') => {
+    setSubscriptionAction(action);
+    setShowConfirmDialog(true);
+  };
+
+  const confirmSubscriptionAction = async () => {
+    if (!subscriptionAction) return;
+    
+    try {
+      setManagingSubscription(true);
+      setSubscriptionError(null);
+      setSubscriptionMessage(null);
+      setShowConfirmDialog(false);
+      
+      console.log(`🔄 ${subscriptionAction} subscription...`);
+      
+      const result = await BillingService.retryWithBackoff(
+        () => subscriptionAction === 'cancel' 
+          ? BillingService.cancelSubscription()
+          : BillingService.reactivateSubscription()
+      );
+      
+      console.log('✅ Subscription action result:', result);
+      setSubscriptionMessage(result.message || `Subscription ${subscriptionAction}ed successfully`);
+      
+      // Refresh billing data after successful action
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error(`❌ Error ${subscriptionAction}ing subscription:`, error);
+      setSubscriptionError(error.message || `Failed to ${subscriptionAction} subscription`);
+      
+      // Handle specific error cases
+      if (error.message?.includes('new subscription')) {
+        setTimeout(() => {
+          window.location.href = '/pricing';
+        }, 3000);
+      }
+    } finally {
+      setManagingSubscription(false);
+      setSubscriptionAction(null);
+    }
+  };
+
+  const cancelSubscriptionAction = () => {
+    setShowConfirmDialog(false);
+    setSubscriptionAction(null);
+  };
+
+  // Get subscription status for UI logic
+  const getSubscriptionStatus = () => {
+    if (!billingData?.subscription) return 'none';
+    
+    const sub = billingData.subscription;
+    if (sub.status === 'active' && sub.cancel_at_period_end) {
+      return 'canceling';
+    }
+    if (sub.status === 'active') {
+      return 'active';
+    }
+    if (sub.status === 'canceled') {
+      return 'canceled';
+    }
+    return sub.status;
+  };
+
+  const subscriptionStatus = getSubscriptionStatus();
+  
+  // Check if canceled subscription can be reactivated (within 30 days)
+  const canReactivateCanceledSubscription = () => {
+    if (!billingData?.subscription || subscriptionStatus !== 'canceled') return false;
+    
+    const canceledAt = billingData.subscription.canceled_at;
+    if (!canceledAt) return false;
+    
+    const canceledDate = new Date(canceledAt * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return canceledDate > thirtyDaysAgo;
+  };
+
+  const canReactivate = canReactivateCanceledSubscription();
+
+  // Sync tab state with URL changes (for browser back/forward)
+  useEffect(() => {
+    if (!searchParams) return;
+    const tabParam = searchParams.get('tab');
+    let newTab: 'settings' | 'billing' = 'settings';
+    
+    if (tabParam === 'billing') newTab = 'billing';
+    else if (tabParam === 'account') newTab = 'settings';
+    
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [searchParams, activeTab]);
+
   return (
     <div className="max-w-4xl mx-auto px-2 md:px-4 py-4 md:py-10">
       <div className="bg-white rounded-2xl shadow border flex flex-col md:flex-row gap-4 md:gap-8 p-0">
@@ -211,13 +338,13 @@ export default function AccountClient({
           <div className="w-full flex flex-col gap-2 px-2 md:px-0">
             <button
               className={`font-semibold rounded py-2 w-full mb-2 transition-colors text-sm ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
-              onClick={() => setActiveTab('settings')}
+              onClick={() => handleTabChange('settings')}
             >
-              Settings
+              Account
             </button>
             <button
               className={`font-semibold rounded py-2 w-full transition-colors text-sm ${activeTab === 'billing' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
-              onClick={() => setActiveTab('billing')}
+              onClick={() => handleTabChange('billing')}
             >
               Billing
             </button>
@@ -269,40 +396,119 @@ export default function AccountClient({
                 ) : (
                   <>
                     {/* Subscription Status */}
-                    <div className="rounded-md border border-green-200 bg-green-50 p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-4">
-                      <span className="text-lg md:text-xl mr-2">💼</span>
-                      <div className="flex-1">
-                        <div className="text-sm md:text-base font-medium">
-                          {billingData?.subscription ? (
-                            <>
-                              You're on the <span className="font-extrabold">{billingData.subscription.items?.data?.[0]?.plan?.nickname || "Premium"}</span> Plan
-                              <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                                billingData.subscription.status === 'active' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {billingData.subscription.status?.toUpperCase()}
-                              </span>
-                            </>
-                          ) : (
-                            "You don't have an active subscription"
-                          )}
-                        </div>
-                        {billingData?.subscription?.current_period_end && (
-                          <div className="text-xs md:text-sm mt-1 font-semibold">
-                            Next billing: <span className="font-normal">
-                              {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString()}
-                            </span>
-                            {billingData.subscription.cancel_at_period_end && (
-                              <span className="ml-2 text-red-600">(Cancels at period end)</span>
+                    <div className="rounded-md border border-green-200 bg-green-50 p-3 md:p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-lg md:text-xl">💼</span>
+                        <div className="flex-1">
+                          <div className="text-sm md:text-base font-medium mb-2">
+                            {billingData?.subscription ? (
+                              <div className="flex items-center flex-wrap gap-2">
+                                <span>You're on the <span className="font-extrabold">{billingData.subscription.items?.data?.[0]?.plan?.nickname || "Premium"}</span> Plan</span>
+                                <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                                  subscriptionStatus === 'active' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : subscriptionStatus === 'canceling'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : subscriptionStatus === 'canceled'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {subscriptionStatus === 'canceling' ? 'CANCELING' : billingData.subscription.status?.toUpperCase()}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>You don't have an active subscription</span>
+                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 font-semibold">NO SUBSCRIPTION</span>
+                              </div>
                             )}
                           </div>
-                        )}
-                        {billingData?.subscription?.items?.data?.[0]?.plan?.amount && (
-                          <div className="text-xs md:text-sm mt-1 text-gray-600">
-                            ${(billingData.subscription.items.data[0].plan.amount / 100).toFixed(2)} / {billingData.subscription.items.data[0].plan.interval}
-                          </div>
-                        )}
+                          
+                          {billingData?.subscription && (
+                            <div className="space-y-1 text-xs md:text-sm">
+                              {/* Temporary Debug - Remove after fixing */}
+                              {/* <div className="text-xs text-red-600 bg-red-50 p-2 rounded border">
+                                <strong>DEBUG:</strong> {JSON.stringify({
+                                  current_period_start: billingData.subscription.current_period_start,
+                                  current_period_end: billingData.subscription.current_period_end,
+                                  created: billingData.subscription.created,
+                                  status: billingData.subscription.status
+                                })}
+                              </div> */}
+                              
+                              {/* Subscription Amount */}
+                              {billingData.subscription.items?.data?.[0]?.plan?.amount && (
+                                <div className="font-semibold text-gray-900">
+                                  ${(billingData.subscription.items.data[0].plan.amount / 100).toFixed(2)} / {billingData.subscription.items.data[0].plan.interval}
+                                </div>
+                              )}
+                              
+                              {/* Subscription Start Date */}
+                              {billingData.subscription.created && (
+                                <div className="text-gray-600">
+                                  <span className="font-medium">📅 Started:</span> {new Date(billingData.subscription.created * 1000).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                </div>
+                              )}
+                              
+                              {/* Current Period */}
+                              {billingData.subscription.current_period_start && billingData.subscription.current_period_end && (
+                                <div className="text-gray-600">
+                                  <span className="font-medium">📊 Current period:</span> {new Date(billingData.subscription.current_period_start * 1000).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                  })} - {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </div>
+                              )}
+                              
+                              {/* Next Billing or Cancellation Date - Always show if current_period_end exists */}
+                              {billingData.subscription.current_period_end && (
+                                <div className="font-medium">
+                                  {subscriptionStatus === 'canceling' ? (
+                                    <span className="text-yellow-700">
+                                      🗓️ Cancels on: {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      })}
+                                    </span>
+                                  ) : subscriptionStatus === 'active' ? (
+                                    <span className="text-green-700">
+                                      🗓️ Next billing: {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      })}
+                                    </span>
+                                  ) : subscriptionStatus === 'canceled' ? (
+                                    <span className="text-red-700">
+                                      ❌ Canceled on: {billingData.subscription.canceled_at ? new Date(billingData.subscription.canceled_at * 1000).toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      }) : 'Unknown'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-700">
+                                      📅 Period ends: {new Date(billingData.subscription.current_period_end * 1000).toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'long', 
+                                        day: 'numeric' 
+                                      })}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -435,15 +641,110 @@ export default function AccountClient({
                       </ul>
                     )}
                     
+                    {/* Subscription Management Messages */}
+                    {subscriptionMessage && (
+                      <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <p className="text-green-800 text-sm font-medium">{subscriptionMessage}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {subscriptionError && (
+                      <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <p className="text-red-800 text-sm font-medium">{subscriptionError}</p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap gap-3 mt-6">
                       {billingData?.subscription ? (
-                        <button 
-                          className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto"
-                          onClick={() => window.location.href = '/pricing'}
-                        >
-                          <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' /><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 12a3 3 0 11-6 0 3 3 0 016 0z' /></svg>
-                          Manage Subscription
-                        </button>
+                        <>
+                          {subscriptionStatus === 'active' && (
+                            <button 
+                              className="flex items-center justify-center gap-2 bg-red-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-red-700 transition w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => handleSubscriptionAction('cancel')}
+                              disabled={managingSubscription}
+                            >
+                              {managingSubscription && subscriptionAction === 'cancel' ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              ) : (
+                                <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' /></svg>
+                              )}
+                              Cancel Subscription
+                            </button>
+                          )}
+                          
+                          {subscriptionStatus === 'canceling' && (
+                            <button 
+                              className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => handleSubscriptionAction('reactivate')}
+                              disabled={managingSubscription}
+                            >
+                              {managingSubscription && subscriptionAction === 'reactivate' ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              ) : (
+                                <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' /></svg>
+                              )}
+                              Reactivate Subscription
+                            </button>
+                          )}
+                          
+                          {subscriptionStatus === 'canceled' && (
+                            <>
+                              {canReactivate ? (
+                                <>
+                                  <button 
+                                    className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => handleSubscriptionAction('reactivate')}
+                                    disabled={managingSubscription}
+                                  >
+                                    {managingSubscription && subscriptionAction === 'reactivate' ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    ) : (
+                                      <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' /></svg>
+                                    )}
+                                    Reactivate Subscription
+                                  </button>
+                                  <button 
+                                    className="flex items-center justify-center gap-2 border border-green-600 text-green-600 rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-50 transition w-full sm:w-auto"
+                                    onClick={() => window.location.href = '/pricing'}
+                                  >
+                                    <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v6m0 0v6m0-6h6m-6 0H6' /></svg>
+                                    New Subscription
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 w-full">
+                                    <div className="flex items-center gap-2">
+                                      <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                      </svg>
+                                      <p className="text-yellow-800 text-sm font-medium">
+                                        Your subscription was canceled more than 30 days ago and cannot be reactivated.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button 
+                                    className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto"
+                                    onClick={() => window.location.href = '/pricing'}
+                                  >
+                                    <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 6v6m0 0v6m0-6h6m-6 0H6' /></svg>
+                                    Subscribe Again
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </>
                       ) : (
                         <button 
                           className="flex items-center justify-center gap-2 bg-green-600 text-white rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold hover:bg-green-700 transition w-full sm:w-auto"
@@ -472,6 +773,47 @@ export default function AccountClient({
           )}
         </div>
       </div>
+      
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && subscriptionAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4">
+              {subscriptionAction === 'cancel' ? 'Cancel Subscription?' : 'Reactivate Subscription?'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {subscriptionAction === 'cancel' 
+                ? 'Your subscription will be canceled at the end of your current billing period. You\'ll retain access until then.'
+                : subscriptionStatus === 'canceled'
+                  ? 'This will reactivate your subscription with a new billing cycle starting immediately.'
+                  : 'This will remove the cancellation and your subscription will continue automatically.'
+              }
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelSubscriptionAction}
+                disabled={managingSubscription}
+              >
+                Cancel
+              </button>
+              <button
+                className={`px-4 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                  subscriptionAction === 'cancel' 
+                    ? 'bg-red-600 hover:bg-red-700' 
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+                onClick={confirmSubscriptionAction}
+                disabled={managingSubscription}
+              >
+                {managingSubscription ? 'Processing...' : 
+                  subscriptionAction === 'cancel' ? 'Yes, Cancel' : 'Yes, Reactivate'
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

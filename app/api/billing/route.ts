@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/server';
 
 // Initialize Stripe client with error handling
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-08-27.basil',
+  apiVersion: '2025-07-30.basil',
 }) : null;
 
 export async function GET(req: NextRequest) {
@@ -29,63 +29,89 @@ export async function GET(req: NextRequest) {
     // Create Supabase client for database operations
     const supabase = await createClient();
     
-    // Try to get Stripe customer ID from multiple sources
-    let stripeCustomerId = null;
-    
-    // First check user metadata
-    if (user.user_metadata && user.user_metadata.stripeCustomerId) {
-      stripeCustomerId = user.user_metadata.stripeCustomerId;
-    }
-    
-    // Then check users table (where webhook stores it)
-    if (!stripeCustomerId) {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('stripe_customer_id')
-        .eq('id', user.id)
-        .single();
-      if (userData && userData.stripe_customer_id) {
-        stripeCustomerId = userData.stripe_customer_id;
-      }
-    }
-    
-    // Finally check profiles table
-    if (!stripeCustomerId) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('stripeCustomerId')
-        .eq('id', user.id)
-        .single();
-      if (profile && profile.stripeCustomerId) {
-        stripeCustomerId = profile.stripeCustomerId;
-      }
-    }
-    
-    // If still no customer ID, try to find by email in Stripe
-    if (!stripeCustomerId) {
+    // Look for existing Stripe customer by email or from Supabase user record
+    let customerId: string | undefined;
+    let customerData: Stripe.Customer | undefined;
+
+    // First, check if user already has a stripe_customer_id in Supabase
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .single();
+
+    if (userData?.stripe_customer_id) {
       try {
-        const customers = await stripe.customers.list({
+        console.log('🔍 Found Stripe customer ID in Supabase:', userData.stripe_customer_id);
+        customerData = await stripe.customers.retrieve(userData.stripe_customer_id) as Stripe.Customer;
+        customerId = customerData.id;
+        console.log('✅ Verified existing Stripe customer:', customerId);
+      } catch (error) {
+        console.error('❌ Error retrieving customer from Stripe:', error);
+        
+        // Check if it's a test/live mode mismatch or invalid customer
+        if (error instanceof Error && error.message.includes('similar object exists in test mode')) {
+          console.log('🔄 Test/Live mode mismatch detected, clearing invalid customer ID');
+        } else if (error instanceof Error && error.message.includes('No such customer')) {
+          console.log('🔄 Invalid customer ID detected, clearing from database');
+        }
+        
+        // Clear the invalid customer ID from Supabase
+        try {
+          await supabase
+            .from('users')
+            .update({ 
+              stripe_customer_id: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+          console.log('🧹 Cleared invalid customer ID from Supabase');
+        } catch (updateError) {
+          console.error('❌ Error clearing invalid customer ID:', updateError);
+        }
+        
+        // Customer ID in Supabase is invalid, we'll search by email below
+      }
+    }
+
+    // If no valid customer found, search by email
+    if (!customerId) {
+      try {
+        console.log('🔍 Searching for existing Stripe customer with email:', user.email);
+        
+        const existingCustomers = await stripe.customers.list({
           email: user.email,
           limit: 1,
         });
-        if (customers.data.length > 0) {
-          stripeCustomerId = customers.data[0].id;
-          console.log(`Found customer by email: ${user.email} -> ${stripeCustomerId}`);
+
+        if (existingCustomers.data.length > 0) {
+          customerData = existingCustomers.data[0];
+          customerId = customerData.id;
+          console.log('✅ Found existing Stripe customer by email:', customerId);
           
-          // Store the customer ID for future use
+          // Update Supabase with the found customer ID
           await supabase
             .from('users')
-            .update({ stripe_customer_id: stripeCustomerId })
-            .eq('id', user.id);
+            .upsert({
+              id: user.id,
+              email: user.email,
+              stripe_customer_id: customerId,
+              updated_at: new Date().toISOString()
+            });
+          console.log('💾 Updated Supabase with found customer ID');
+        } else {
+          console.log('📝 No existing customer found');
         }
       } catch (error) {
-        console.error('Error searching for customer by email:', error);
+        console.error('❌ Error searching for existing customer:', error);
       }
     }
-    
-    if (!stripeCustomerId) {
+
+    if (!customerId) {
       return NextResponse.json({ error: "No Stripe customer ID found." }, { status: 401 });
     }
+
+    const stripeCustomerId = customerId;
 
     // Initialize billing data with safe defaults
     const billingData: BillingData = {
@@ -95,12 +121,37 @@ export async function GET(req: NextRequest) {
     };
 
     try {
-      // Fetch subscription
-      const subscriptions = await stripe.subscriptions.list({
+      // First, get the subscription list to find the subscription ID
+      const subscriptionsList = await stripe.subscriptions.list({
         customer: stripeCustomerId,
         status: 'all',
-        limit: 1,
+        limit: 1
       });
+      
+      let subscriptions = subscriptionsList;
+      
+      // If we found a subscription, retrieve it individually for complete data
+      if (subscriptionsList.data.length > 0) {
+        const subId = subscriptionsList.data[0].id;
+        console.log('🔍 Retrieving full subscription data for:', subId);
+        
+        try {
+          const fullSubscription = await stripe.subscriptions.retrieve(subId, {
+            expand: ['default_payment_method', 'latest_invoice', 'items.data.price']
+          });
+          
+          // Replace the list data with the full subscription data
+          subscriptions = {
+            ...subscriptionsList,
+            data: [fullSubscription]
+          };
+          
+          console.log('✅ Retrieved full subscription data');
+        } catch (retrieveError) {
+          console.error('❌ Error retrieving full subscription:', retrieveError);
+          // Fall back to the list data
+        }
+      }
       
       if (subscriptions.data.length > 0) {
         const sub = subscriptions.data[0];
@@ -113,24 +164,95 @@ export async function GET(req: NextRequest) {
             status as StripeSubscription['status'] : undefined;
         };
 
-        // Safe subscription mapping - handling Stripe type differences
+        // Log raw subscription data from Stripe
+        console.log('🔍 Raw Stripe subscription data:', {
+          id: sub.id,
+          status: sub.status,
+          current_period_start: (sub as any).current_period_start,
+          current_period_end: (sub as any).current_period_end,
+          created: (sub as any).created,
+          canceled_at: (sub as any).canceled_at,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          billing_cycle_anchor: (sub as any).billing_cycle_anchor,
+          start_date: (sub as any).start_date,
+          trial_end: (sub as any).trial_end,
+          trial_start: (sub as any).trial_start
+        });
+        
+        // Log the entire subscription object to see all available properties
+        console.log('🔍 Full Stripe subscription object keys:', Object.keys(sub));
+        console.log('🔍 Full Stripe subscription object:', JSON.stringify(sub, null, 2));
+
+        // Safe subscription mapping - directly access properties with fallbacks
+        let currentPeriodStart = (sub as any).current_period_start;
+        let currentPeriodEnd = (sub as any).current_period_end;
+        
+        // If current_period_end is missing, try to calculate it from other fields
+        if (!currentPeriodEnd && (sub as any).created) {
+          const createdDate = (sub as any).created;
+          const now = Math.floor(Date.now() / 1000);
+          
+          // Get billing interval from the subscription items
+          const interval = sub.items?.data?.[0]?.price?.recurring?.interval || 'month';
+          const intervalCount = sub.items?.data?.[0]?.price?.recurring?.interval_count || 1;
+          
+          console.log('🔧 Calculating period dates from created date:', {
+            created: createdDate,
+            interval,
+            intervalCount,
+            now
+          });
+          
+          // Calculate periods since creation
+          let periodLength: number;
+          switch (interval) {
+            case 'day':
+              periodLength = 24 * 60 * 60 * intervalCount;
+              break;
+            case 'week':
+              periodLength = 7 * 24 * 60 * 60 * intervalCount;
+              break;
+            case 'month':
+              periodLength = 30 * 24 * 60 * 60 * intervalCount; // Approximate
+              break;
+            case 'year':
+              periodLength = 365 * 24 * 60 * 60 * intervalCount; // Approximate
+              break;
+            default:
+              periodLength = 30 * 24 * 60 * 60; // Default to monthly
+          }
+          
+          // Calculate current period
+          const periodsSinceCreation = Math.floor((now - createdDate) / periodLength);
+          currentPeriodStart = createdDate + (periodsSinceCreation * periodLength);
+          currentPeriodEnd = createdDate + ((periodsSinceCreation + 1) * periodLength);
+          
+          console.log('🔧 Calculated period dates:', {
+            currentPeriodStart,
+            currentPeriodEnd,
+            periodsSinceCreation
+          });
+        }
+
         const safeSubscription: StripeSubscription = {
           id: sub.id,
-          status: safeStatus(sub.status)
+          status: safeStatus(sub.status),
+          current_period_start: currentPeriodStart || undefined,
+          current_period_end: currentPeriodEnd || undefined,
+          cancel_at_period_end: sub.cancel_at_period_end || false,
+          created: (sub as any).created || undefined,
+          canceled_at: (sub as any).canceled_at || undefined
         };
         
-        // Handle Stripe type differences by checking if properties exist
-        if ('current_period_start' in sub) {
-          safeSubscription.current_period_start = (sub as any).current_period_start;
-        }
-        
-        if ('current_period_end' in sub) {
-          safeSubscription.current_period_end = (sub as any).current_period_end;
-        }
-        
-        if ('cancel_at_period_end' in sub) {
-          safeSubscription.cancel_at_period_end = sub.cancel_at_period_end;
-        }
+        console.log('📊 Processed subscription data being sent:', {
+          id: safeSubscription.id,
+          status: safeSubscription.status,
+          current_period_start: safeSubscription.current_period_start,
+          current_period_end: safeSubscription.current_period_end,
+          created: safeSubscription.created,
+          canceled_at: safeSubscription.canceled_at,
+          cancel_at_period_end: safeSubscription.cancel_at_period_end
+        });
 
         // Only add items if they exist
         if (sub.items && sub.items.data && sub.items.data.length > 0) {

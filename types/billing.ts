@@ -41,6 +41,8 @@ export type StripeSubscription = {
   current_period_start?: number;
   current_period_end?: number;
   cancel_at_period_end?: boolean;
+  created?: number; // Subscription creation timestamp
+  canceled_at?: number; // Subscription cancellation timestamp
   plan?: StripePlan;
   items?: {
     data: Array<{
