@@ -816,10 +816,10 @@ function Step2Content() {
                 {saving ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="animate-spin h-4 w-4" />
-                    {isDocumentSaved ? 'Updating...' : 'Saving...'}
+                    {savedDocumentId ? 'Updating...' : 'Saving...'}
                   </div>
                 ) : (
-                  isDocumentSaved ? 'Update' : 'Save'
+                  savedDocumentId ? 'Update' : 'Save'
                 )}
               </Button>
               <Button onClick={handleEmail} disabled={generating || !documentText.trim()} className="bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Email</Button>
