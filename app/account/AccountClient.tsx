@@ -1157,9 +1157,9 @@ export default function AccountClient({
                                       {(doc.metadata?.original_title || doc.filename || '').replace(/\.txt$/i, '')}
                                     </p>
                                     <div className="flex flex-wrap gap-1 mt-1 sm:hidden">
-                                      {doc.metadata?.document_type && (
+                                      {(doc.metadata?.document_type || doc.metadata?.normalized_document_type || doc.case_type) && (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                          {doc.metadata.document_type}
+                                          {doc.metadata?.document_type || doc.metadata?.normalized_document_type || doc.case_type}
                                         </span>
                                       )}
                                       {doc.metadata?.legal_category && (
@@ -1179,9 +1179,9 @@ export default function AccountClient({
                               </td>
                               <td className="px-6 py-4 hidden sm:table-cell">
                                 <div className="flex flex-col gap-1">
-                                  {doc.metadata?.document_type && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ">
-                                      {doc.metadata.document_type}
+                                  {(doc.metadata?.document_type || doc.metadata?.normalized_document_type || doc.case_type) && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      {doc.metadata?.document_type || doc.metadata?.normalized_document_type || doc.case_type}
                                     </span>
                                   )}
                                   {doc.metadata?.legal_category && (
@@ -1189,8 +1189,8 @@ export default function AccountClient({
                                       {doc.metadata.legal_category}
                                     </small>
                                   )}
-                                  {doc.case_type && (
-                                    <span className=" capitalize inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  {doc.case_type && !doc.metadata?.document_type && !doc.metadata?.normalized_document_type && (
+                                    <span className="capitalize inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                       {doc.case_type}
                                     </span>
                                   )}

@@ -345,6 +345,7 @@ function Step2Content() {
             setDocumentText(docData.content);
             localStorage.setItem("finalDocument", docData.content);
             localStorage.setItem("currentDocumentId", result.data.docId); // Store document ID for case analysis
+            localStorage.setItem("documentGeneratedAt", new Date().toISOString()); // Store generation timestamp
             console.log("✅ Document generated successfully with REAL data!");
             console.log("✅ Document ID:", result.data.docId);
             toast.success('Legal document generated successfully using your real case information!');
@@ -403,16 +404,53 @@ function Step2Content() {
       // Gather document information
       const firstName = localStorage.getItem("firstName") || "";
       const lastName = localStorage.getItem("lastName") || "";
-      const legalCategory = localStorage.getItem("legalCategory") || "";
-      const documentType = localStorage.getItem("documentType") || "";
+      const legalCategory = localStorage.getItem("legalCategory") || "General";
+      const rawDocumentType = localStorage.getItem("documentType") || "";
       const caseNumber = localStorage.getItem("caseNumber") || "";
       const courtName = localStorage.getItem("courtName") || "";
       const legalIssue = localStorage.getItem("legalIssue") || "";
       
-      // Create document title
-      const title = documentType 
-        ? `${documentType} - ${firstName} ${lastName}`.trim()
-        : `Legal Document - ${firstName} ${lastName}`.trim();
+      // Normalize document type
+      const normalizeDocumentType = (type: string, category: string) => {
+        if (!type || type.trim() === "") {
+          // Generate type based on category if no specific type
+          switch (category.toLowerCase()) {
+            case 'criminal': return 'Criminal Defense Motion';
+            case 'civil': return 'Civil Litigation Document';
+            case 'family': return 'Family Law Petition';
+            case 'employment': return 'Employment Law Brief';
+            default: return 'Legal Document';
+          }
+        }
+        
+        // Clean and format the type
+        return type.trim()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      };
+      
+      const documentType = normalizeDocumentType(rawDocumentType, legalCategory);
+      
+      // Create comprehensive document title
+      const createDocumentTitle = () => {
+        const name = `${firstName} ${lastName}`.trim();
+        const category = legalCategory || "General";
+        const type = documentType || "Legal Document";
+        const issue = legalIssue ? ` - ${legalIssue}` : "";
+        const caseRef = caseNumber ? ` (Case: ${caseNumber})` : "";
+        
+        // Create a descriptive title
+        if (name && type !== "Legal Document") {
+          return `${type} - ${name}${issue}${caseRef}`;
+        } else if (name) {
+          return `${category} ${type} - ${name}${issue}${caseRef}`;
+        } else {
+          return `${category} ${type}${issue}${caseRef}`;
+        }
+      };
+      
+      const title = createDocumentTitle();
 
       // Prepare case details
       const case_details = {
@@ -429,6 +467,9 @@ function Step2Content() {
 
       // Prepare metadata
       const metadata = {
+        original_title: title,
+        document_type: documentType, // Add for AccountClient.tsx compatibility
+        legal_category: legalCategory, // Add for AccountClient.tsx compatibility
         document_plan: documentPlan,
         case_analysis: caseAnalysis,
         additional_info: localStorage.getItem("additionalInfo") || "",
@@ -436,7 +477,16 @@ function Step2Content() {
         user_facts: localStorage.getItem("userFacts") || "",
         document_facts: localStorage.getItem("document_facts") || "",
         session_id: sessionId,
-        saved_at: new Date().toISOString()
+        raw_document_type: rawDocumentType,
+        normalized_document_type: documentType,
+        generated_at: localStorage.getItem("documentGeneratedAt") || new Date().toISOString(),
+        saved_at: new Date().toISOString(),
+        generated_by_ai: true, // Mark as AI-generated for filtering
+        client_info: {
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`.trim()
+        }
       };
 
       // Determine if this is an update or new save
