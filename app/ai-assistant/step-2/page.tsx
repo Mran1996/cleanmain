@@ -50,6 +50,9 @@ function Step2Content() {
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [processingLargeDocument, setProcessingLargeDocument] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedDocumentId, setSavedDocumentId] = useState<string | null>(null);
+  const [isDocumentSaved, setIsDocumentSaved] = useState(false);
 
   // Generate unique session ID for user data isolation
   const sessionId = typeof window !== 'undefined' ? 
@@ -63,6 +66,17 @@ function Step2Content() {
   }
 
   // Authentication is now handled by AuthProvider context
+
+  // Check if document was previously saved
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem("savedDocumentId");
+      if (savedId && documentText.trim()) {
+        setSavedDocumentId(savedId);
+        setIsDocumentSaved(true);
+      }
+    }
+  }, [documentText]);
 
   // Check for docId parameter and load document
   useEffect(() => {
@@ -378,7 +392,14 @@ function Step2Content() {
       return;
     }
 
+    // Prevent multiple simultaneous save operations
+    if (saving) {
+      toast.info('Save operation already in progress...');
+      return;
+    }
+
     try {
+      setSaving(true);
       // Gather document information
       const firstName = localStorage.getItem("firstName") || "";
       const lastName = localStorage.getItem("lastName") || "";
@@ -418,6 +439,9 @@ function Step2Content() {
         saved_at: new Date().toISOString()
       };
 
+      // Determine if this is an update or new save
+      const isUpdate = isDocumentSaved && savedDocumentId;
+      
       // Save to database using the existing documents table
       const response = await fetch('/api/save-generated-document', {
         method: 'POST',
@@ -430,7 +454,9 @@ function Step2Content() {
           document_type: documentType,
           legal_category: legalCategory,
           case_details,
-          metadata
+          metadata,
+          document_id: isUpdate ? savedDocumentId : undefined, // Include ID for updates
+          is_update: isUpdate
         }),
       });
 
@@ -441,15 +467,23 @@ function Step2Content() {
 
       const result = await response.json();
       
+      // Update saved document state
+      setSavedDocumentId(result.document.id);
+      setIsDocumentSaved(true);
+      
       // Also save to localStorage for backward compatibility
       localStorage.setItem("finalDocument", documentText);
+      localStorage.setItem("savedDocumentId", result.document.id);
       
-      toast.success('Document saved to your account successfully!');
-      console.log('✅ Document saved:', result.document.id);
+      const actionText = isUpdate ? 'updated' : 'saved';
+      toast.success(`Document ${actionText} to your account successfully!`);
+      console.log(`✅ Document ${actionText}:`, result.document.id);
       
     } catch (err) {
       console.error('❌ Error saving document:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to save document');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -690,7 +724,20 @@ function Step2Content() {
                   Generate Legal Document
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={generating || !documentText.trim()} className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">Save</Button>
+              <Button 
+                onClick={handleSave} 
+                disabled={generating || !documentText.trim() || saving} 
+                className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="animate-spin h-4 w-4" />
+                    {isDocumentSaved ? 'Updating...' : 'Saving...'}
+                  </div>
+                ) : (
+                  isDocumentSaved ? 'Update' : 'Save'
+                )}
+              </Button>
               <Button onClick={handleEmail} disabled={generating || !documentText.trim()} className="bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Email</Button>
               <Button onClick={handleDownload} disabled={generating || !documentText.trim()} className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">Download</Button>
             </div>

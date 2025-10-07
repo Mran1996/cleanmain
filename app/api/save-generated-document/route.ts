@@ -24,7 +24,9 @@ export async function POST(req: NextRequest) {
       document_type, 
       legal_category, 
       case_details = {},
-      metadata = {} 
+      metadata = {},
+      document_id,
+      is_update = false
     } = body;
 
     // Validate required fields
@@ -61,24 +63,46 @@ export async function POST(req: NextRequest) {
       filing_date: case_details?.filing_date ? new Date(case_details.filing_date) : null
     };
 
-    // Insert the document into the existing documents table
-    const { data: savedDocument, error: insertError } = await supabase
-      .from('documents')
-      .insert(documentData)
-      .select()
-      .single();
+    let savedDocument, operationError;
+    
+    if (is_update && document_id) {
+      // Update existing document
+      const { data, error } = await supabase
+        .from('documents')
+        .update({
+          ...documentData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', document_id)
+        .eq('user_id', user.id) // Ensure user can only update their own documents
+        .select()
+        .single();
+      
+      savedDocument = data;
+      operationError = error;
+    } else {
+      // Insert new document
+      const { data, error } = await supabase
+        .from('documents')
+        .insert(documentData)
+        .select()
+        .single();
+      
+      savedDocument = data;
+      operationError = error;
+    }
 
-    if (insertError) {
-      console.error('❌ Error saving document:', insertError);
+    if (operationError) {
+      console.error('❌ Error saving document:', operationError);
       console.error('Document data:', JSON.stringify(documentData, null, 2));
       return NextResponse.json({ 
-        error: "Failed to save document",
-        details: insertError.message,
-        code: insertError.code
+        error: `Failed to ${is_update ? 'update' : 'save'} document`,
+        details: operationError.message,
+        code: operationError.code
       }, { status: 500 });
     }
 
-    console.log('✅ Document saved successfully:', {
+    console.log(`✅ Document ${is_update ? 'updated' : 'saved'} successfully:`, {
       id: savedDocument.id,
       title: savedDocument.metadata?.original_title,
       user_id: savedDocument.user_id
@@ -86,9 +110,10 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json({ 
       success: true,
-      message: "Document saved successfully",
-      document: savedDocument
-    }, { status: 201 });
+      message: `Document ${is_update ? 'updated' : 'saved'} successfully`,
+      document: savedDocument,
+      is_update
+    }, { status: is_update ? 200 : 201 });
 
   } catch (error) {
     console.error('❌ Unexpected error in save-generated-document:', error);
