@@ -316,21 +316,21 @@ export default function AccountClient({
                 </svg>
               )}
             </div>
-            <span
+            {/* <span
               className="text-gray-400 text-sm mt-1 cursor-pointer mx-auto"
               onClick={() => fileInputRef.current?.click()}
               role="button"
               tabIndex={0}
             >
               Click photo to upload
-            </span>
-            <input
+            </span> */}
+            {/* <input
               type="file"
               accept="image/*"
               onChange={handleAvatarUpload}
               ref={fileInputRef}
               className="hidden"
-            />
+            /> */}
           </div>
           <div className="text-center mb-3">
             <p className="text-xs md:text-sm text-gray-700 font-semibold leading-tight">Empowering access to justice with Artificial Intelligence</p>
