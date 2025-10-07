@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,13 +41,12 @@ function estimatePageCount(textLength: number): number {
 
 function Step2Content() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [documentText, setDocumentText] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [documentPlan, setDocumentPlan] = useState<any>(null);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [processingLargeDocument, setProcessingLargeDocument] = useState(false);
@@ -62,29 +62,7 @@ function Step2Content() {
     localStorage.setItem('user_session_id', sessionId);
   }
 
-  // Authentication setup - only get user, don't redirect
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          console.error('Auth error:', error);
-          setUser(null);
-        } else {
-          setUser(user);
-        }
-      } catch (error) {
-        console.error('Error getting user:', error);
-        setUser(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-
-    getUser();
-  }, [router]);
+  // Authentication is now handled by AuthProvider context
 
   // Check for docId parameter and load document
   useEffect(() => {
