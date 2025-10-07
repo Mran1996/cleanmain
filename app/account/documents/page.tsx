@@ -31,6 +31,9 @@ export default function DocumentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrev, setHasPrev] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch saved documents from the existing documents table
   const fetchDocuments = async (page: number = 1) => {
@@ -94,29 +97,46 @@ export default function DocumentsPage() {
   // Handle document download
   const handleDownload = (doc: SavedDocument) => {
     try {
+      if (!doc.content) {
+        console.error('Document content is empty');
+        return;
+      }
+      
       const blob = new Blob([doc.content], { type: 'text/plain' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const title = doc.metadata?.original_title || doc.filename;
-      a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.txt`;
+      
+      // Create safe filename
+      const title = doc.metadata?.original_title || doc.filename || 'Legal_Document';
+      const safeFilename = title.replace(/[^a-z0-9\s\-_]/gi, '').replace(/\s+/g, '_');
+      a.download = `${safeFilename}.txt`;
+      
       document.body.appendChild(a);
       a.click();
-      a.remove();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Document downloaded successfully');
     } catch (err) {
-      console.error('Error downloading document:', err);
-      alert('Failed to download document');
+      console.error('❌ Error downloading document:', err);
+      // No alert - just log the error
     }
   };
 
-  // Handle document deletion
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
-      return;
-    }
+  // Handle document deletion - show modal
+  const handleDelete = (documentId: string) => {
+    setDocumentToDelete(documentId);
+    setShowDeleteModal(true);
+  };
 
+  // Confirm document deletion
+  const confirmDelete = async () => {
+    if (!documentToDelete) return;
+    
     try {
+      setDeleting(true);
+      
       // Create Supabase client
       const supabase = createClient();
       
@@ -124,7 +144,7 @@ export default function DocumentsPage() {
       const { error: deleteError } = await supabase
         .from('documents')
         .delete()
-        .eq('id', documentId);
+        .eq('id', documentToDelete);
 
       if (deleteError) {
         throw new Error(deleteError.message);
@@ -133,10 +153,22 @@ export default function DocumentsPage() {
       // Refresh the documents list
       await fetchDocuments(currentPage);
       
-    } catch (err) {
-      console.error("Failed to delete document", err);
-      alert(err instanceof Error ? err.message : "Failed to delete document");
+      console.log('✅ Document deleted successfully');
+      
+    } catch (error) {
+      console.error("❌ Failed to delete document", error);
+      setError(error instanceof Error ? error.message : "Failed to delete document");
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      setDocumentToDelete(null);
     }
+  };
+
+  // Cancel document deletion
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDocumentToDelete(null);
   };
 
   // Load documents on component mount
@@ -287,6 +319,41 @@ export default function DocumentsPage() {
           </>
         )}
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-red-600">Delete Document?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this document? This action cannot be undone and the document will be permanently removed.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelDelete}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </div>
+                ) : (
+                  'Yes, Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

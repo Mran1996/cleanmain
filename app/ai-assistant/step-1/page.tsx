@@ -11,6 +11,7 @@ import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "./prompts
 import { Loader2, FileText, Trash2 } from "lucide-react";
 import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from "sonner";
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
 
@@ -20,6 +21,7 @@ function AIAssistantStep1Content() {
   const [suggestedResponses, setSuggestedResponses] = useState<string[]>([]);
   const [allDocuments, setAllDocuments] = useState<DocumentData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
   const { 
     chatHistory, 
     setChatHistory, 
@@ -234,20 +236,28 @@ Key rules:
   };
 
   const handleClearConversation = () => {
-    if (window.confirm("Are you sure you want to clear the conversation? This will remove all chat history and start fresh.")) {
-      resetContext();
-      setSuggestedResponses([]);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem("step1_chat_history");
-        localStorage.removeItem("step1_chat_responses");
-        localStorage.removeItem("step1_comprehensive_data");
-      }
+    setShowClearModal(true);
+  };
+
+  const confirmClearConversation = () => {
+    resetContext();
+    setSuggestedResponses([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("step1_chat_history");
+      localStorage.removeItem("step1_chat_responses");
+      localStorage.removeItem("step1_comprehensive_data");
     }
+    setShowClearModal(false);
+    toast.success("Conversation cleared successfully");
+  };
+
+  const cancelClearConversation = () => {
+    setShowClearModal(false);
   };
 
   const handleGenerateDocument = async () => {
     if (typeof window === 'undefined') {
-      alert("Browser environment required");
+      toast.error("Browser environment required");
       return;
     }
     
@@ -321,7 +331,7 @@ Key rules:
       
     } catch (error) {
       console.error("Error generating document:", error);
-      alert(`Failed to generate document: ${error.message || "An unexpected error occurred"}`);
+      toast.error(`Failed to generate document: ${error instanceof Error ? error.message : "An unexpected error occurred"}`);
     } finally {
       setIsProcessing(false);
     }
@@ -387,6 +397,32 @@ Key rules:
           </div>
         </div>
       </div>
+      
+      {/* Clear Conversation Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Conversation?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to clear the conversation? This will remove all chat history and start fresh. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelClearConversation}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                onClick={confirmClearConversation}
+              >
+                Yes, Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </StepLayout>
   );
 }

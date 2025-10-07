@@ -35,28 +35,21 @@ function requiresMultipleDocuments(documentType: string): boolean {
 
 // Function to estimate page count from text length
 function estimatePageCount(textLength: number): number {
-  // Rough estimate: 1 page ≈ 2000 characters
   return Math.ceil(textLength / 2000);
 }
 
 function Step2Content() {
   const router = useRouter();
-  const [generating, setGenerating] = useState(false);
   const [documentText, setDocumentText] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [documentPlan, setDocumentPlan] = useState<any>(null);
+  const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [loadingDocument, setLoadingDocument] = useState(false);
-  const [caseAnalysis, setCaseAnalysis] = useState<any | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [processingLargeDocument, setProcessingLargeDocument] = useState(false);
-  const [missingInfo, setMissingInfo] = useState<string[]>([]);
-  const [documentPlan, setDocumentPlan] = useState<{
-    uploadedPages: number;
-    targetPages: number;
-    targetWords: number;
-    documentType: string;
-    needsMultipleDocs: boolean;
-    documentsToGenerate: string[];
-  } | null>(null);
 
   // Generate unique session ID for user data isolation
   const sessionId = typeof window !== 'undefined' ? 
@@ -68,6 +61,30 @@ function Step2Content() {
   if (typeof window !== 'undefined' && !localStorage.getItem('user_session_id')) {
     localStorage.setItem('user_session_id', sessionId);
   }
+
+  // Authentication setup - only get user, don't redirect
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Auth error:', error);
+          setUser(null);
+        } else {
+          setUser(user);
+        }
+      } catch (error) {
+        console.error('Error getting user:', error);
+        setUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    getUser();
+  }, [router]);
 
   // Check for docId parameter and load document
   useEffect(() => {
@@ -223,7 +240,7 @@ function Step2Content() {
     
     try {
       setGenerating(true);
-      setError(null);
+      setError("");
       setDocumentText(""); // Clear any existing document
       
       console.log("🚀 Starting document generation with REAL data only...");
@@ -281,7 +298,7 @@ function Step2Content() {
       
       // Prepare the data for OpenAI API call
       const payload = {
-        userId: localStorage.getItem("userId") || uuidv4(),
+        userId: user?.id || uuidv4(),
         title: `${legalCategory || "Legal Document"} - ${firstName} ${lastName}`,
         caseNumber: uploadedCaseNumber || null,
         county: uploadedCounty || null,
@@ -373,6 +390,13 @@ function Step2Content() {
   const handleSave = async () => {
     if (!documentText.trim()) {
       toast.error('No document to save. Please generate a document first.');
+      return;
+    }
+
+    // Check authentication before saving
+    if (!user) {
+      toast.error('Please log in to save your document.');
+      router.push('/login');
       return;
     }
 
@@ -630,6 +654,8 @@ function Step2Content() {
     toast.info('Download AI Case Analysis coming soon!');
   };
 
+  // No authentication blocking - page loads for everyone
+
     return (
     <StepLayout 
       headerTitle="Your Document is Ready"
@@ -663,7 +689,7 @@ function Step2Content() {
                 <div className="mt-2">
                   <span className="font-medium text-blue-700">Documents to Generate:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {documentPlan?.documentsToGenerate?.map((doc, index) => (
+                    {documentPlan?.documentsToGenerate?.map((doc: string, index: number) => (
                       <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800">
                         {doc}
                       </Badge>
@@ -788,7 +814,7 @@ function Step2Content() {
            </div>
           {/* Navigation Buttons */}
           <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-            <Button variant="outline" onClick={() => router.back()}>Previous</Button>
+            <Button variant="outline" onClick={() => router.push('/ai-assistant/step-1')}>Previous</Button>
             <Button className="bg-green-700 hover:bg-green-800 text-white" onClick={() => router.push('/ai-assistant/step-2/message')}>Message</Button>
           </div>
         </div>
