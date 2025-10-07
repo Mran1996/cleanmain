@@ -494,14 +494,11 @@ function Step2Content() {
         }
       };
 
-      // Determine if this is an update or new save
-      // Simple logic: Only update if the CURRENT document was already saved in this session
-      const isUpdate = isDocumentSaved && savedDocumentId;
+      // Always create new document - never update existing ones
+      const isUpdate = false;
       
       console.log("🔍 Save Logic Check:", {
-        currentDocumentSaved: isDocumentSaved,
-        savedDocumentId,
-        action: isUpdate ? "UPDATE current document" : "SAVE as new document"
+        action: "ALWAYS CREATE new document"
       });
       
       // Save to database using the existing documents table
@@ -529,39 +526,11 @@ function Step2Content() {
 
       const result = await response.json();
       
-      // Update saved document state
-      setSavedDocumentId(result.document.id);
-      setIsDocumentSaved(true);
-      
       // Also save to localStorage for backward compatibility
       localStorage.setItem("finalDocument", documentText);
-      localStorage.setItem("savedDocumentId", result.document.id);
       
-      const actionText = isUpdate ? 'updated' : 'saved';
-      toast.success(`Document ${actionText} to your account successfully!`);
-      console.log(`✅ Document ${actionText}:`, result.document.id);
-      
-      // Reset to new document state after successful save
-      setTimeout(() => {
-        // Clear document content and related state
-        setDocumentText("");
-        setDocumentPlan(null);
-        setCaseAnalysis(null);
-        setError("");
-        setSavedDocumentId(null);
-        setIsDocumentSaved(false);
-        
-        // Clear localStorage document data to ensure next save is treated as new
-        localStorage.removeItem("finalDocument");
-        localStorage.removeItem("currentDocumentId");
-        localStorage.removeItem("savedDocumentId");
-        localStorage.removeItem("documentGeneratedAt");
-        
-        // Show success message for new document state
-        toast.info("Ready to generate a new document!");
-        
-        console.log("🔄 Page refreshed to new document state - next save will be NEW document");
-      }, 1500); // Small delay to let user see the success message
+      toast.success('Document saved to your account successfully!');
+      console.log('✅ New document created:', result.document.id);
       
     } catch (err) {
       console.error('❌ Error saving document:', err);
@@ -816,10 +785,10 @@ function Step2Content() {
                 {saving ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="animate-spin h-4 w-4" />
-                    {savedDocumentId ? 'Updating...' : 'Saving...'}
+                    Saving...
                   </div>
                 ) : (
-                  savedDocumentId ? 'Update' : 'Save'
+                  'Save'
                 )}
               </Button>
               <Button onClick={handleEmail} disabled={generating || !documentText.trim()} className="bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Email</Button>
