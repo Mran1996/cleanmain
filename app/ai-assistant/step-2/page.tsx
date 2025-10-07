@@ -346,6 +346,11 @@ function Step2Content() {
             localStorage.setItem("finalDocument", docData.content);
             localStorage.setItem("currentDocumentId", result.data.docId); // Store document ID for case analysis
             localStorage.setItem("documentGeneratedAt", new Date().toISOString()); // Store generation timestamp
+            
+            // Reset save state for new document generation
+            setSavedDocumentId(null);
+            setIsDocumentSaved(false);
+            localStorage.removeItem("savedDocumentId"); // Clear any previous save state
             console.log("✅ Document generated successfully with REAL data!");
             console.log("✅ Document ID:", result.data.docId);
             toast.success('Legal document generated successfully using your real case information!');
@@ -490,21 +495,13 @@ function Step2Content() {
       };
 
       // Determine if this is an update or new save
-      // Check if page was refreshed (no saved document state) vs same session
-      const wasPageRefreshed = !isDocumentSaved && !savedDocumentId;
-      const hasExistingDocument = localStorage.getItem("savedDocumentId") && localStorage.getItem("finalDocument");
-      
-      // Logic for update vs new save:
-      // - If page was refreshed AND we have saved document in localStorage = NEW save (don't update)
-      // - If same session AND document was already saved = UPDATE existing
-      const isUpdate = !wasPageRefreshed && isDocumentSaved && savedDocumentId;
+      // Simple logic: Only update if the CURRENT document was already saved in this session
+      const isUpdate = isDocumentSaved && savedDocumentId;
       
       console.log("🔍 Save Logic Check:", {
-        wasPageRefreshed,
-        hasExistingDocument,
-        isDocumentSaved,
+        currentDocumentSaved: isDocumentSaved,
         savedDocumentId,
-        isUpdate: isUpdate ? "UPDATE existing" : "CREATE new"
+        action: isUpdate ? "UPDATE current document" : "SAVE as new document"
       });
       
       // Save to database using the existing documents table
