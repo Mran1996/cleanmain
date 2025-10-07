@@ -370,63 +370,84 @@ function Step2Content() {
     await generateDocument();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!documentText.trim()) {
+      toast.error('No document to save. Please generate a document first.');
+      return;
+    }
+
     try {
-      // Save all data from Steps 1-5 to pipeline
-      const savedData = {
-        // Step 1 data
-        firstName: localStorage.getItem("firstName"),
-        lastName: localStorage.getItem("lastName"),
-        legalType: localStorage.getItem("legalType"),
-        legalCategory: localStorage.getItem("legalCategory"),
-        
-        // Step 2 data
-        state: localStorage.getItem("state"),
-        county: localStorage.getItem("county"),
-        city: localStorage.getItem("city"),
-        
-        // Step 3 data
-        uploadedDocuments: localStorage.getItem("uploaded_documents"),
-        uploaded_case_number: localStorage.getItem("uploaded_case_number"),
-        uploaded_court_name: localStorage.getItem("uploaded_court_name"),
-        uploaded_opposing_party: localStorage.getItem("uploaded_opposing_party"),
-        uploaded_state: localStorage.getItem("uploaded_state"),
-        uploaded_county: localStorage.getItem("uploaded_county"),
-        uploaded_document_type: localStorage.getItem("uploaded_document_type"),
-        uploaded_parsed_text: localStorage.getItem("uploaded_parsed_text"),
-        uploaded_judge: localStorage.getItem("uploaded_judge"),
-        uploaded_filing_date: localStorage.getItem("uploaded_filing_date"),
-        
-        // Step 1 data
-        chatHistory: localStorage.getItem("step1_chat_history"),
-        chatResponses: localStorage.getItem("chat_responses"),
-        step1_documents: localStorage.getItem("step1_documents"),
-        
-        // Step 2 data
-        finalDocument: documentText,
-        caseAnalysis: caseAnalysis,
-        documentPlan: documentPlan,
-        
-        // Additional data
-        legalIssue: localStorage.getItem("legalIssue"),
-        desiredOutcome: localStorage.getItem("desiredOutcome"),
-        additionalInfo: localStorage.getItem("additionalInfo"),
-        includeCaseLaw: localStorage.getItem("includeCaseLaw"),
-        caseNumber: localStorage.getItem("caseNumber"),
-        courtName: localStorage.getItem("courtName"),
-        documentType: localStorage.getItem("documentType"),
-        userFacts: localStorage.getItem("userFacts"),
-        document_facts: localStorage.getItem("document_facts"),
-        
-        // Timestamp
-        savedAt: new Date().toISOString()
-      };
+      // Gather document information
+      const firstName = localStorage.getItem("firstName") || "";
+      const lastName = localStorage.getItem("lastName") || "";
+      const legalCategory = localStorage.getItem("legalCategory") || "";
+      const documentType = localStorage.getItem("documentType") || "";
+      const caseNumber = localStorage.getItem("caseNumber") || "";
+      const courtName = localStorage.getItem("courtName") || "";
+      const legalIssue = localStorage.getItem("legalIssue") || "";
       
-      localStorage.setItem("pipeline_saved_data", JSON.stringify(savedData));
+      // Create document title
+      const title = documentType 
+        ? `${documentType} - ${firstName} ${lastName}`.trim()
+        : `Legal Document - ${firstName} ${lastName}`.trim();
+
+      // Prepare case details
+      const case_details = {
+        plaintiff: firstName && lastName ? `${firstName} ${lastName}` : "",
+        defendant: localStorage.getItem("uploaded_opposing_party") || "",
+        court: courtName || localStorage.getItem("uploaded_court_name") || "",
+        case_number: caseNumber || localStorage.getItem("uploaded_case_number") || "",
+        legal_issue: legalIssue,
+        desired_outcome: localStorage.getItem("desiredOutcome") || "",
+        state: localStorage.getItem("state") || localStorage.getItem("uploaded_state") || "",
+        county: localStorage.getItem("county") || localStorage.getItem("uploaded_county") || "",
+        filing_date: localStorage.getItem("uploaded_filing_date") || ""
+      };
+
+      // Prepare metadata
+      const metadata = {
+        document_plan: documentPlan,
+        case_analysis: caseAnalysis,
+        additional_info: localStorage.getItem("additionalInfo") || "",
+        include_case_law: localStorage.getItem("includeCaseLaw") === "true",
+        user_facts: localStorage.getItem("userFacts") || "",
+        document_facts: localStorage.getItem("document_facts") || "",
+        session_id: sessionId,
+        saved_at: new Date().toISOString()
+      };
+
+      // Save to database using the existing documents table
+      const response = await fetch('/api/save-generated-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content: documentText,
+          document_type: documentType,
+          legal_category: legalCategory,
+          case_details,
+          metadata
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save document');
+      }
+
+      const result = await response.json();
+      
+      // Also save to localStorage for backward compatibility
       localStorage.setItem("finalDocument", documentText);
-      toast.success('All data saved to pipeline successfully!');
+      
+      toast.success('Document saved to your account successfully!');
+      console.log('✅ Document saved:', result.document.id);
+      
     } catch (err) {
-      toast.error('Failed to save data');
+      console.error('❌ Error saving document:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to save document');
     }
   };
 
@@ -665,9 +686,9 @@ function Step2Content() {
                   Generate Legal Document
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white">Save</Button>
-              <Button onClick={handleEmail} disabled={generating} className="bg-amber-500 hover:bg-amber-600 text-white">Email</Button>
-              <Button onClick={handleDownload} disabled={generating} className="bg-purple-600 hover:bg-purple-700 text-white">Download</Button>
+              <Button onClick={handleSave} disabled={generating || !documentText.trim()} className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">Save</Button>
+              <Button onClick={handleEmail} disabled={generating || !documentText.trim()} className="bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Email</Button>
+              <Button onClick={handleDownload} disabled={generating || !documentText.trim()} className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">Download</Button>
             </div>
           {error && <div className="text-red-600 mb-4">{error}</div>}
           

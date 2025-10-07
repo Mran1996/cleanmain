@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { BillingData, StripeSubscription, Purchase } from "@/types/billing";
 import { getPlanFeatures } from "@/lib/plan-features";
 import { BillingService } from "@/services/billing";
+import { createClient } from "@/utils/supabase/client";
 
 type AccountClientProps = {
   avatarUrl?: string | null;
@@ -32,20 +33,21 @@ export default function AccountClient({
   const searchParams = useSearchParams();
   
   // Get initial tab from URL params, default to 'settings' (account)
-  const getInitialTab = (): 'settings' | 'billing' => {
+  const getInitialTab = (): 'settings' | 'billing' | 'documents' => {
     if (!searchParams) return 'settings';
     const tabParam = searchParams.get('tab');
     if (tabParam === 'billing') return 'billing';
+    if (tabParam === 'documents') return 'documents';
     if (tabParam === 'account') return 'settings';
     return 'settings'; // Default to account/settings tab
   };
   
-  const [activeTab, setActiveTab] = useState<'settings' | 'billing'>(getInitialTab());
+  const [activeTab, setActiveTab] = useState<'settings' | 'billing' | 'documents'>(getInitialTab());
   
   // Function to handle tab changes and update URL
-  const handleTabChange = (tab: 'settings' | 'billing') => {
+  const handleTabChange = (tab: 'settings' | 'billing' | 'documents') => {
     setActiveTab(tab);
-    const tabParam = tab === 'settings' ? 'account' : 'billing';
+    const tabParam = tab === 'settings' ? 'account' : tab;
     const newUrl = `/account?tab=${tabParam}`;
     router.push(newUrl, { scroll: false });
   };
@@ -73,6 +75,18 @@ export default function AccountClient({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [subscriptionMessage, setSubscriptionMessage] = useState<string | null>(null);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  
+  // Documents state
+  const [savedDocuments, setSavedDocuments] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [documentsPage, setDocumentsPage] = useState(1);
+  const [documentsTotalPages, setDocumentsTotalPages] = useState(1);
+  const [documentsHasNext, setDocumentsHasNext] = useState(false);
+  const [documentsHasPrev, setDocumentsHasPrev] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [deletingDocument, setDeletingDocument] = useState(false);
   
   // Handle download receipt
   const handleDownloadReceipt = () => {
@@ -149,6 +163,16 @@ export default function AccountClient({
     
     if (activeTab === 'billing' && purchases.length === 0 && !loadingPurchases) {
       fetchPurchaseHistory(1);
+    }
+  }, [activeTab]);
+
+  // Load saved documents when documents tab is opened
+  useEffect(() => {
+    // Only run in browser, not during build
+    if (typeof window === 'undefined') return;
+    
+    if (activeTab === 'documents' && savedDocuments.length === 0 && !loadingDocuments) {
+      fetchSavedDocuments(1);
     }
   }, [activeTab]);
 
@@ -276,13 +300,286 @@ export default function AccountClient({
 
   const canReactivate = canReactivateCanceledSubscription();
 
+  // Fetch saved documents from the existing documents table
+  const fetchSavedDocuments = async (page: number = 1) => {
+    try {
+      setLoadingDocuments(true);
+      setDocumentsError(null);
+      
+      console.log('🔄 Fetching saved documents:', { page });
+      
+      // Create Supabase client
+      const supabase = createClient();
+      
+      // Calculate offset for pagination
+      const limit = 10;
+      const offset = (page - 1) * limit;
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Fetch documents with pagination, filtering for current user's AI-generated documents
+      const { data: documents, error: queryError, count } = await supabase
+        .from('documents')
+        .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
+        .or('metadata->>generated_by_ai.eq.true,file_type.eq.text/plain')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (queryError) {
+        throw new Error(queryError.message);
+      }
+      
+      console.log('✅ Saved documents response:', { documents, count, page, limit });
+      
+      setSavedDocuments(documents || []);
+      
+      // Calculate pagination info with proper bounds checking
+      const totalCount = count || 0;
+      const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+      const currentPage = Math.min(Math.max(1, page), totalPages);
+      
+      setDocumentsPage(currentPage);
+      setDocumentsTotalPages(totalPages);
+      setDocumentsHasNext(currentPage < totalPages && totalCount > currentPage * limit);
+      setDocumentsHasPrev(currentPage > 1);
+      
+    } catch (error) {
+      console.error("❌ Failed to load saved documents", error);
+      setDocumentsError(error instanceof Error ? error.message : "Failed to load documents");
+      setSavedDocuments([]);
+      // Reset pagination state on error
+      setDocumentsPage(1);
+      setDocumentsTotalPages(1);
+      setDocumentsHasNext(false);
+      setDocumentsHasPrev(false);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  // Handle document deletion
+  const handleDeleteDocument = (documentId: string) => {
+    setDocumentToDelete(documentId);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm document deletion
+  const confirmDeleteDocument = async () => {
+    if (!documentToDelete) return;
+    
+    try {
+      setDeletingDocument(true);
+      
+      // Create Supabase client
+      const supabase = createClient();
+      
+      // Delete the document (RLS will ensure user can only delete their own documents)
+      const { error: deleteError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentToDelete);
+
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+
+      // Refresh the documents list
+      await fetchSavedDocuments(documentsPage);
+      
+      console.log('✅ Document deleted successfully');
+      
+    } catch (error) {
+      console.error("❌ Failed to delete document", error);
+    } finally {
+      setDeletingDocument(false);
+      setShowDeleteDialog(false);
+      setDocumentToDelete(null);
+    }
+  };
+
+  // Cancel document deletion
+  const cancelDeleteDocument = () => {
+    setShowDeleteDialog(false);
+    setDocumentToDelete(null);
+  };
+
+  // Handle document download as PDF
+  const handleDownloadDocument = async (doc: any) => {
+    try {
+      // Validate document and content
+      if (!doc) {
+        console.error('Document is null or undefined');
+        return;
+      }
+      
+      if (!doc.content || doc.content.trim() === '') {
+        console.error('Document content is empty or invalid');
+        return;
+      }
+      
+      // Dynamic import of jsPDF
+      const jsPDFModule = await import('jspdf');
+      const jsPDF = jsPDFModule.default;
+      
+      // Create new PDF document
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      // Set font and styling
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(12);
+      
+      // Document title and metadata
+      let title = doc.metadata?.original_title || doc.filename || 'Legal';
+      
+      // Remove .txt extension if present
+      if (title.toLowerCase().endsWith('.txt')) {
+        title = title.slice(0, -4);
+      }
+      
+      const createdDate = new Date(doc.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Add title with proper text wrapping
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Split title if too long for one line
+      const titleLines = pdf.splitTextToSize(title, 170);
+      let titleYPosition = 25;
+      
+      for (let i = 0; i < titleLines.length; i++) {
+        pdf.text(titleLines[i], 20, titleYPosition);
+        titleYPosition += 7;
+      }
+      
+      // Add metadata
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      let yPosition = titleYPosition + 5; // Start after title with some spacing
+      
+      if (doc.metadata?.document_type) {
+        pdf.text(`Document Type: ${doc.metadata.document_type}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      if (doc.metadata?.legal_category) {
+        pdf.text(`Legal Category: ${doc.metadata.legal_category}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      pdf.text(`Created: ${createdDate}`, 20, yPosition);
+      yPosition += 10;
+      
+      // Add separator line
+      pdf.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
+      
+      // Add document content
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
+      const content = typeof doc.content === 'string' ? doc.content : String(doc.content);
+      const pageWidth = 170; // A4 width minus margins
+      const lineHeight = 5;
+      
+      // Split content into lines that fit the page width
+      const lines = pdf.splitTextToSize(content, pageWidth);
+      
+      // Add content with page breaks
+      for (let i = 0; i < lines.length; i++) {
+        if (yPosition > 280) { // Near bottom of page
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(lines[i], 20, yPosition);
+        yPosition += lineHeight;
+      }
+      
+      // Generate safe filename
+      let filename = 'Legal_Document';
+      if (doc.metadata?.original_title) {
+        filename = doc.metadata.original_title;
+      } else if (doc.filename) {
+        filename = doc.filename;
+      } else if (doc.title) {
+        filename = doc.title;
+      }
+      
+      // Remove .txt extension if present
+      if (filename.toLowerCase().endsWith('.txt')) {
+        filename = filename.slice(0, -4);
+      }
+      
+      // Sanitize filename
+      const safeFilename = filename
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
+        .replace(/\s+/g, '_')
+        .substring(0, 100)
+        .trim();
+      
+      // Download the PDF
+      pdf.save(`${safeFilename || 'Legal_Document'}.pdf`);
+      
+      console.log('✅ PDF downloaded successfully:', safeFilename);
+      
+    } catch (err) {
+      console.error('❌ Error downloading PDF:', err);
+      
+      // Fallback to text download
+      try {
+        const content = typeof doc.content === 'string' ? doc.content : String(doc.content);
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.style.display = 'none';
+        
+        const title = doc.metadata?.original_title || doc.filename || 'Legal_Document';
+        const safeFilename = title.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/\s+/g, '_');
+        downloadLink.download = `${safeFilename}.txt`;
+        
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('📄 Fallback: Downloaded as text file');
+      } catch (fallbackErr) {
+        console.error('❌ Text fallback also failed:', fallbackErr);
+        // Final fallback: copy to clipboard
+        if (doc?.content) {
+          try {
+            navigator.clipboard.writeText(doc.content);
+            console.log('📋 Final fallback: Content copied to clipboard');
+          } catch (clipboardErr) {
+            console.error('❌ All download methods failed:', clipboardErr);
+          }
+        }
+      }
+    }
+  };
+
   // Sync tab state with URL changes (for browser back/forward)
   useEffect(() => {
     if (!searchParams) return;
     const tabParam = searchParams.get('tab');
-    let newTab: 'settings' | 'billing' = 'settings';
+    let newTab: 'settings' | 'billing' | 'documents' = 'settings';
     
     if (tabParam === 'billing') newTab = 'billing';
+    else if (tabParam === 'documents') newTab = 'documents';
     else if (tabParam === 'account') newTab = 'settings';
     
     if (newTab !== activeTab) {
@@ -343,15 +640,21 @@ export default function AccountClient({
               Account
             </button>
             <button
-              className={`font-semibold rounded py-2 w-full transition-colors text-sm ${activeTab === 'billing' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
+              className={`font-semibold rounded py-2 w-full mb-2 transition-colors text-sm ${activeTab === 'billing' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
               onClick={() => handleTabChange('billing')}
             >
               Billing
             </button>
+            <button
+              className={`font-semibold rounded py-2 w-full transition-colors text-sm ${activeTab === 'documents' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
+              onClick={() => handleTabChange('documents')}
+            >
+              Documents
+            </button>
           </div>
         </div>
         {/* Main Content */}
-        <div className="flex-1 flex justify-center items-start p-2 md:p-6 w-full">
+        <div className="flex-1 p-2 md:p-6 w-full">
           {activeTab === 'settings' ? (
             <div className="bg-white border rounded-xl shadow-sm p-4 md:p-6 max-w-xl w-full mx-auto">
               <h1 className="text-lg md:text-xl font-bold mb-2 flex items-center gap-2">👋 Welcome back, {displayName || "User"}!</h1>
@@ -382,7 +685,7 @@ export default function AccountClient({
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'billing' ? (
             <div className="w-full flex justify-center">
               <div className="bg-white border rounded-xl shadow-sm ring-1 ring-gray-100 p-4 md:p-6 max-w-lg w-full mx-auto">
                 <h1 className="text-lg md:text-xl font-bold mb-4">Billing & Payments</h1>
@@ -770,7 +1073,199 @@ export default function AccountClient({
                 )}
               </div>
             </div>
-          )}
+          ) : activeTab === 'documents' ? (
+            <div className="w-full flex justify-center">
+              <div className="bg-white border rounded-xl shadow-sm ring-1 ring-gray-100 p-4 md:p-6 max-w-lg w-full mx-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h1 className="text-lg md:text-xl font-bold">Your Saved Documents</h1>
+                  <button 
+                    onClick={() => window.location.href = '/ai-assistant/step-2'}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Create New
+                  </button>
+                </div>
+                
+                {loadingDocuments ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                    <p className="text-gray-600">Loading your documents...</p>
+                  </div>
+                ) : documentsError ? (
+                  <div className="text-center py-8">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                      <p className="text-red-600">{documentsError}</p>
+                    </div>
+                    <button 
+                      onClick={() => fetchSavedDocuments(1)}
+                      className="text-green-600 hover:text-green-700 underline"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                ) : savedDocuments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="mb-4">
+                      <svg className="w-16 h-16 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
+                    <p className="text-gray-500 mb-4">Documents you save from the AI assistant will appear here.</p>
+                    <button 
+                      onClick={() => window.location.href = '/ai-assistant'}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                    >
+                      Create Your First Document
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Document
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                              Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Created
+                            </th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {savedDocuments.map((doc) => (
+                            <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p 
+                                      className="text-sm font-medium text-gray-900 truncate cursor-help" 
+                                      title={(doc.metadata?.original_title || doc.filename || '').replace(/\.txt$/i, '')}
+                                    >
+                                      {(doc.metadata?.original_title || doc.filename || '').replace(/\.txt$/i, '')}
+                                    </p>
+                                    <div className="flex flex-wrap gap-1 mt-1 sm:hidden">
+                                      {doc.metadata?.document_type && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                          {doc.metadata.document_type}
+                                        </span>
+                                      )}
+                                      {doc.metadata?.legal_category && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                          {doc.metadata.legal_category}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2 sm:hidden">
+                                      {doc.content && doc.content.length > 80 
+                                        ? `${doc.content.substring(0, 80)}...` 
+                                        : doc.content || 'No preview'
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 hidden sm:table-cell">
+                                <div className="flex flex-col gap-1">
+                                  {doc.metadata?.document_type && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ">
+                                      {doc.metadata.document_type}
+                                    </span>
+                                  )}
+                                  {doc.metadata?.legal_category && (
+                                    <small className="capitalize inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                      {doc.metadata.legal_category}
+                                    </small>
+                                  )}
+                                  {doc.case_type && (
+                                    <span className=" capitalize inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                      {doc.case_type}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                <div>
+                                  <p className="text-xs font-medium text-gray-900">
+                                    {new Date(doc.created_at).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    })}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right text-sm font-medium">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleDownloadDocument(doc)}
+                                    className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+                                    title="Download Document"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span className="ml-1 hidden sm:inline">Download</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDocument(doc.id)}
+                                    className="inline-flex items-center px-3 py-2 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors"
+                                    title="Delete Document"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span className="ml-1 hidden sm:inline">Delete</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Pagination */}
+                    {documentsTotalPages > 1 && (
+                      <div className="flex items-center justify-between pt-4 border-t">
+                        <button
+                          onClick={() => fetchSavedDocuments(documentsPage - 1)}
+                          disabled={!documentsHasPrev || loadingDocuments}
+                          className="px-4 py-2 text-sm border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          Previous
+                        </button>
+                        
+                        <span className="text-sm text-gray-600">
+                          Page {documentsPage} of {documentsTotalPages}
+                        </span>
+                        
+                        <button
+                          onClick={() => fetchSavedDocuments(documentsPage + 1)}
+                          disabled={!documentsHasNext || loadingDocuments}
+                          className="px-4 py-2 text-sm border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
       
@@ -809,6 +1304,41 @@ export default function AccountClient({
                 {managingSubscription ? 'Processing...' : 
                   subscriptionAction === 'cancel' ? 'Yes, Cancel' : 'Yes, Reactivate'
                 }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Document Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-red-600">Delete Document?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this document? This action cannot be undone and the document will be permanently removed from your account.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelDeleteDocument}
+                disabled={deletingDocument}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={confirmDeleteDocument}
+                disabled={deletingDocument}
+              >
+                {deletingDocument ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </div>
+                ) : (
+                  'Yes, Delete'
+                )}
               </button>
             </div>
           </div>
