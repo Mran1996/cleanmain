@@ -490,7 +490,22 @@ function Step2Content() {
       };
 
       // Determine if this is an update or new save
-      const isUpdate = isDocumentSaved && savedDocumentId;
+      // Check if page was refreshed (no saved document state) vs same session
+      const wasPageRefreshed = !isDocumentSaved && !savedDocumentId;
+      const hasExistingDocument = localStorage.getItem("savedDocumentId") && localStorage.getItem("finalDocument");
+      
+      // Logic for update vs new save:
+      // - If page was refreshed AND we have saved document in localStorage = NEW save (don't update)
+      // - If same session AND document was already saved = UPDATE existing
+      const isUpdate = !wasPageRefreshed && isDocumentSaved && savedDocumentId;
+      
+      console.log("🔍 Save Logic Check:", {
+        wasPageRefreshed,
+        hasExistingDocument,
+        isDocumentSaved,
+        savedDocumentId,
+        isUpdate: isUpdate ? "UPDATE existing" : "CREATE new"
+      });
       
       // Save to database using the existing documents table
       const response = await fetch('/api/save-generated-document', {
@@ -528,6 +543,28 @@ function Step2Content() {
       const actionText = isUpdate ? 'updated' : 'saved';
       toast.success(`Document ${actionText} to your account successfully!`);
       console.log(`✅ Document ${actionText}:`, result.document.id);
+      
+      // Reset to new document state after successful save
+      setTimeout(() => {
+        // Clear document content and related state
+        setDocumentText("");
+        setDocumentPlan(null);
+        setCaseAnalysis(null);
+        setError("");
+        setSavedDocumentId(null);
+        setIsDocumentSaved(false);
+        
+        // Clear localStorage document data to ensure next save is treated as new
+        localStorage.removeItem("finalDocument");
+        localStorage.removeItem("currentDocumentId");
+        localStorage.removeItem("savedDocumentId");
+        localStorage.removeItem("documentGeneratedAt");
+        
+        // Show success message for new document state
+        toast.info("Ready to generate a new document!");
+        
+        console.log("🔄 Page refreshed to new document state - next save will be NEW document");
+      }, 1500); // Small delay to let user see the success message
       
     } catch (err) {
       console.error('❌ Error saving document:', err);
