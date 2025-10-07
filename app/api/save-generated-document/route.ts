@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    
     // Prepare document data for the existing documents table structure
     const documentData = {
       user_id: user.id,
