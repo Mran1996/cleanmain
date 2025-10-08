@@ -727,7 +727,7 @@ function ChatPageContent() {
 export default function ChatPage() {
   return (
     <SubscriptionGuard
-      fallbackTitle="AI Chat Assistant"
+      fallbackTitle="Premium Feature"
       fallbackMessage="Access to the AI chat assistant requires an active subscription. Upgrade to start chatting with our legal AI."
     >
       <ChatPageContent />
