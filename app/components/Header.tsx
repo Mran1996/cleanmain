@@ -1,5 +1,6 @@
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { AuthButton } from "./AuthButton";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 
 export function Header() {
@@ -8,9 +9,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <a href="/" className="text-xl font-bold text-gray-900">
-              Ask AI Legal
-            </a>
+            <Logo size="md" />
           </div>
           
           <div className="flex items-center gap-4">

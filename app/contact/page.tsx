@@ -40,25 +40,47 @@ export default function ContactPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const formDataToSend = new FormData()
+      formDataToSend.append('name', formData.name)
+      formDataToSend.append('email', formData.email)
+      formDataToSend.append('reason', formData.reason)
+      formDataToSend.append('message', formData.message)
+      
+      if (file) {
+        formDataToSend.append('file', file)
+      }
 
-    // In a real app, you would send the form data to your backend
-    console.log("Form submitted:", formData)
-    console.log("File:", file)
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        body: formDataToSend,
+      })
 
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      reason: "",
-      message: "",
-    })
-    setFile(null)
-    setIsSubmitting(false)
+      const result = await response.json()
 
-    // Show success message (in a real app)
-    alert("Message sent successfully! We'll get back to you shortly.")
+      if (response.ok) {
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          reason: "",
+          message: "",
+        })
+        setFile(null)
+        // Reset file input
+        const fileInput = document.getElementById('file') as HTMLInputElement
+        if (fileInput) fileInput.value = ''
+        
+        alert("Message sent successfully! We'll get back to you shortly.")
+      } else {
+        alert(result.error || 'Failed to send message. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

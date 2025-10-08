@@ -16,6 +16,7 @@
 "use client";
 
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import {
   Instagram,
   Facebook,
@@ -67,9 +68,11 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
         {/* Company information */}
         <div>
-          <h3 className="font-bold mb-2">ABOUT ASK AI LEGAL</h3>
+          <div className="mb-4">
+            <Logo size="sm" />
+          </div>
           <p>
-            Ask AI Legal: Your AI-powered legal assistant, helping you navigate 
+            Your AI-powered legal assistant, helping you navigate 
             legal matters with confidence.
           </p>
         </div>

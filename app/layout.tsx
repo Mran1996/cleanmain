@@ -17,10 +17,12 @@ import ClientLayout from './ClientLayout';
 
 // Application metadata for SEO and browser configuration
 export const metadata = {
-  title: 'Ask AI Legal',
-  description: 'Empowering access to justice with AI.',
+  title: 'Ask AI Legal™ - Where Law Meets Intelligence',
+  description: 'Empowering access to justice with AI. Your AI-powered legal assistant, helping you navigate legal matters with confidence.',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
   },
 };
 

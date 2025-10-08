@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
+import { Logo } from '@/components/Logo';
 
 export default function SignUpPage() {
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -75,8 +76,12 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f6fefa] px-4">
       <div className="w-full max-w-sm bg-white rounded-xl shadow-lg p-8">
-        {/* Heading */}
-        <h2 className="text-2xl font-bold text-emerald-700 text-center mb-2">Create Your Account</h2>
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" className="scale-125" />
+        </div>
+        
+        {/* Description */}
         <p className="text-center text-gray-500 mb-8">Join Ask AI Legal for powerful legal assistance</p>
 
         {/* Terms Checkbox */}

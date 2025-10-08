@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
 import AuthButton from "@/components/AuthButton"
+import { Logo } from "@/components/Logo"
 import { Menu } from "lucide-react"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -65,9 +66,7 @@ export function Navigation() {
       <div className="container mx-auto px-4 py-4 flex flex-col gap-y-2 md:flex-row md:items-center md:justify-between">
         {/* Logo and mobile menu trigger */}
         <div className="flex items-center justify-between w-full md:w-auto">
-          <Link href="/" className="text-primary text-xl font-medium">
-            Ask AI Legal
-          </Link>
+          <Logo size="md" />
           
           {/* Mobile menu sheet */}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -90,7 +89,11 @@ export function Navigation() {
                 
                 {/* Mobile authentication and language controls */}
                 <div className="mt-4 flex flex-col gap-2">
-                  <AuthButton />
+                  <Link href="/login">
+                    <button className="rounded px-4 py-2 transition-colors font-medium bg-green-600 text-white hover:bg-green-700 w-full">
+                      Sign In
+                    </button>
+                  </Link>
                   <LanguageSelector />
                 </div>
               </nav>
@@ -109,7 +112,11 @@ export function Navigation() {
         
         {/* Desktop authentication and language controls */}
         <div className="hidden md:flex items-center gap-x-4">
-          <AuthButton />
+          <Link href="/login">
+            <button className="rounded px-4 py-2 transition-colors font-medium bg-green-600 text-white hover:bg-green-700">
+              Sign In
+            </button>
+          </Link>
           <LanguageSelector />
         </div>
       </div>

@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, Loader2, CreditCard } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -118,27 +119,29 @@ export function SubscriptionGuard({
   if (!user) {
     console.log('🚫 SubscriptionGuard: No user found, showing login prompt');
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <Lock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <CardTitle>Login Required</CardTitle>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <Card className="w-full max-w-md shadow-lg border-0">
+          <CardHeader className="text-center pb-4">
+            <div className="mb-6">
+              <Logo size="lg" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-gray-900">Login Required</CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">
-              Please log in to access this feature.
+          <CardContent className="text-center space-y-6">
+            <p className="text-gray-600 text-lg">
+              Please log in to access this premium feature.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Button 
                 onClick={() => router.push('/login')}
-                className="w-full"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg font-semibold"
               >
                 Login
               </Button>
               <Button 
                 variant="outline"
                 onClick={() => router.push('/sign-up')}
-                className="w-full"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-3 text-lg"
               >
                 Create Account
               </Button>
@@ -153,27 +156,32 @@ export function SubscriptionGuard({
   if (!hasActiveSubscription) {
     console.log('🚫 SubscriptionGuard: No active subscription, showing upgrade prompt');
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CreditCard className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-            <CardTitle>{fallbackTitle}</CardTitle>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <Card className="w-full max-w-md shadow-lg border-0">
+          <CardHeader className="text-center pb-4">
+            <div className="mb-6">
+              <Logo size="lg" />
+            </div>
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="h-8 w-8 text-emerald-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-gray-900">{fallbackTitle}</CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">
+          <CardContent className="text-center space-y-6">
+            <p className="text-gray-600 text-lg leading-relaxed">
               {fallbackMessage}
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Link href="/pricing">
-                <Button className="w-full bg-green-600 hover:bg-green-700">
-                  <CreditCard className="mr-2 h-4 w-4" />
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg font-semibold">
+                  <CreditCard className="mr-2 h-5 w-5" />
                   View Pricing Plans
                 </Button>
               </Link>
               <Button 
                 variant="outline"
                 onClick={() => router.back()}
-                className="w-full"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-3 text-lg"
               >
                 Go Back
               </Button>

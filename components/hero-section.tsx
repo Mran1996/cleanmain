@@ -15,6 +15,7 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { LanguageSelector } from "@/components/language-selector"
+import { Logo } from "@/components/Logo"
 
 // Feature highlights configuration
 const FEATURE_HIGHLIGHTS = [
@@ -40,9 +41,14 @@ export function HeroSection() {
     <section className="bg-emerald-500 text-white py-12 sm:py-16 md:py-20">
       <div className="container mx-auto px-4">
         <div className="text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <Logo size="lg" variant="white" className="scale-125" />
+          </div>
+          
           {/* Main headline */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            Ask AI Legal — Powerful Legal Help — When You Need It Most
+            Powerful Legal Help — When You Need It Most
           </h1>
           
           {/* Value proposition */}
