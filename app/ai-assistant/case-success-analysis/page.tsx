@@ -65,7 +65,7 @@ export default function CaseSuccessAnalysisPage() {
   const successRate = analysis.successRate ?? 0;
   const successLabel = successRate >= 80 ? "High" : successRate >= 60 ? "Moderate" : successRate >= 40 ? "Fair" : "Low";
   const successColor = successRate >= 80 ? "bg-emerald-500" : successRate >= 60 ? "bg-green-500" : successRate >= 40 ? "bg-yellow-500" : "bg-red-500";
-
+// console.log(successRate, successLabel, successColor)
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
-// Configure the email transporter for Outlook
+// Configure the email transporter for Brevo SMTP
 const createTransporter = () => {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP configuration is missing. Please check your environment variables.');
+  }
+
   return nodemailer.createTransport({
-    service: 'outlook',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT, 10),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.OUTLOOK_EMAIL,
-      pass: process.env.OUTLOOK_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   })
 }
@@ -49,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const mailOptions = {
-      from: process.env.OUTLOOK_EMAIL,
+      from: process.env.SMTP_FROM || 'support@askailegal.com',
       to: 'support@askailegal.com',
       subject: `Contact Form: ${reason} - ${name}`,
       html: emailContent,
