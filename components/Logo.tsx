@@ -25,12 +25,12 @@ export function Logo({ className = "", showText = true, size = "md", variant = "
     <Link href="/" className={`flex items-center gap-3 ${className}`}>
       {/* Logo Icon */}
       <div className={`${sizeClasses[size]} relative flex-shrink-0`}>
-        <div className={`w-full h-full rounded-full flex items-center justify-center ${
+        {/* <div className={`w-full h-full rounded-full flex items-center justify-center ${
           variant === "white" 
             ? "bg-white" 
             : "bg-gradient-to-br from-emerald-500 to-emerald-700"
         }`}>
-          {/* Concentric rings design */}
+        
           <div className="relative w-3/4 h-3/4">
             <div className={`absolute inset-0 border-2 rounded-full opacity-60 ${
               variant === "white" ? "border-emerald-600" : "border-white"
@@ -45,11 +45,13 @@ export function Logo({ className = "", showText = true, size = "md", variant = "
               variant === "white" ? "bg-emerald-600" : "bg-white"
             }`}></div>
           </div>
-        </div>
+        </div> */}
+
+        <Image src="/logo/logo.png" alt="Logo" width={100} height={100} />
       </div>
       
       {/* Logo Text */}
-      {showText && (
+      {/* {showText && (
         <div className="flex flex-col">
           <span className={`font-bold ${textSizeClasses[size]} ${
             variant === "white" ? "text-white" : "text-emerald-700"
@@ -62,7 +64,7 @@ export function Logo({ className = "", showText = true, size = "md", variant = "
             Where Law Meets Intelligence
           </span>
         </div>
-      )}
+      )} */}
     </Link>
   );
 }

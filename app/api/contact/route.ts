@@ -3,19 +3,31 @@ import nodemailer from 'nodemailer'
 
 // Configure the email transporter for Brevo SMTP
 const createTransporter = () => {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('SMTP configuration is missing. Please check your environment variables.');
+  const smtpConfig = {
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: false, // Brevo requires secure to be false for non-SSL ports
+    tls: {
+      rejectUnauthorized: false
+    },
+    auth: {
+      user: process.env.SMTP_USER || '98ddc5001@smtp-brevo.com',
+      pass: process.env.SMTP_PASS || 'YwFEcpOACxdghZs3',
+    },
+    debug: true,
+    logger: true
+  };
+
+  console.log('SMTP Config:', {
+    ...smtpConfig,
+    auth: { user: smtpConfig.auth.user ? '***' : 'missing' }
+  });
+
+  if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
+    throw new Error('SMTP authentication credentials are missing. Please check your environment variables.');
   }
 
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
+  return nodemailer.createTransport(smtpConfig);
 }
 
 export async function POST(request: NextRequest) {
@@ -65,9 +77,13 @@ export async function POST(request: NextRequest) {
       }] : [],
     }
 
-    await transporter.sendMail(mailOptions)
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Message sent: %s', info.messageId);
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true,
+      messageId: info.messageId 
+    })
   } catch (error) {
     console.error('Contact form error:', error)
     return NextResponse.json(
