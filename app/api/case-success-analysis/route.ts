@@ -34,6 +34,8 @@ async function getCaseLaw(state: string, category: string) {
   }
 }
 
+
+
 export async function POST(req: Request) {
   try {
     // Check if any AI provider is configured
