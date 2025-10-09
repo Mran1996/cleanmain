@@ -1,9 +1,9 @@
 import { OpenAI } from 'openai';
 import { getRelevantCaseLaw } from '@/lib/perplexity';
 
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-});
+}) : null;
 
 export async function POST(req: Request) {
   try {
@@ -96,28 +96,56 @@ ${includeCaseLaw ? `Relevant Case Law:\n${caseLaw}` : ''}
 
 Generate a complete legal document in HTML format using the provided CSS classes. Ensure proper formatting and spacing for court filing.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
-      stream: true,
-      temperature: 0.4,
-      messages: [
-        { role: 'system', content: fullPrompt },
-      ],
-    });
+    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    let response: any;
+    if (useKimi) {
+      // Non-streaming from Kimi; we will stream the full content as one event
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({
+          model: 'kimi-k2-0905-preview',
+          messages: [ { role: 'system', content: fullPrompt } ],
+          temperature: 0.4
+        })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      response = await r.json();
+    } else {
+      if (!openai) throw new Error('OpenAI not configured');
+      response = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        stream: true,
+        temperature: 0.4,
+        messages: [
+          { role: 'system', content: fullPrompt },
+        ],
+      });
+    }
 
     // Set up Server-Sent Events
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of response) {
-            const content = chunk.choices[0]?.delta?.content || '';
-            if (content) {
-              controller.enqueue(encoder.encode(`data: ${content}\n\n`));
+          if (useKimi) {
+            const content = response?.choices?.[0]?.message?.content || '';
+            if (content) controller.enqueue(encoder.encode(`data: ${content}\n\n`));
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+          } else {
+            for await (const chunk of response) {
+              const content = chunk.choices[0]?.delta?.content || '';
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${content}\n\n`));
+              }
             }
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
           }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
         } catch (error) {
           controller.error(error);
         }

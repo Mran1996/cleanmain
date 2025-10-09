@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 
 // Initialize OpenAI client with error handling
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+const useKimi = !!process.env.MOONSHOT_API_KEY;
+const openai = !useKimi && process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 }) : null;
 
@@ -35,9 +36,9 @@ async function getCaseLaw(state: string, category: string) {
 
 export async function POST(req: Request) {
   try {
-    // Check if OpenAI is configured
-    if (!openai) {
-      return NextResponse.json({ error: "OpenAI not configured" }, { status: 503 });
+    // Check if any AI provider is configured
+    if (!useKimi && !openai) {
+      return NextResponse.json({ error: "AI provider not configured" }, { status: 503 });
     }
 
     console.log('🔍 Case analysis API called');
@@ -149,12 +150,17 @@ Provide realistic, data-driven assessments.`;
 
     // Generate analysis using OpenAI
     
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
+    let completion: any;
+    if (useKimi) {
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({
+          model: 'kimi-k2-0905-preview',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
 
 📏 LENGTH ENFORCEMENT
 - For uploadedPages ≈ 30–40, produce MINIMUM 8 pages of analysis (target 8–15 pages).
@@ -173,18 +179,32 @@ Tie every key factual assertion to a record cite (PDF p. __ / Ex. __ / CT __ / E
 
 🎯 ADVOCACY APPROACH
 Do not adopt adverse characterizations. Reframe facts for the movant. Avoid praising the trial court or "affirming."`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 4096  // Maximum allowed for GPT-4 Turbo
-    });
+            },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3
+        })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      completion = await r.json();
+    } else {
+      completion = await openai!.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
+
+📏 LENGTH ENFORCEMENT
+- For uploadedPages ≈ 30–40, produce MINIMUM 8 pages of analysis (target 8–15 pages).
+- If the first pass is <60% of target, expand with additional record cites and authority until the target is met.
+- Always include a "Standard of Review" section and argue why the result must change even under that standard.
 
     // Extract the generated analysis
-    const analysisText = completion.choices[0].message.content;
+    const analysisText = completion.choices?.[0]?.message?.content;
     
     if (!analysisText) {
       throw new Error('No analysis generated');

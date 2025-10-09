@@ -6,10 +6,10 @@ import { OpenAI } from 'openai';
 
 export const runtime = 'nodejs';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
+// Initialize OpenAI client (used if Moonshot is not configured)
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-});
+}) : null;
 
 export async function POST(req: NextRequest) {
   try {
@@ -162,18 +162,40 @@ PAGE LENGTH REQUIREMENTS:
 
 Generate a complete, professional legal document using ONLY the information provided above.`;
 
-    // Call OpenAI to generate the document
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 4096  // Maximum allowed for GPT-4 Turbo
-    });
+    // Call AI provider to generate the document
+    let completion: any;
+    if (process.env.MOONSHOT_API_KEY) {
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({
+          model: 'kimi-k2-0905-preview',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.3,
+        })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      completion = await r.json();
+    } else {
+      if (!openai) throw new Error('OpenAI not configured');
+      completion = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 4096
+      });
+    }
 
-    const documentContent = completion.choices[0]?.message?.content || 'Failed to generate document content.';
+    const documentContent = completion.choices?.[0]?.message?.content || 'Failed to generate document content.';
 
     // Store the document in Supabase
     const documentTitle = title || 'Legal Document';

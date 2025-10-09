@@ -18,9 +18,8 @@ ${testDocumentText}
 When the user asks about the document, explain it clearly and reference specific details from the content above. Be helpful, clear, and professional.`;
 
     // Initialize OpenAI
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const openai = !useKimi && process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
     // Test with a simple question
     const messagesForOpenAI = [
@@ -28,14 +27,29 @@ When the user asks about the document, explain it clearly and reference specific
       { role: "user", content: "Can you explain this document?" }
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: messagesForOpenAI,
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    let completion: any;
+    if (useKimi) {
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({ model: 'kimi-k2-0905-preview', messages: messagesForOpenAI, temperature: 0.7 })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      completion = await r.json();
+    } else {
+      if (!openai) throw new Error('OpenAI not configured');
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: messagesForOpenAI,
+        temperature: 0.7,
+        max_tokens: 1000,
+      });
+    }
 
-    const response = completion.choices[0]?.message?.content || "No response generated";
+    const response = completion.choices?.[0]?.message?.content || "No response generated";
 
     return NextResponse.json({
       success: true,

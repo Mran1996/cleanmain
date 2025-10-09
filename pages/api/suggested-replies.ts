@@ -40,16 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   
   // Check for API key
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error("OpenAI API key is missing");
-    return res.status(500).json({ 
-      error: "OpenAI API key is not configured",
-      suggestions: ["I need help with my case", "Tell me more about the process", "What documents do I need?"]
-    });
-  }
 
   try {
-    const openai = new OpenAI({ apiKey });
+    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const openai = apiKey && !useKimi ? new OpenAI({ apiKey }) : null;
     const systemPrompt = `You are an AI legal assistant conducting a comprehensive attorney-client interview for a ${selectedCategory} issue. 
 
 Based on the conversation so far, suggest 3 helpful, relevant responses the user might say next. These should be natural, conversational responses that would help move the attorney interview forward through the different phases:
@@ -84,11 +78,27 @@ Suggestions should feel natural, conversational, and guide the legal discussion 
       category: selectedCategory
     });
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: messages_for_completion,
-      temperature: 0.5
-    });
+    let completion: any;
+    if (useKimi) {
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({ model: 'kimi-k2-0905-preview', messages: messages_for_completion, temperature: 0.5 })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      completion = await r.json();
+    } else if (openai) {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: messages_for_completion,
+        temperature: 0.5
+      });
+    } else {
+      throw new Error('No AI provider configured');
+    }
 
     try {
       // Try to extract the JSON array from the response

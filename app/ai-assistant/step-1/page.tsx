@@ -172,12 +172,19 @@ Key rules:
       console.log('🔍 [STEP1 DEBUG] Document data length:', uploadedDocumentText.length);
       console.log('🔍 [STEP1 DEBUG] Document data preview:', uploadedDocumentText.substring(0, 200));
       
+      // Pass documents array if available, otherwise fall back to text
+      let documentDataToSend = uploadedDocumentText;
+      if (latestDocs && latestDocs.length > 0) {
+        documentDataToSend = JSON.stringify(latestDocs);
+        console.log('🔍 [STEP1 DEBUG] Sending documents array with', latestDocs.length, 'documents');
+      }
+      
       const response = await fetch('/api/step1-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: messagesForAPI,
-          documentData: uploadedDocumentText
+          documentData: documentDataToSend
         }),
       });
 

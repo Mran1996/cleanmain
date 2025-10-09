@@ -26,6 +26,15 @@ export function SubscriptionGuard({
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const router = useRouter();
 
+  // Development/override bypass: allow access locally or when explicitly disabled via env flag
+  const isGuardDisabled =
+    process.env.NEXT_PUBLIC_DISABLE_SUBSCRIPTION_GUARD === 'true' ||
+    process.env.NODE_ENV !== 'production';
+
+  if (isGuardDisabled) {
+    return <>{children}</>;
+  }
+
   useEffect(() => {
     console.log('🔐 SubscriptionGuard: Auth check -', { 
       user: user?.email || 'No user', 

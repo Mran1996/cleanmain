@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 
 export const runtime = "edge";
 
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
-});
+}) : null;
 
 export async function POST(req: Request) {
   try {
@@ -20,14 +20,26 @@ Ask one smart question at a time. Be calm, clear, and professional.
 
     // Add document context if provided
     if (documentContext) {
+      // Try to parse as JSON array of documents first
+      let formattedDocumentContext = documentContext;
+      try {
+        const documents = JSON.parse(documentContext);
+        if (Array.isArray(documents) && documents.length > 0) {
+          const { formatDocumentsForAI } = await import('@/lib/documentFormatter');
+          formattedDocumentContext = formatDocumentsForAI(documents);
+        }
+      } catch {
+        // Use documentContext as-is if not JSON
+      }
+
       systemPrompt += `
 
 📄 DOCUMENT CONTEXT:
 You have access to the following uploaded legal documents:
 
-${documentContext}
+${formattedDocumentContext}
 
-Use this document content to answer questions and provide guidance. Reference specific details from these documents when responding.`;
+Use this document content to answer questions and provide guidance. Reference specific details from these documents when responding. You can reference specific documents by their number (Document 1, Document 2, etc.) or by filename.`;
     }
 
     // Add document fields if provided
@@ -45,19 +57,47 @@ Use this document content to answer questions and provide guidance. Reference sp
 Use this information to provide more accurate and contextual responses.`;
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-1106-preview",
-      stream: false,
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt.trim(),
-        },
-        ...messages,
-      ],
-    });
+    let final: string | undefined;
 
-    let final = response.choices[0]?.message?.content;
+    if (process.env.MOONSHOT_API_KEY) {
+      // Use Kimi (Moonshot)
+      const r = await fetch("https://api.moonshot.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "kimi-k2-0905-preview",
+          messages: [
+            { role: "system", content: systemPrompt.trim() },
+            ...messages,
+          ],
+          temperature: 0.7,
+        }),
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      const data = await r.json();
+      final = data?.choices?.[0]?.message?.content;
+    } else {
+      if (!openai) throw new Error("OpenAI not configured");
+      const response = await openai.chat.completions.create({
+        model: "gpt-4-1106-preview",
+        stream: false,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt.trim(),
+          },
+          ...messages,
+        ],
+      });
+      final = response.choices[0]?.message?.content;
+    }
+
 
     // Post-process to remove forbidden phrases and formatting
     if (final) {

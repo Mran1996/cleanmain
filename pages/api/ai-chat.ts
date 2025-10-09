@@ -79,14 +79,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Add document context if provided
     if (documentContext) {
+      // Try to parse as JSON array of documents first
+      let formattedDocumentContext = documentContext;
+      try {
+        const documents = JSON.parse(documentContext);
+        if (Array.isArray(documents) && documents.length > 0) {
+          const { formatDocumentsForAI } = await import('@/lib/documentFormatter');
+          formattedDocumentContext = formatDocumentsForAI(documents);
+        }
+      } catch {
+        // Use documentContext as-is if not JSON
+      }
+
       enhancedSystemPrompt += `
 
 📄 DOCUMENT CONTEXT:
 You have access to the following uploaded legal documents:
 
-${documentContext}
+${formattedDocumentContext}
 
-Use this document content to answer questions and provide guidance. Reference specific details from these documents when responding.`;
+Use this document content to answer questions and provide guidance. Reference specific details from these documents when responding. You can reference specific documents by their number (Document 1, Document 2, etc.) or by filename.`;
     }
 
     // Add document fields if provided

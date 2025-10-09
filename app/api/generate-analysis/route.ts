@@ -25,11 +25,12 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("Attempting to generate analysis...");
-    console.log("Using OpenAI API Key:", process.env.OPENAI_API_KEY ? "Found" : "MISSING");
+    console.log("Using AI provider:", process.env.MOONSHOT_API_KEY ? "Kimi" : (process.env.OPENAI_API_KEY ? "OpenAI" : "None"));
 
     // OPTIONAL: Add SHA256 hash check here for unchanged document (if supported)
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const openai = !useKimi && process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
     const systemPrompt = `
 You are a legal strategist generating a case success analysis.
@@ -63,18 +64,41 @@ Do not adopt adverse characterizations. Reframe facts for the movant. Avoid prai
 Respond in JSON.
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      temperature: 0.4,
-      max_tokens: 8000,  // Increased to ensure minimum 8 pages
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: legalDocument },
-        ...(caseLawMatches ? [{ role: "user", content: `Relevant case law:\n${caseLawMatches}` }] : []),
-      ],
-    });
+    let completion: any;
+    if (useKimi) {
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        body: JSON.stringify({
+          model: 'kimi-k2-0905-preview',
+          temperature: 0.4,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: legalDocument },
+            ...(caseLawMatches ? [{ role: 'user', content: `Relevant case law:\n${caseLawMatches}` }] : []),
+          ]
+        })
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      }
+      completion = await r.json();
+    } else {
+      if (!openai) throw new Error('OpenAI not configured');
+      completion = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        temperature: 0.4,
+        max_tokens: 8000,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: legalDocument },
+          ...(caseLawMatches ? [{ role: "user", content: `Relevant case law:\n${caseLawMatches}` }] : []),
+        ],
+      });
+    }
 
-    return NextResponse.json({ content: completion.choices[0].message.content });
+    return NextResponse.json({ content: completion.choices?.[0]?.message?.content });
   } catch (err) {
     console.error('[generate-analysis-error]', err);
     return NextResponse.json({ error: 'Failed to generate case analysis.' }, { status: 500 });

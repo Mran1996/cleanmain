@@ -50,8 +50,11 @@ export function EnhancedChatInterface({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
+  const [interimTranscript, setInterimTranscript] = useState("")
   const [speechSupported, setSpeechSupported] = useState(false)
   const [speechServiceAvailable, setSpeechServiceAvailable] = useState(true)
+  const [micPermissionError, setMicPermissionError] = useState(false)
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [pdfjsLib, setPdfjsLib] = useState<any>(null)
@@ -249,16 +252,17 @@ export function EnhancedChatInterface({
   useEffect(() => {
     const isSupported = "SpeechRecognition" in window || "webkitSpeechRecognition" in window
     const isSecureContext = window.isSecureContext || location.protocol === 'https:'
+    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
     
-    // Speech recognition requires HTTPS in most browsers
-    const fullySupported = isSupported && isSecureContext
+    // Allow localhost in dev without HTTPS
+    const fullySupported = isSupported && (isSecureContext || isLocalhost)
     
     setSpeechSupported(fullySupported)
     setSpeechServiceAvailable(true) // Assume it's available until proven otherwise
     
     if (!isSupported) {
       console.warn("Speech recognition not supported in this browser")
-    } else if (!isSecureContext) {
+    } else if (!isSecureContext && !isLocalhost) {
       console.warn("Speech recognition requires HTTPS connection")
     }
   }, [])
@@ -390,10 +394,11 @@ export function EnhancedChatInterface({
     }
   }
 
-  const startListening = () => {
+  const startListening = async () => {
     if (!speechSupported) {
       const isSecureContext = window.isSecureContext || location.protocol === 'https:'
-      if (!isSecureContext) {
+      const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      if (!isSecureContext && !isLocalhost) {
         alert("Speech recognition requires HTTPS connection. Please access the site via https://askailegal.com")
       } else {
         alert("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.")
@@ -401,9 +406,30 @@ export function EnhancedChatInterface({
       return
     }
 
+    // Reset error state
+    setMicPermissionError(false)
     setIsListening(true)
 
     try {
+      // Proactively request mic permission to avoid 'service-not-allowed'
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        // Immediately stop the tracks; we only needed the permission prompt
+        stream.getTracks().forEach(track => track.stop())
+      } catch (permErr: any) {
+        console.warn("Microphone permission error:", permErr?.name || permErr)
+        setIsListening(false)
+        setMicPermissionError(true)
+        if (permErr?.name === 'NotAllowedError') {
+          alert("Microphone permission denied. Please allow microphone access in your browser's site settings and try again.")
+        } else if (permErr?.name === 'NotFoundError') {
+          alert("No microphone found. Please connect a microphone and try again.")
+        } else {
+          alert("Unable to access the microphone. Please check your browser settings and try again.")
+        }
+        return
+      }
+
       // @ts-ignore - TypeScript doesn't know about webkitSpeechRecognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       
@@ -412,27 +438,45 @@ export function EnhancedChatInterface({
       }
 
       const recognition = new SpeechRecognition()
+      recognitionRef.current = recognition
 
-      recognition.continuous = false
-      recognition.interimResults = false
+      // Continuous dictation with interim results so text appears as you speak
+      recognition.continuous = true
+      recognition.interimResults = true
       recognition.lang = 'en-US'
       recognition.maxAlternatives = 1
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript
-        setInputValue((prev) => prev + " " + transcript)
-        console.log("Speech recognition result:", transcript)
+        let finalText = ""
+        let interimText = ""
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i]
+          if (res.isFinal) {
+            finalText += res[0].transcript
+          } else {
+            interimText += res[0].transcript
+          }
+        }
+        if (finalText) {
+          setInputValue((prev) => (prev ? prev + " " : "") + finalText.trim())
+          setInterimTranscript("")
+        } else {
+          setInterimTranscript(interimText)
+        }
       }
 
       recognition.onerror = (event: any) => {
         console.error("Speech recognition error:", event.error)
         setIsListening(false)
+        setInterimTranscript("")
         
-        // Handle service-not-allowed gracefully
+        // Handle service-not-allowed with specific user guidance
         if (event.error === 'service-not-allowed') {
-          console.warn("Speech recognition service not available. This is common in some browsers or network environments.")
+          console.warn("Speech recognition service not available - this may be due to browser restrictions or network policies")
+          setMicPermissionError(true)
           setSpeechServiceAvailable(false)
-          // Show a subtle notification instead of alert
+          // Show a helpful message instead of just failing silently
+          alert("Voice input is not available in your current browser/network environment. This can happen due to:\n\n• Corporate network restrictions\n• Browser security policies\n• VPN or firewall settings\n\nPlease try typing your message instead, or try a different browser/network.")
           return
         }
         
@@ -440,6 +484,7 @@ export function EnhancedChatInterface({
         switch (event.error) {
           case 'not-allowed':
             alert("Microphone permission denied. Please allow microphone access and try again.")
+            setMicPermissionError(true)
             break
           case 'no-speech':
             // Don't show alert for no-speech, just log it
@@ -453,6 +498,7 @@ export function EnhancedChatInterface({
             break
           case 'audio-capture':
             alert("No microphone found. Please check your microphone connection.")
+            setMicPermissionError(true)
             break
           case 'language-not-supported':
             alert("Language not supported. Please try again.")
@@ -464,12 +510,15 @@ export function EnhancedChatInterface({
 
       recognition.onend = () => {
         setIsListening(false)
+        recognitionRef.current = null
+        setInterimTranscript("")
       }
 
       recognition.start()
     } catch (error) {
       console.error("Failed to start speech recognition:", error)
       setIsListening(false)
+      setMicPermissionError(true)
       // Don't show alert for service-not-allowed errors
       if (!error.message?.includes('service-not-allowed')) {
         alert("Failed to start speech recognition. Please try again.")
@@ -478,8 +527,24 @@ export function EnhancedChatInterface({
   }
 
   const stopListening = () => {
+    try {
+      recognitionRef.current?.stop()
+    } catch {}
     setIsListening(false)
-    // Speech recognition will auto-stop due to onend event
+    setInterimTranscript("")
+  }
+
+  const handleRetryMicPermission = async () => {
+    setMicPermissionError(false)
+    setSpeechServiceAvailable(true)
+    await startListening()
+  }
+
+  const handleDisableVoiceInput = () => {
+    setMicPermissionError(false)
+    setSpeechServiceAvailable(false)
+    setIsListening(false)
+    setInterimTranscript("")
   }
 
   // Updated to populate the input field instead of sending immediately
@@ -592,7 +657,8 @@ export function EnhancedChatInterface({
         uploadTime: new Date().toISOString(),
         status: 'uploaded',
         content: documentText,
-        parsedText: documentText
+        parsedText: documentText,
+        documentNumber: 0 // Will be set when added to array
       };
 
       // Store in localStorage
@@ -604,6 +670,9 @@ export function EnhancedChatInterface({
           } catch {
             docs = [];
           }
+          
+          // Set document number based on current array length
+          documentData.documentNumber = docs.length + 1;
           docs.push(documentData);
           localStorage.setItem('uploaded_documents', JSON.stringify(docs));
           
@@ -640,7 +709,7 @@ export function EnhancedChatInterface({
       console.log('🚨 [UPLOAD DEBUG] File processing completed successfully');
       
       // Send success message
-      const successMessage = `✅ Document uploaded successfully: ${file.name}\n\nI've extracted the text content from your document and can now analyze it. I can:\n• Explain the document's legal implications\n• Answer questions about specific sections\n• Identify important deadlines or requirements\n• Help you understand your rights and options\n\nWhat would you like me to help you with regarding this document?`;
+      const successMessage = `✅ Document uploaded successfully: ${file.name}\n\nI've extracted the text content from your document and can now analyze it. I can:\n• Explain the document's legal implications\n• Answer questions about specific sections\n• Identify important deadlines or requirements\n• Help you understand your rights and options\n• Reference this document by name or as "Document ${documentData.documentNumber}"\n\nWhat would you like me to help you with regarding this document?`;
       if (handleSendMessage) {
         try {
           handleSendMessage(successMessage);
@@ -850,6 +919,12 @@ export function EnhancedChatInterface({
               minHeight: '2.5rem', // initial height
             }}
           />
+          {/* Live interim transcript overlay (read-only) */}
+          {isListening && interimTranscript && (
+            <div className="absolute bottom-20 left-4 right-4 pointer-events-none select-none text-gray-400 text-sm">
+              {interimTranscript}
+            </div>
+          )}
           {speechSupported ? (
             <Button
               type="button"

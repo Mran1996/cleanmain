@@ -76,6 +76,46 @@ async function callOpenAI(messages: any[]) {
   }
 }
 
+async function callKimi(messages: any[]) {
+  const apiKey = process.env.MOONSHOT_API_KEY;
+  if (!apiKey) {
+    throw new Error("Kimi API key is not configured");
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    const r = await fetch("https://api.moonshot.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "kimi-k2-0905-preview",
+        temperature: 0.6,
+        messages
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!r.ok) {
+      const errorText = await r.text();
+      throw new Error(`Kimi API error: ${r.status} - ${errorText}`);
+    }
+
+    return await r.json();
+  } catch (error) {
+    if ((error as any).name === 'AbortError') {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw error;
+  }
+}
+
 async function runPerplexity(question: string) {
   const pkey = process.env.PERPLEXITY_API_KEY;
   if (!pkey) return { findings: [], summary: "No research provider configured." };
@@ -129,20 +169,36 @@ export async function POST(req: NextRequest) {
     }
 
     // Enhanced system prompt with document data if available
-    const docSection = documentData?.trim()
-      ? `UPLOADED DOCUMENT (use as primary source when relevant):\n-----\n${documentData}\n-----`
-      : "No uploaded document available.";
+    let docSection = "No uploaded document available.";
+    
+    if (documentData?.trim()) {
+      // Try to parse as JSON array of documents first
+      try {
+        const documents = JSON.parse(documentData);
+        if (Array.isArray(documents) && documents.length > 0) {
+          const { formatDocumentsForAI } = await import('@/lib/documentFormatter');
+          docSection = formatDocumentsForAI(documents);
+        } else {
+          // Fallback to single document format
+          docSection = `UPLOADED DOCUMENT (use as primary source when relevant):\n-----\n${documentData}\n-----`;
+        }
+      } catch {
+        // Fallback to single document format
+        docSection = `UPLOADED DOCUMENT (use as primary source when relevant):\n-----\n${documentData}\n-----`;
+      }
+    }
 
     const systemPrompt = [
       "You are Khristian, an expert legal assistant for Washington State and US matters.",
-      "When a document is uploaded, you should:",
-      "1. Acknowledge the document upload briefly",
+      "When documents are uploaded, you should:",
+      "1. Acknowledge the document upload(s) briefly",
       "2. Continue with the next intake question in your interview process",
       "3. Do NOT automatically explain, summarize, or analyze the document content",
-      "4. If the user explicitly asks you to explain, summarize, or analyze the document, provide a detailed explanation",
+      "4. If the user explicitly asks you to explain, summarize, or analyze a document, provide a detailed explanation",
       "5. Focus on gathering the information needed for your comprehensive legal intake",
       "Never invent facts. If a needed fact is missing, ask for it.",
-      "The uploaded document is available for reference when needed. When users ask for document explanation, provide it thoroughly.",
+      "The uploaded documents are available for reference when needed. When users ask for document explanation, provide it thoroughly.",
+      "IMPORTANT: You can reference specific documents by their number (Document 1, Document 2, etc.) or by filename.",
       docSection,
     ].join("\n\n");
     
@@ -157,7 +213,10 @@ export async function POST(req: NextRequest) {
     ...messages
   ];
 
-  const completion = await callOpenAI(fullMessages);
+  // Prefer Kimi (Moonshot) if configured, otherwise fall back to OpenAI
+  const completion = process.env.MOONSHOT_API_KEY
+    ? await callKimi(fullMessages)
+    : await callOpenAI(fullMessages);
 
   // Handle tool calls (function calls)
   const toolCall = completion?.choices?.[0]?.message?.tool_calls?.[0];
