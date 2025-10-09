@@ -186,31 +186,32 @@ Do not adopt adverse characterizations. Reframe facts for the movant. Avoid prai
         })
       });
       if (!r.ok) {
-        const text = await r.text();
-        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+        const errorText = await r.text();
+        throw new Error(`Kimi API error: ${r.status} - ${errorText}`);
       }
       completion = await r.json();
-    } else {
-      completion = await openai!.chat.completions.create({
+    } else if (openai) {
+      completion = await openai.chat.completions.create({
         model: "gpt-4-turbo",
         messages: [
           {
             role: "system",
-            content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
+            content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.`
+          },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3
+      });
+    } else {
+      throw new Error('No valid AI provider configured');
+    }
 
-📏 LENGTH ENFORCEMENT
-- For uploadedPages ≈ 30–40, produce MINIMUM 8 pages of analysis (target 8–15 pages).
-- If the first pass is <60% of target, expand with additional record cites and authority until the target is met.
-- Always include a "Standard of Review" section and argue why the result must change even under that standard.
-
-    // Extract the generated analysis
     const analysisText = completion.choices?.[0]?.message?.content;
     
     if (!analysisText) {
       throw new Error('No analysis generated');
     }
 
-    // Parse the JSON response
     let structuredAnalysis;
     try {
       // Clean up the response to extract JSON
@@ -223,10 +224,14 @@ Do not adopt adverse characterizations. Reframe facts for the movant. Avoid prai
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
       // Fallback to structured response
+      const plaintiffName = (userInfo && userInfo.firstName) ? userInfo.firstName : 'Plaintiff';
+      const defendantName = (caseInfo && caseInfo.opposingParty) ? caseInfo.opposingParty : 'Defendant';
+      const jurisdictionText = (courtName || 'Court') + ', ' + (state || 'State');
+      
       structuredAnalysis = {
         successRate: 50,
-        title: `${userInfo?.firstName || 'Plaintiff'} v. ${caseInfo?.opposingParty || 'Defendant'}`,
-        jurisdiction: `${courtName || 'Court'}, ${state || 'State'}`,
+        title: plaintiffName + ' v. ' + defendantName,
+        jurisdiction: jurisdictionText,
         caseType: legalCategory || "Legal Matter",
         primaryIssues: ["Document analysis required", "Evidence review needed"],
         statutes: ["Relevant statutes to be determined"],
