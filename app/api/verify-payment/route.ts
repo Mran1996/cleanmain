@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe-server';
+import { getStripeClient } from '@/lib/stripe-server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,6 +11,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 export async function POST(req: Request) {
   try {
+    const stripe = getStripeClient();
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user) {
