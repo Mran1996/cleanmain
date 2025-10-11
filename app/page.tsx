@@ -45,7 +45,7 @@ export default function Home() {
         <HeroSection />
         <HowItWorks />
         <KeyFeatures />
-        <PricingSection />
+        <PricingSection isHomePage={true} />
         <SuccessStories />
       </main>
       

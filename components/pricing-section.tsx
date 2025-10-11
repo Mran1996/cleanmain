@@ -4,25 +4,27 @@ import Link from "next/link";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { PRODUCTS } from "@/lib/stripe-config";
 
-export function PricingSection() {
+export function PricingSection({ isHomePage = false }: { isHomePage?: boolean }) {
   return (
     <section className="bg-gray-50 py-16">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">Choose Your Legal Solution</h1>
-          <p className="text-lg md:text-xl text-gray-600">Select the option that best fits your needs</p>
+          <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">
+            "Justice Shouldn't Be Out of Reach<br />
+            — Let AI Level the Playing Field."
+          </h1>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 max-w-6xl mx-auto px-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4`}>
           {/* Full Service Card */}
           <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
-              <span className="bg-emerald-500 text-white px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold uppercase tracking-wide shadow-lg">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+              <span className="bg-emerald-500 text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wide shadow-lg">
                 MOST POPULAR
               </span>
             </div>
-            <CardHeader className="text-center space-y-2 pt-8">
-              <div className="text-2xl font-semibold">Full Service Legal Support</div>
+            <CardHeader className="text-center space-y-3 pt-12">
+              <div className="text-2xl font-bold text-gray-900">Full Service Legal Support</div>
               <div className="text-4xl font-bold text-emerald-600">$479</div>
               <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
             </CardHeader>
@@ -52,10 +54,10 @@ export function PricingSection() {
           </Card>
 
           {/* AI Legal Premium Card */}
-          <Card className="w-full max-w-md mx-auto border-green-500 border shadow-md">
-            <CardHeader className="text-center space-y-2">
-              <div className="text-2xl font-semibold">AI Legal Premium — $179/month</div>
-              <div className="text-3xl font-bold text-green-600">$179</div>
+          <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg">
+            <CardHeader className="text-center space-y-3 pt-6">
+              <div className="text-2xl font-bold text-gray-900">AI Legal Premium — $179/month</div>
+              <div className="text-4xl font-bold text-green-600">$179</div>
               <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
             </CardHeader>
             <CardContent className="space-y-3 px-6 pb-6">
