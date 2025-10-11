@@ -13,46 +13,54 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
             "Justice Shouldn't Be Out of Reach<br />
             — Let AI Level the Playing Field."
           </h1>
+          {!isHomePage && (
+            <div className="mt-6">
+              <p className="text-xl font-bold text-gray-900 mb-2">Real Results. Real Justice. No Lawyer Required.</p>
+              <p className="text-lg text-gray-600">Artificial Intelligence</p>
+            </div>
+          )}
         </div>
         
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4`}>
-          {/* Full Service Card */}
-          <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
-            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
-              <span className="bg-emerald-500 text-white px-8 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
-                MOST POPULAR
-              </span>
-            </div>
-            <CardHeader className="text-center space-y-3 pt-12">
-              <div className="text-2xl font-bold text-gray-900">Full Service Legal Support</div>
-              <div className="text-4xl font-bold text-emerald-600">$479</div>
-              <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
-            </CardHeader>
-            <CardContent className="space-y-3 px-6 pb-6">
-              <ul className="space-y-2 text-sm text-left text-gray-700">
-                <li>✅ Complete legal document drafting (up to 150 pages)</li>
-                <li>✅ AI + human review for accuracy and formatting</li>
-                <li>✅ State-specific case law research included</li>
-                <li>✅ Up to 3 free revisions within 14 days</li>
-                <li>✅ Email or physical mail delivery</li>
-                <li>✅ 7 business day turnaround</li>
-                <li>✅ Professional legal team support</li>
-              </ul>
-
-              <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
-                <p className="mb-2">🎯 <strong>Perfect for complex cases</strong> — we gather all documents and handle the entire process.</p>
-                <p className="mb-2">⚖️ <strong>Court-ready documents</strong> with professional formatting and legal citations.</p>
-                <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
+        <div className={`grid grid-cols-1 ${isHomePage ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4`}>
+          {/* Full Service Card - Only show on pricing page */}
+          {!isHomePage && (
+            <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
+              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
+                <span className="bg-emerald-500 text-white px-8 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
+                  MOST POPULAR
+                </span>
               </div>
+              <CardHeader className="text-center space-y-3 pt-12">
+                <div className="text-2xl font-bold text-gray-900">Full Service Legal Support</div>
+                <div className="text-4xl font-bold text-emerald-600">$479</div>
+                <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
+              </CardHeader>
+              <CardContent className="space-y-3 px-6 pb-6">
+                <ul className="space-y-2 text-sm text-left text-gray-700">
+                  <li>✅ Complete legal document drafting (up to 150 pages)</li>
+                  <li>✅ AI + human review for accuracy and formatting</li>
+                  <li>✅ State-specific case law research included</li>
+                  <li>✅ Up to 3 free revisions within 14 days</li>
+                  <li>✅ Email or physical mail delivery</li>
+                  <li>✅ 7 business day turnaround</li>
+                  <li>✅ Professional legal team support</li>
+                </ul>
 
-              <StripeCheckoutButton 
-                plan={PRODUCTS.FULL_SERVICE}
-                className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700"
-              >
-                Purchase Now
-              </StripeCheckoutButton>
-            </CardContent>
-          </Card>
+                <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
+                  <p className="mb-2">🎯 <strong>Perfect for complex cases</strong> — we gather all documents and handle the entire process.</p>
+                  <p className="mb-2">⚖️ <strong>Court-ready documents</strong> with professional formatting and legal citations.</p>
+                  <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
+                </div>
+
+                <StripeCheckoutButton 
+                  plan={PRODUCTS.FULL_SERVICE}
+                  className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Purchase Now
+                </StripeCheckoutButton>
+              </CardContent>
+            </Card>
+          )}
 
           {/* AI Legal Premium Card */}
           <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg">

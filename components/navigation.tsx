@@ -31,7 +31,6 @@ const NAVIGATION_LINKS = [
   { href: "/", label: "Home" },
   { href: "/features", label: "Features" },
   { href: "/ai-assistant/step-1", label: "Chat" },
-  { href: "/ai-assistant/step-2", label: "Document" },
   { href: "/pricing", label: "Pricing" },
   { href: "/account", label: "Account" },
 ] as const;
