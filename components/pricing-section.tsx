@@ -18,8 +18,8 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4`}>
           {/* Full Service Card */}
           <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-              <span className="bg-emerald-500 text-white px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wide shadow-lg">
+            <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
+              <span className="bg-emerald-500 text-white px-8 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
                 MOST POPULAR
               </span>
             </div>
@@ -45,11 +45,12 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                 <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
               </div>
 
-              <Link href="/learn-more">
-                <Button className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700">
-                  Learn More About Full Service
-                </Button>
-              </Link>
+              <StripeCheckoutButton 
+                plan={PRODUCTS.FULL_SERVICE}
+                className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700"
+              >
+                Purchase Now
+              </StripeCheckoutButton>
             </CardContent>
           </Card>
 
