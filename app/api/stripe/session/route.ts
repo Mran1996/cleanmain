@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const getStripeClient = () => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('Stripe secret key not configured');
-  }
-  return new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-07-30.basil',
-  });
-};
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-07-30.basil',
+});
 
 export async function GET(request: Request) {
   try {
-    const stripe = getStripeClient();
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('session_id');
 

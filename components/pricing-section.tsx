@@ -16,10 +16,10 @@ export function PricingSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 max-w-6xl mx-auto px-4">
           {/* Full Service Card */}
           <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
-            <div className="absolute -top-4 left-0 right-0 z-10">
-              <div className="bg-emerald-500 text-white text-center py-2 text-sm font-bold uppercase tracking-wide shadow-lg">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
+              <span className="bg-emerald-500 text-white px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold uppercase tracking-wide shadow-lg">
                 MOST POPULAR
-              </div>
+              </span>
             </div>
             <CardHeader className="text-center space-y-2 pt-8">
               <div className="text-2xl font-semibold">Full Service Legal Support</div>

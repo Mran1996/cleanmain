@@ -1,17 +1,11 @@
 import Stripe from 'stripe';
 
-export const getStripeClient = () => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY environment variable is not set.');
-  }
-  return new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-07-30.basil',
-  });
-}; 
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-07-30.basil',
+}); 
 
 // Add this function to support create-checkout/route.ts
 export async function createCheckoutSession(priceId: string, userId: string) {
-  const stripe = getStripeClient();
   return await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     mode: 'payment',

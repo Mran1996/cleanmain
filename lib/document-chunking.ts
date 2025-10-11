@@ -1,15 +1,10 @@
 import OpenAI from 'openai';
 import { supabase } from './supabaseClient';
 
-// Initialize OpenAI client conditionally
-const getOpenAI = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured');
-  }
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-};
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Token counting function (rough approximation)
 function countTokens(text: string): number {
@@ -77,7 +72,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
   try {
 
-    const openai = getOpenAI();
     const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
       input: text,
