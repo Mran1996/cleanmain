@@ -1,11 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // must use service role key to bypass RLS
-);
+// Initialize Supabase client conditionally
+const getSupabaseClient = () => {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Supabase environment variables not configured');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY // must use service role key to bypass RLS
+  );
+};
 
 export async function POST(req: Request) {
   console.log('Route triggered');
@@ -22,6 +27,7 @@ export async function POST(req: Request) {
   }
   
   try {
+    const supabase = getSupabaseClient();
     const { id, full_name, email, state, legal_category, plan } = await req.json();
     if (!id || !full_name || !email) {
       console.error('Missing required fields:', { id, full_name, email });
