@@ -25,9 +25,6 @@ export function PremiumFeatureCard({
           </div>
         </CardHeader>
         <CardContent className="text-center space-y-6">
-          <p className="text-gray-600 text-lg leading-relaxed">
-            {message}
-          </p>
           <div className="space-y-3">
             <Button 
               onClick={onViewPricing}
