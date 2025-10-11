@@ -3,6 +3,16 @@ import { STEP4_SYSTEM_PROMPT } from "@/lib/step4Prompt";
 
 export const runtime = "nodejs"; // or "edge" if your stack already supports it
 
+// Configure for large documents (200+ pages)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '200mb', // Allow up to 200MB for large legal documents
+    },
+  },
+  maxDuration: 300, // 5 minutes for very large documents
+};
+
 type Step2Payload = {
   docType: "letter" | "motion" | "brief";
   jurisdiction: { state: string; county: string; court: string };
@@ -199,6 +209,19 @@ export async function POST(req: NextRequest) {
       "Never invent facts. If a needed fact is missing, ask for it.",
       "The uploaded documents are available for reference when needed. When users ask for document explanation, provide it thoroughly.",
       "IMPORTANT: You can reference specific documents by their number (Document 1, Document 2, etc.) or by filename.",
+      "PAGE-LEVEL ANALYSIS: You can analyze specific pages within documents. When users ask about specific pages (e.g., 'page 82'), provide detailed analysis of that page's content.",
+      "DOCUMENT TYPES: You can handle all types of legal evidence including PDFs, scanned documents, images, text messages, videos, audio recordings, spreadsheets, and more.",
+      "IMAGE ANALYSIS: When users upload images (screenshots, photos, scanned documents), guide them to describe the content including any text, people, dates, locations, or other important details visible in the image.",
+      "LEGAL EVIDENCE: Focus on extracting legally relevant information from all document types, including timestamps, names, locations, communications, and other evidence that could be important for legal proceedings.",
+      "",
+      "CRITICAL: DOCUMENT SIZE AWARENESS:",
+      "When analyzing documents, ALWAYS consider the document size and scope:",
+      "- For large documents (10+ pages): Provide comprehensive analysis that reflects the full scope and complexity",
+      "- For medium documents (5-10 pages): Provide detailed analysis covering all major sections",
+      "- For small documents (1-4 pages): Provide thorough analysis of all content",
+      "- NEVER give brief, superficial responses for large documents - they require comprehensive analysis",
+      "- Large documents contain extensive legal information that must be fully addressed",
+      "- Your responses should match the document's complexity and depth",
       docSection,
     ].join("\n\n");
     
@@ -207,6 +230,16 @@ export async function POST(req: NextRequest) {
       documentLength: documentData?.length || 0,
       documentPreview: documentData?.substring(0, 100) || 'No document data'
     });
+
+    // Enhanced logging for large documents
+    if (documentData && documentData.length > 100000) {
+      console.log(`📄 [LARGE DOCUMENT] Processing large document: ${documentData.length} characters`);
+      
+      // Check if document is truncated
+      if (documentData.includes('...') && documentData.length < 50000) {
+        console.warn(`⚠️ [TRUNCATION WARNING] Document may be truncated: ${documentData.length} characters`);
+      }
+    }
 
   const fullMessages = [
     { role: "system", content: systemPrompt },

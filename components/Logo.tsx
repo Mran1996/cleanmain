@@ -4,27 +4,35 @@ import Image from "next/image";
 interface LogoProps {
   className?: string;
   showText?: boolean;
-  size?: "sm" | "md" | "lg";
-  variant?: "default" | "white";
+  size?: "sm" | "md" | "lg" | "xl" | "xxl";
+  variant?: "default" | "white" | "soft";
 }
 
 export function Logo({ className = "", showText = true, size = "md", variant = "default" }: LogoProps) {
   const sizeClasses = {
-    sm: "h-6 w-6",
-    md: "h-8 w-8", 
-    lg: "h-12 w-12"
+    sm: "h-8 w-8",
+    md: "h-12 w-12", 
+    lg: "h-24 w-24",
+    xl: "h-40 w-40",
+    xxl: "h-64 w-64"
   };
 
-  const textSizeClasses = {
-    sm: "text-lg",
-    md: "text-xl",
-    lg: "text-2xl"
-  };
+  const pixelSizes = {
+    sm: 32,
+    md: 48,
+    lg: 96,
+    xl: 160,
+    xxl: 320
+  } as const;
 
   return (
     <Link href="/" className={`flex items-center gap-3 ${className}`}>
       {/* Logo Icon */}
-      <div className={`${sizeClasses[size]} relative flex-shrink-0`}>
+      <div className={`${sizeClasses[size]} relative flex-shrink-0 ${
+        variant === "soft" 
+          ? "bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm" 
+          : ""
+      }`}>
         {/* <div className={`w-full h-full rounded-full flex items-center justify-center ${
           variant === "white" 
             ? "bg-white" 
@@ -47,7 +55,7 @@ export function Logo({ className = "", showText = true, size = "md", variant = "
           </div>
         </div> */}
 
-        <Image src="/logo/logo.png" alt="Logo" width={100} height={100} />
+        <Image src="/logo/logo.png" alt="Logo" width={pixelSizes[size]} height={pixelSizes[size]} />
       </div>
       
       {/* Logo Text */}

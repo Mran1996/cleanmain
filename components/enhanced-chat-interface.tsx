@@ -573,16 +573,55 @@ export function EnhancedChatInterface({
     }
     
     if (files && files.length > 0) {
+      // Validate that all files exist
+      const validFiles = Array.from(files).filter(file => file && file.name);
+      console.log('🚨 [FILE INPUT DEBUG] Valid files:', validFiles.length);
+      
+      if (validFiles.length === 0) {
+        console.log('🚨 [FILE INPUT DEBUG] No valid files found');
+        return;
+      }
       console.log('🚨 [FILE INPUT DEBUG] Processing files...');
       
       // Process files sequentially to avoid conflicts
       const processFiles = async () => {
-        for (let i = 0; i < files.length; i++) {
+        const processedFiles = [];
+        const failedFiles = [];
+        
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
+          
           try {
-            console.log(`🚨 [FILE INPUT DEBUG] Processing file ${i + 1}:`, files[i].name);
-            await handleFileUpload(files[i]);
+            console.log(`🚨 [FILE INPUT DEBUG] Processing file ${i + 1}:`, file.name);
+            await handleFileUpload(file);
+            processedFiles.push(file.name);
           } catch (error) {
-            console.error(`🚨 [FILE INPUT DEBUG] Error processing file ${files[i].name}:`, error);
+            console.error(`🚨 [FILE INPUT DEBUG] Error processing file ${file.name}:`, error);
+            failedFiles.push(file.name);
+          }
+        }
+        
+        // Send summary message after all files are processed
+        if (processedFiles.length > 0) {
+          const summaryMessage = `✅ Successfully uploaded ${processedFiles.length} document(s):\n\n${processedFiles.map((name, index) => `${index + 1}. ${name}`).join('\n')}\n\nI can now analyze these documents. You can ask me about:\n• Specific documents by number (Document 1, Document 2, etc.)\n• Documents by filename\n• Compare documents\n• Explain legal implications\n\nWhat would you like me to help you with?`;
+          
+          if (handleSendMessage) {
+            try {
+              handleSendMessage(summaryMessage);
+            } catch (messageError) {
+              console.error('🚨 [UPLOAD DEBUG] Error sending summary message:', messageError);
+            }
+          }
+        }
+        
+        if (failedFiles.length > 0) {
+          const errorMessage = `❌ Failed to upload ${failedFiles.length} document(s):\n\n${failedFiles.join('\n')}\n\nPlease try uploading these files again.`;
+          if (handleSendMessage) {
+            try {
+              handleSendMessage(errorMessage);
+            } catch (messageError) {
+              console.error('🚨 [UPLOAD DEBUG] Error sending error message:', messageError);
+            }
           }
         }
       };
@@ -609,7 +648,7 @@ export function EnhancedChatInterface({
     const safetyTimeout = setTimeout(() => {
       console.log('🚨 [UPLOAD DEBUG] Safety timeout triggered - resetting upload state');
       setIsUploading(false);
-    }, 10000); // Reduced to 10 second timeout
+    }, 120000); // Increased to 2 minutes for very large documents (200+ pages)
     
     try {
       console.log('🚨 [UPLOAD DEBUG] Processing file:', file.name);
@@ -622,44 +661,56 @@ export function EnhancedChatInterface({
         throw new Error('Invalid file selected');
       }
       
-      // Check file size (limit to 20MB)
-      if (fileSize > 20 * 1024 * 1024) {
-        throw new Error('File size too large. Please select a file smaller than 20MB.');
+      // Check file size (limit to 200MB for large legal documents)
+      if (fileSize > 200 * 1024 * 1024) {
+        throw new Error('File size too large. Please select a file smaller than 200MB.');
       }
       
-      // Check file type
-      const allowedTypes = ['pdf', 'docx', 'txt'];
+      // Check file type - expanded for legal documents
+      const allowedTypes = [
+        'pdf', 'docx', 'txt', 'doc', 'rtf', 'odt', // Documents
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', // Images
+        'mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', // Videos
+        'mp3', 'wav', 'm4a', 'aac', 'ogg', // Audio
+        'csv', 'xlsx', 'xls', 'ppt', 'pptx', // Data files
+        'zip', 'rar', '7z' // Archives
+      ];
       if (!allowedTypes.includes(ext || '')) {
-        throw new Error('Unsupported file type. Please upload PDF, DOCX, or TXT files only.');
+        throw new Error(`Unsupported file type: ${ext}. Supported types: PDF, DOCX, TXT, DOC, RTF, ODT, JPG, PNG, MP4, MP3, CSV, XLSX, PPT, ZIP, and more.`);
       }
       
       console.log('🚨 [UPLOAD DEBUG] File validation passed');
       
-      // Extract text content from the file
-      let documentText = '';
+      // Extract text content from the file using enhanced legal document extractor
+      let documentData;
       try {
-        // Use the new extractText function
-        const { extractText } = await import('@/utils/extractText');
-        documentText = await extractText(file);
-        console.log('🚨 [UPLOAD DEBUG] File text extracted, length:', documentText.length);
+        // Use the new legal document extractor
+        const { extractLegalDocumentText } = await import('@/utils/legalDocumentExtractor');
+        documentData = await extractLegalDocumentText(file);
+        console.log('🚨 [UPLOAD DEBUG] Legal document extracted, length:', documentData.content.length, 'pages:', documentData.pageCount);
       } catch (textError) {
-        console.error('🚨 [UPLOAD DEBUG] Error extracting text:', textError);
-        documentText = `File: ${file.name}\n\nError extracting text content. File type: ${ext?.toUpperCase()}, Size: ${(fileSize / 1024).toFixed(1)}KB`;
-      }
-      
-      // Create document data with extracted text
-      const documentId = uuidv4();
-      const documentData = {
-        id: documentId,
+        console.error('🚨 [UPLOAD DEBUG] Error extracting legal document:', textError);
+        // Fallback to basic extraction
+        const { extractText } = await import('@/utils/extractText');
+        const documentText = await extractText(file);
+        documentData = {
+          id: uuidv4(),
         filename: file.name,
         fileType: ext,
         fileSize: fileSize,
         uploadTime: new Date().toISOString(),
         status: 'uploaded',
         content: documentText,
-        parsedText: documentText,
-        documentNumber: 0 // Will be set when added to array
-      };
+          parsedText: documentText,
+          documentNumber: 0,
+          pageCount: Math.ceil(documentText.length / 2000),
+          documentType: 'text' as const,
+          extractedMetadata: {}
+        };
+      }
+      
+      // Set document number when added to array
+      documentData.documentNumber = 0; // Will be set when added to array
 
       // Store in localStorage
       if (typeof window !== 'undefined') {
@@ -680,12 +731,12 @@ export function EnhancedChatInterface({
           localStorage.setItem("uploaded_file_name", file.name);
           localStorage.setItem("uploaded_file_type", ext || 'unknown');
           localStorage.setItem("uploaded_file_size", fileSize.toString());
-          localStorage.setItem("uploaded_parsed_text", documentText);
-          localStorage.setItem("uploaded_text", documentText);
+          localStorage.setItem("uploaded_parsed_text", documentData.content);
+          localStorage.setItem("uploaded_text", documentData.content);
           
           // Use the new centralized function
           const { saveUploadedParsedText } = await import('@/lib/uploadedDoc');
-          saveUploadedParsedText(documentText);
+          saveUploadedParsedText(documentData.content);
           
           console.log('🚨 [UPLOAD DEBUG] File data stored in localStorage');
         } catch (storageError) {
@@ -697,7 +748,7 @@ export function EnhancedChatInterface({
       // Call the parent's document upload handler if available
       if (onDocumentUpload) {
         try {
-          const fileInfo = `File: ${file.name} (${ext?.toUpperCase()}, ${(fileSize / 1024).toFixed(1)}KB)\n\nDocument Content:\n${documentText.substring(0, 500)}${documentText.length > 500 ? '...' : ''}`;
+          const fileInfo = `File: ${file.name} (${ext?.toUpperCase()}, ${(fileSize / 1024).toFixed(1)}KB, ${documentData.pageCount || 1} pages)\n\nDocument Content:\n${documentData.content.substring(0, 500)}${documentData.content.length > 500 ? '...' : ''}`;
           onDocumentUpload(fileInfo, file.name);
           console.log('🚨 [UPLOAD DEBUG] Parent document upload handler called with content');
         } catch (parentError) {
@@ -707,18 +758,6 @@ export function EnhancedChatInterface({
       }
 
       console.log('🚨 [UPLOAD DEBUG] File processing completed successfully');
-      
-      // Send success message
-      const successMessage = `✅ Document uploaded successfully: ${file.name}\n\nI've extracted the text content from your document and can now analyze it. I can:\n• Explain the document's legal implications\n• Answer questions about specific sections\n• Identify important deadlines or requirements\n• Help you understand your rights and options\n• Reference this document by name or as "Document ${documentData.documentNumber}"\n\nWhat would you like me to help you with regarding this document?`;
-      if (handleSendMessage) {
-        try {
-          handleSendMessage(successMessage);
-          console.log('🚨 [UPLOAD DEBUG] Success message sent');
-        } catch (messageError) {
-          console.error('🚨 [UPLOAD DEBUG] Error sending success message:', messageError);
-          // Don't fail the upload if message sending fails
-        }
-      }
       
     } catch (error) {
       console.error('🚨 [UPLOAD DEBUG] Error processing file:', error);
@@ -881,7 +920,7 @@ export function EnhancedChatInterface({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            accept=".pdf,.docx,.txt,.doc,.rtf,.odt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar,.7z,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*,video/*,audio/*"
             onChange={handleFileInputChange}
             style={{ display: 'none' }}
             multiple

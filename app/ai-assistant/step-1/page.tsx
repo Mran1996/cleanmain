@@ -269,8 +269,27 @@ Key rules:
     }
     
     console.log("🚀 Generate Document button clicked!");
-    console.log("📊 Current chat history:", chatHistory);
+    console.log("📊 Current chat history from context:", chatHistory);
     
+    // Try to load chat history from localStorage as fallback
+    let finalChatHistory = chatHistory;
+    if (typeof window !== 'undefined' && chatHistory.length < 2) {
+      try {
+        const storedHistory = localStorage.getItem('step1_chat_history');
+        if (storedHistory) {
+          const parsedHistory = JSON.parse(storedHistory);
+          console.log("📊 Loaded chat history from localStorage:", parsedHistory.length, "messages");
+          finalChatHistory = parsedHistory;
+        }
+      } catch (error) {
+          console.error("❌ Error loading chat history from localStorage:", error);
+        }
+    }
+    
+    console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
+    
+    // Show immediate feedback
+    toast.info("Starting document generation...");
     setIsProcessing(true);
     
     try {
@@ -290,32 +309,50 @@ Key rules:
         opposingParty: localStorage.getItem("opposingParty"),
         courtName: localStorage.getItem("courtName"),
         includeCaseLaw: localStorage.getItem("includeCaseLaw") === "true",
-        chatHistory: chatHistory.map(msg => ({
+        chatHistory: finalChatHistory.map(msg => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text
         }))
       };
 
       // Validate that we have meaningful chat history
-      if (chatHistory.length < 2) {
+      if (finalChatHistory.length < 2) {
+        console.error("❌ Insufficient chat history:", finalChatHistory.length, "messages");
         throw new Error("Please have a conversation with the AI assistant first to gather your case information.");
       }
 
+      console.log("📊 Chat history validation passed:", {
+        messageCount: finalChatHistory.length,
+        messages: finalChatHistory.map(msg => ({ sender: msg.sender, textLength: msg.text.length }))
+      });
+
       console.log("📤 Sending request to API with data:", genState);
       console.log("📊 Chat history details:", {
-        length: chatHistory.length,
-        messages: chatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
+        length: finalChatHistory.length,
+        messages: finalChatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
       });
+
+      // Add timeout for large documents
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(genState),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
       console.log("📥 API response status:", response.status);
 
-      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ API Error:", errorText);
+        throw new Error(`API Error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
       console.log("📥 API response data:", data);
       
       if (!response.ok || data?.success === false) {
@@ -382,26 +419,42 @@ Key rules:
           legalCategory="criminal"
         />
 
-        {/* Generate Document Button */}
-        <div className="mt-6 flex justify-center">
-          <Button
-              onClick={handleGenerateDocument}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white w-full md:w-auto"
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating Document...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Generate Document and Case Analysis
-              </>
-            )}
-          </Button>
+        {/* Generate Document Button - Only show if we have chat history */}
+        {chatHistory.length >= 2 && (
+          <div className="mt-6 flex justify-center">
+            <Button
+                onClick={() => {
+                  console.log("🔘 Generate Document button clicked!");
+                  console.log("📊 Chat history length:", chatHistory.length);
+                  console.log("📊 Is processing:", isProcessing);
+                  handleGenerateDocument();
+                }}
+                title={`Generate document from ${chatHistory.length} chat messages`}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white w-full md:w-auto"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Document...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Document and Case Analysis
+                </>
+              )}
+            </Button>
           </div>
+        )}
+        
+        {/* Show message if no chat history */}
+        {chatHistory.length < 2 && (
+          <div className="mt-6 text-center text-gray-500">
+            <p>Please have a conversation with the AI assistant first to generate a document.</p>
+            <p className="text-sm">Current messages: {chatHistory.length}</p>
+          </div>
+        )}
         </div>
       </div>
       

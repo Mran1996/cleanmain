@@ -38,12 +38,15 @@ const FEATURE_HIGHLIGHTS = [
 
 export function HeroSection() {
   return (
-    <section className="bg-emerald-500 text-white py-12 sm:py-16 md:py-20">
+    <section className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white py-12 sm:py-16 md:py-20">
       <div className="container mx-auto px-4">
         <div className="text-center">
-          {/* Logo */}
+          {/* Logo - enlarged per request */}
           <div className="flex justify-center mb-6">
-            <Logo size="lg" variant="white" className="scale-125" />
+            <div className="relative">
+              <Logo size="xxl" variant="white" className="drop-shadow-2xl" />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 rounded-full blur-xl"></div>
+            </div>
           </div>
           
           {/* Main headline */}

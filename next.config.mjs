@@ -9,6 +9,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Increase API body size limit for large documents (200+ pages)
+  experimental: {
+    serverComponentsExternalPackages: ['canvas', 'pdfjs-dist', 'pdf-parse', 'mammoth'],
+  },
+  // API route configuration for large documents
+  api: {
+    bodyParser: {
+      sizeLimit: '200mb', // Allow up to 200MB for large legal documents
+    },
+  },
   // Move serverComponentsExternalPackages to the correct location
   serverExternalPackages: ['canvas', 'pdfjs-dist', 'pdf-parse', 'mammoth'],
   webpack: (config, { isServer, webpack }) => {

@@ -66,7 +66,7 @@ export function Navigation() {
       <div className="container mx-auto px-4 py-4 flex flex-col gap-y-2 md:flex-row md:items-center md:justify-between">
         {/* Logo and mobile menu trigger */}
         <div className="flex items-center justify-between w-full md:w-auto">
-          <Logo size="md" />
+          <Logo size="lg" variant="soft" />
           
           {/* Mobile menu sheet */}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>

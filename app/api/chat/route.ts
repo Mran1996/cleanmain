@@ -3,6 +3,16 @@ import { NextResponse } from "next/server";
 
 export const runtime = "edge";
 
+// Configure for large documents (200+ pages)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '200mb', // Allow up to 200MB for large legal documents
+    },
+  },
+  maxDuration: 300, // 5 minutes for very large documents
+};
+
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 }) : null;
@@ -38,6 +48,15 @@ Ask one smart question at a time. Be calm, clear, and professional.
 You have access to the following uploaded legal documents:
 
 ${formattedDocumentContext}
+
+CRITICAL DOCUMENT SIZE AWARENESS:
+- Analyze the document size and scope before responding
+- For large documents (10+ pages): Provide comprehensive, detailed analysis
+- For medium documents (5-10 pages): Provide thorough analysis covering all sections
+- For small documents (1-4 pages): Provide complete analysis of all content
+- NEVER give brief, superficial responses for large documents
+- Your response depth should match the document's complexity and scope
+- Large documents require extensive analysis that reflects their full content
 
 Use this document content to answer questions and provide guidance. Reference specific details from these documents when responding. You can reference specific documents by their number (Document 1, Document 2, etc.) or by filename.`;
     }

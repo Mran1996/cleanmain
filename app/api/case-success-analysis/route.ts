@@ -63,8 +63,8 @@ export async function POST(req: Request) {
       // ✅ Generate blank analysis when no document was created
       const blankAnalysis = {
         successRate: 0,
-        title: `${userInfo?.firstName || 'Plaintiff'} v. ${caseInfo?.opposingParty || 'Defendant'}`,
-        jurisdiction: `${courtName || 'Court'}, ${state || 'State'}`,
+        title: (userInfo?.firstName || 'Plaintiff') + ' v. ' + (caseInfo?.opposingParty || 'Defendant'),
+        jurisdiction: (courtName || 'Court') + ', ' + (state || 'State'),
         caseType: legalCategory || "Legal Matter",
         primaryIssues: ["Document not generated - insufficient information provided"],
         statutes: ["No statutes analyzed - document not available"],
@@ -106,49 +106,40 @@ export async function POST(req: Request) {
     const relevantCaseLaw = await getCaseLaw(state, legalCategory);
 
     // Construct a detailed prompt for case analysis
-    const prompt = `As an expert legal analyst, provide a comprehensive case success analysis. Use the following information:
-
-Document Content:
-${documentText}
-
-Case Information:
-- Category: ${legalCategory}
-- State: ${state}
-- Court: ${courtName}
-- Case Number: ${caseNumber}
-- Legal Issue: ${caseInfo?.legalIssue || 'Not specified'}
-- Desired Outcome: ${caseInfo?.desiredOutcome || 'Not specified'}
-- Opposing Party: ${caseInfo?.opposingParty || 'Not specified'}
-
-Relevant Case Law:
-${relevantCaseLaw}
-
-Analyze the document content and provide a structured analysis. Return ONLY a JSON object with these exact fields:
-
-{
-  "successRate": number (0-100),
-  "title": "Case Title",
-  "jurisdiction": "Court/Jurisdiction",
-  "caseType": "Type of Case",
-  "primaryIssues": ["issue1", "issue2", "issue3"],
-  "statutes": ["statute1", "statute2"],
-  "outcomeEstimate": "Detailed outcome prediction",
-  "strengths": ["strength1", "strength2", "strength3"],
-  "weaknesses": ["weakness1", "weakness2", "weakness3"],
-  "timeline": "Estimated timeline",
-  "actionPlan": "Recommended next steps",
-  "riskStrategy": "Risk mitigation strategies"
-}
-
-Base your analysis on:
-1. Document content quality and completeness
-2. Alignment with relevant statutes
-3. Strength of evidence presented
-4. Jurisdiction-specific factors
-5. Similar case outcomes
-6. Potential challenges and counterarguments
-
-Provide realistic, data-driven assessments.`;
+    const prompt = "As an expert legal analyst, provide a comprehensive case success analysis. Use the following information:\n\n" +
+      "Document Content:\n" + documentText + "\n\n" +
+      "Case Information:\n" +
+      "- Category: " + legalCategory + "\n" +
+      "- State: " + state + "\n" +
+      "- Court: " + courtName + "\n" +
+      "- Case Number: " + caseNumber + "\n" +
+      "- Legal Issue: " + (caseInfo?.legalIssue || 'Not specified') + "\n" +
+      "- Desired Outcome: " + (caseInfo?.desiredOutcome || 'Not specified') + "\n" +
+      "- Opposing Party: " + (caseInfo?.opposingParty || 'Not specified') + "\n\n" +
+      "Relevant Case Law:\n" + relevantCaseLaw + "\n\n" +
+      "Analyze the document content and provide a structured analysis. Return ONLY a JSON object with these exact fields:\n\n" +
+      "{\n" +
+      "  \"successRate\": number (0-100),\n" +
+      "  \"title\": \"Case Title\",\n" +
+      "  \"jurisdiction\": \"Court/Jurisdiction\",\n" +
+      "  \"caseType\": \"Type of Case\",\n" +
+      "  \"primaryIssues\": [\"issue1\", \"issue2\", \"issue3\"],\n" +
+      "  \"statutes\": [\"statute1\", \"statute2\"],\n" +
+      "  \"outcomeEstimate\": \"Detailed outcome prediction\",\n" +
+      "  \"strengths\": [\"strength1\", \"strength2\", \"strength3\"],\n" +
+      "  \"weaknesses\": [\"weakness1\", \"weakness2\", \"weakness3\"],\n" +
+      "  \"timeline\": \"Estimated timeline\",\n" +
+      "  \"actionPlan\": \"Recommended next steps\",\n" +
+      "  \"riskStrategy\": \"Risk mitigation strategies\"\n" +
+      "}\n\n" +
+      "Base your analysis on:\n" +
+      "1. Document content quality and completeness\n" +
+      "2. Alignment with relevant statutes\n" +
+      "3. Strength of evidence presented\n" +
+      "4. Jurisdiction-specific factors\n" +
+      "5. Similar case outcomes\n" +
+      "6. Potential challenges and counterarguments\n\n" +
+      "Provide realistic, data-driven assessments.";
 
     // Generate analysis using OpenAI
     
@@ -159,10 +150,10 @@ Provide realistic, data-driven assessments.`;
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
         body: JSON.stringify({
           model: 'kimi-k2-0905-preview',
-          messages: [
-            {
+      messages: [
+        {
               role: 'system',
-              content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
+          content: `You are an expert legal analyst with deep knowledge of case law and legal strategy. Provide detailed, practical analysis with specific citations and recommendations. Return only valid JSON.
 
 📏 LENGTH ENFORCEMENT
 - For uploadedPages ≈ 30–40, produce MINIMUM 8 pages of analysis (target 8–15 pages).
@@ -181,7 +172,7 @@ Tie every key factual assertion to a record cite (PDF p. __ / Ex. __ / CT __ / E
 
 🎯 ADVOCACY APPROACH
 Do not adopt adverse characterizations. Reframe facts for the movant. Avoid praising the trial court or "affirming."`
-            },
+        },
             { role: 'user', content: prompt }
           ],
           temperature: 0.3
@@ -232,8 +223,8 @@ Do not adopt adverse characterizations. Reframe facts for the movant. Avoid prai
       
       structuredAnalysis = {
         successRate: 50,
-        title: plaintiffName + ' v. ' + defendantName,
-        jurisdiction: jurisdictionText,
+        title: (userInfo?.firstName || 'Plaintiff') + ' v. ' + (caseInfo?.opposingParty || 'Defendant'),
+        jurisdiction: (courtName || 'Court') + ', ' + (state || 'State'),
         caseType: legalCategory || "Legal Matter",
         primaryIssues: ["Document analysis required", "Evidence review needed"],
         statutes: ["Relevant statutes to be determined"],

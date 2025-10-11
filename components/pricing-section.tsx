@@ -7,38 +7,83 @@ import { PRODUCTS } from "@/lib/stripe-config";
 export function PricingSection() {
   return (
     <section className="bg-gray-50 py-16">
-      <div className="container mx-auto px-4 flex justify-center">
-        <Card className="max-w-md mx-auto border-green-500 border shadow-md">
-          <CardHeader className="text-center space-y-2">
-            <div className="text-2xl font-semibold">AI Legal Premium — $179/month</div>
-            <div className="text-3xl font-bold text-green-600">$179</div>
-            <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
-          </CardHeader>
-          <CardContent className="space-y-3 px-6 pb-6">
-            <ul className="space-y-2 text-sm text-left text-gray-700">
-              <li>✅ Unlimited legal documents (up to 150 pages each)</li>
-              <li>✅ Unlimited AI-powered revisions — update anytime</li>
-              <li>✅ Detailed legal response built around your facts</li>
-              <li>✅ Real case law embedded to strengthen your draft</li>
-              <li>✅ Case Success Analysis — legal strategy + projection</li>
-              <li>✅ Delivered in PDF + DOCX formats</li>
-              <li>✅ Email + Phone Support for platform and AI help</li>
-            </ul>
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Legal Solution</h1>
+          <p className="text-xl text-gray-600">Select the option that best fits your needs</p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          {/* Full Service Card */}
+          <Card className="max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <span className="bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                MOST POPULAR
+              </span>
+            </div>
+            <CardHeader className="text-center space-y-2 pt-8">
+              <div className="text-2xl font-semibold">Full Service Legal Support</div>
+              <div className="text-4xl font-bold text-emerald-600">$479</div>
+              <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
+            </CardHeader>
+            <CardContent className="space-y-3 px-6 pb-6">
+              <ul className="space-y-2 text-sm text-left text-gray-700">
+                <li>✅ Complete legal document drafting (up to 150 pages)</li>
+                <li>✅ AI + human review for accuracy and formatting</li>
+                <li>✅ State-specific case law research included</li>
+                <li>✅ Up to 3 free revisions within 14 days</li>
+                <li>✅ Email or physical mail delivery</li>
+                <li>✅ 7 business day turnaround</li>
+                <li>✅ Professional legal team support</li>
+              </ul>
 
-            <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
-              <p className="mb-2">🧠 <strong>We're not a law firm</strong> — we're faster, always available, and built to get you results.</p>
-              <p className="mb-2">📄 You'll receive a full legal draft with citations, ready to review, edit, and file on your terms.</p>
-              <p className="text-green-600 font-semibold pt-2">🟢 Best for post-conviction relief, criminal motions, civil filings, and people fighting without a lawyer.</p>
-          </div>
+              <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
+                <p className="mb-2">🎯 <strong>Perfect for complex cases</strong> — we gather all documents and handle the entire process.</p>
+                <p className="mb-2">⚖️ <strong>Court-ready documents</strong> with professional formatting and legal citations.</p>
+                <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
+              </div>
 
-            <StripeCheckoutButton 
-              plan={PRODUCTS.COURT_READY}
-              className="w-full mt-4 text-white bg-green-600 hover:bg-green-700"
-            >
-              Purchase Now
-            </StripeCheckoutButton>
-          </CardContent>
-        </Card>
+              <Link href="/learn-more">
+                <Button className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700">
+                  Learn More About Full Service
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* AI Legal Premium Card */}
+          <Card className="max-w-md mx-auto border-green-500 border shadow-md">
+            <CardHeader className="text-center space-y-2">
+              <div className="text-2xl font-semibold">AI Legal Premium — $179/month</div>
+              <div className="text-3xl font-bold text-green-600">$179</div>
+              <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
+            </CardHeader>
+            <CardContent className="space-y-3 px-6 pb-6">
+              <ul className="space-y-2 text-sm text-left text-gray-700">
+                <li>✅ Unlimited legal documents (up to 150 pages each)</li>
+                <li>✅ Unlimited AI-powered revisions — update anytime</li>
+                <li>✅ Detailed legal response built around your facts</li>
+                <li>✅ Real case law embedded to strengthen your draft</li>
+                <li>✅ Case Success Analysis — legal strategy + projection</li>
+                <li>✅ Delivered in PDF + DOCX formats</li>
+                <li>✅ Email + Phone Support for platform and AI help</li>
+              </ul>
+
+              <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
+                <p className="mb-2">🧠 <strong>We're not a law firm</strong> — we're faster, always available, and built to get you results.</p>
+                <p className="mb-2">📄 You'll receive a full legal draft with citations, ready to review, edit, and file on your terms.</p>
+                <p className="text-green-600 font-semibold pt-2">🟢 Best for post-conviction relief, criminal motions, civil filings, and people fighting without a lawyer.</p>
+              </div>
+
+              <StripeCheckoutButton 
+                plan={PRODUCTS.COURT_READY}
+                className="w-full mt-4 text-white bg-green-600 hover:bg-green-700"
+              >
+                Purchase Now
+              </StripeCheckoutButton>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </section>
   )

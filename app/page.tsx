@@ -15,6 +15,7 @@
  */
 
 import { Navigation } from "@/components/navigation"
+import { ServiceBanner } from "@/components/service-banner"
 import { HeroSection } from "@/components/hero-section"
 import { HowItWorks } from "@/components/how-it-works"
 import { KeyFeatures } from "@/components/key-features"
@@ -27,6 +28,9 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-white">
       {/* Main navigation header */}
       <Navigation />
+      
+      {/* Service banner */}
+      <ServiceBanner />
       
       {/* Main content area with responsive padding and max width */}
       <main className="flex-grow w-full max-w-screen-sm mx-auto p-4 md:p-8 flex flex-col gap-y-8">
