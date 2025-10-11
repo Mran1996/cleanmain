@@ -23,10 +23,6 @@ export function PremiumFeatureCard({
           <div className="mb-6">
             <Logo size="lg" />
           </div>
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CreditCard className="h-8 w-8 text-emerald-600" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">{title}</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-6">
           <p className="text-gray-600 text-lg leading-relaxed">
