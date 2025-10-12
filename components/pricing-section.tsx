@@ -43,7 +43,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                   <li>✅ Up to 3 free revisions within 14 days</li>
                   <li>✅ Email or physical mail delivery</li>
                   <li>✅ 7 business day turnaround</li>
-                  <li>✅ Professional legal team support</li>
+                  <li>✅ Professional legal document support</li>
                 </ul>
 
                 <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
