@@ -31,7 +31,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                 </span>
               </div>
               <CardHeader className="text-center space-y-3 pt-12">
-                <div className="text-2xl font-bold text-gray-900">Full Service Legal Support</div>
+                <div className="text-2xl font-bold text-gray-900">🏆 Full Service Legal Support</div>
                 <div className="text-4xl font-bold text-emerald-600">$479</div>
                 <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
               </CardHeader>
@@ -65,8 +65,9 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           {/* AI Legal Premium Card */}
           <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg">
             <CardHeader className="text-center space-y-3 pt-6">
-              <div className="text-2xl font-bold text-gray-900">AI Legal Premium — $179/month</div>
+              <div className="text-2xl font-bold text-gray-900">📚 AI Legal Premium</div>
               <div className="text-4xl font-bold text-green-600">$179</div>
+              <div className="text-sm text-gray-500 font-medium">$179 monthly cancel anytime</div>
               <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
             </CardHeader>
             <CardContent className="space-y-3 px-6 pb-6">

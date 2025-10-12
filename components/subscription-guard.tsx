@@ -131,7 +131,7 @@ export function SubscriptionGuard({
       <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
         <Card className="w-full max-w-md shadow-lg border-0">
           <CardHeader className="text-center pb-4">
-            <div className="mb-2">
+            <div className="mb-0">
               <Logo size="lg" />
             </div>
             <CardTitle className="text-2xl font-bold text-gray-900">Login Required</CardTitle>
