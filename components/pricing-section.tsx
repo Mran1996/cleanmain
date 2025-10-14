@@ -21,10 +21,10 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           )}
         </div>
         
-        <div className={`grid grid-cols-1 ${isHomePage ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4`}>
+        <div className={`grid grid-cols-1 ${isHomePage ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0 md:-space-x-4'} max-w-6xl mx-auto px-4 ${!isHomePage ? 'items-stretch' : ''}`}>
           {/* Full Service Card - Only show on pricing page */}
           {!isHomePage && (
-            <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0">
+            <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative mb-8 md:mb-0 flex flex-col">
               <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
                 <span className="bg-emerald-500 text-white px-8 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
                   MOST POPULAR
@@ -35,7 +35,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                 <div className="text-4xl font-bold text-emerald-600">$479</div>
                 <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
               </CardHeader>
-              <CardContent className="space-y-3 px-6 pb-6">
+              <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
                 <ul className="space-y-2 text-sm text-left text-gray-700">
                   <li>✅ Complete legal document drafting (up to 150 pages)</li>
                   <li>✅ AI + human review for accuracy and formatting</li>
@@ -52,6 +52,12 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                   <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
                 </div>
 
+                <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
+                  <p className="text-center font-semibold">🧠 We're not a law firm — we're faster, always available, and built to get you results.</p>
+                </div>
+
+                <div className="flex-grow"></div>
+
                 <StripeCheckoutButton 
                   plan={PRODUCTS.FULL_SERVICE}
                   className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700"
@@ -63,14 +69,14 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           )}
 
           {/* AI Legal Premium Card */}
-          <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg">
+          <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg flex flex-col">
             <CardHeader className="text-center space-y-3 pt-6">
               <div className="text-2xl font-bold text-gray-900">📚 AI Legal Pro</div>
               <div className="text-4xl font-bold text-green-600">$179</div>
               <div className="text-sm text-gray-500 font-medium">$179 monthly cancel anytime</div>
               <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
             </CardHeader>
-            <CardContent className="space-y-3 px-6 pb-6">
+            <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
               <ul className="space-y-2 text-sm text-left text-gray-700">
                 <li>✅ Unlimited legal documents (up to 150 pages each)</li>
                 <li>✅ Unlimited AI-powered revisions — update anytime</li>
@@ -86,6 +92,8 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                 <p className="mb-2">📄 You'll receive a full legal draft with citations, ready to review, edit, and file on your terms.</p>
                 <p className="text-green-600 font-semibold pt-2">🟢 Best for post-conviction relief, criminal motions, civil filings, and people fighting without a lawyer.</p>
               </div>
+
+              <div className="flex-grow"></div>
 
               <StripeCheckoutButton 
                 plan={PRODUCTS.COURT_READY}

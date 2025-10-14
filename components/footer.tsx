@@ -22,6 +22,7 @@ import {
   Facebook,
   Youtube,
   Mail,
+  Star,
 } from "lucide-react";
 
 // Footer link configurations
@@ -96,11 +97,21 @@ export default function Footer() {
           <h3 className="font-bold mb-2">SUPPORT</h3>
           <a 
             href={`mailto:${SUPPORT_EMAIL}`} 
-            className="flex items-center gap-2 hover:underline"
+            className="flex items-center gap-2 hover:underline mb-2"
             aria-label={`Send email to ${SUPPORT_EMAIL}`}
           >
             <Mail className="w-4 h-4" /> 
             {SUPPORT_EMAIL}
+          </a>
+          <a 
+            href="https://g.page/r/CZFB3qxa_b-gEBM/review" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:underline"
+            aria-label="Leave us a review on Google"
+          >
+            <Star className="w-4 h-4 text-yellow-500" /> 
+            Leave a Review
           </a>
         </div>
         

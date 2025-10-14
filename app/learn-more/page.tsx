@@ -188,7 +188,7 @@ export default function LearnMorePage() {
                 <ul className="list-disc ml-5 space-y-2">
                   <li>Maximum document length: <strong>150</strong> pages (including exhibits).</li>
                   <li>Applies to one active case or legal issue only.</li>
-                  <li>Each additional case or filing: <strong className="text-green-600">$499 per order</strong>.</li>
+                  <li>Each additional case or filing: <strong className="text-green-600">$479 per order</strong>.</li>
                   <li>Extra revisions beyond 3: <strong className="text-green-600">$99 each</strong>.</li>
                 </ul>
                 <div className="mt-6 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
