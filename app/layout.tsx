@@ -30,6 +30,7 @@ interface RootLayoutProps {
   children: ReactNode;
 }
 
+
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="min-h-screen bg-white text-sm md:text-base">
