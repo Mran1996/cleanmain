@@ -96,13 +96,13 @@ ${includeCaseLaw ? `Relevant Case Law:\n${caseLaw}` : ''}
 
 Generate a complete legal document in HTML format using the provided CSS classes. Ensure proper formatting and spacing for court filing.`;
 
-    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
     let response: any;
     if (useKimi) {
       // Non-streaming from Kimi; we will stream the full content as one event
       const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
         body: JSON.stringify({
           model: 'kimi-k2-0905-preview',
           messages: [ { role: 'system', content: fullPrompt } ],

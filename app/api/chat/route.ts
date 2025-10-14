@@ -78,13 +78,13 @@ Use this information to provide more accurate and contextual responses.`;
 
     let final: string | undefined;
 
-    if (process.env.MOONSHOT_API_KEY) {
+    if (process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY) {
       // Use Kimi (Moonshot)
       const r = await fetch("https://api.moonshot.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}`,
+          Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}`,
         },
         body: JSON.stringify({
           model: "kimi-k2-0905-preview",

@@ -18,7 +18,7 @@ ${testDocumentText}
 When the user asks about the document, explain it clearly and reference specific details from the content above. Be helpful, clear, and professional.`;
 
     // Initialize OpenAI
-    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
     const openai = !useKimi && process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
     // Test with a simple question
@@ -31,7 +31,7 @@ When the user asks about the document, explain it clearly and reference specific
     if (useKimi) {
       const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
         body: JSON.stringify({ model: 'kimi-k2-0905-preview', messages: messagesForOpenAI, temperature: 0.7 })
       });
       if (!r.ok) {

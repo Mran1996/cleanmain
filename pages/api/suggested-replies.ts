@@ -38,11 +38,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const selectedCategory = category || "General";
   
-  // Check for API key
+  // Check for API keys
   const apiKey = process.env.OPENAI_API_KEY;
+  const kimiKey = process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
 
   try {
-    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const useKimi = !!kimiKey;
     const openai = apiKey && !useKimi ? new OpenAI({ apiKey }) : null;
     const systemPrompt = `You are an AI legal assistant conducting a comprehensive attorney-client interview for a ${selectedCategory} issue. 
 
@@ -80,16 +81,30 @@ Suggestions should feel natural, conversational, and guide the legal discussion 
 
     let completion: any;
     if (useKimi) {
-      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
-        body: JSON.stringify({ model: 'kimi-k2-0905-preview', messages: messages_for_completion, temperature: 0.5 })
-      });
-      if (!r.ok) {
-        const text = await r.text();
-        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+      const maxAttempts = 3;
+      const baseDelayMs = 1000;
+      let lastError: any = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${kimiKey}` },
+          body: JSON.stringify({ model: 'kimi-k2-0905-preview', messages: messages_for_completion, temperature: 0.5 })
+        });
+        if (r.ok) {
+          completion = await r.json();
+          break;
+        }
+        lastError = await r.text();
+        if ([429, 500, 502, 503, 504].includes(r.status) && attempt < maxAttempts) {
+          const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+        throw new Error(`Kimi API error: ${r.status} - ${lastError}`);
       }
-      completion = await r.json();
+      if (!completion) {
+        throw new Error(`Kimi API error: ${lastError || 'Unknown error'}`);
+      }
     } else if (openai) {
       completion = await openai.chat.completions.create({
         model: "gpt-4",

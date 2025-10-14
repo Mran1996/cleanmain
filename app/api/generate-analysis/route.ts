@@ -25,11 +25,11 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("Attempting to generate analysis...");
-    console.log("Using AI provider:", process.env.MOONSHOT_API_KEY ? "Kimi" : (process.env.OPENAI_API_KEY ? "OpenAI" : "None"));
+    console.log("Using AI provider:", (process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY) ? "Kimi" : (process.env.OPENAI_API_KEY ? "OpenAI" : "None"));
 
     // OPTIONAL: Add SHA256 hash check here for unchanged document (if supported)
 
-    const useKimi = !!process.env.MOONSHOT_API_KEY;
+    const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
     const openai = !useKimi && process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
     const systemPrompt = `
@@ -68,7 +68,7 @@ Respond in JSON.
     if (useKimi) {
       const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
         body: JSON.stringify({
           model: 'kimi-k2-0905-preview',
           temperature: 0.4,

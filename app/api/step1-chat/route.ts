@@ -87,42 +87,67 @@ async function callOpenAI(messages: any[]) {
 }
 
 async function callKimi(messages: any[]) {
-  const apiKey = process.env.MOONSHOT_API_KEY;
+  const apiKey = process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY;
   if (!apiKey) {
     throw new Error("Kimi API key is not configured");
   }
 
-  try {
+  // Simple retry with exponential backoff for overload/429/5xx
+  const maxAttempts = 3;
+  const baseDelayMs = 1500;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    // Increase timeout to 120s to accommodate large doc processing
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-    const r = await fetch("https://api.moonshot.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "kimi-k2-0905-preview",
-        temperature: 0.6,
-        messages
-      }),
-      signal: controller.signal
-    });
+    try {
+      const r = await fetch("https://api.moonshot.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "kimi-k2-0905-preview",
+          temperature: 0.6,
+          messages
+        }),
+        signal: controller.signal
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!r.ok) {
+      if (r.ok) {
+        return await r.json();
+      }
+
+      // Retry on common transient errors
+      if ([429, 500, 502, 503, 504].includes(r.status) && attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise(res => setTimeout(res, delay));
+        continue;
+      }
+
       const errorText = await r.text();
       throw new Error(`Kimi API error: ${r.status} - ${errorText}`);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error?.name === 'AbortError') {
+        if (attempt < maxAttempts) {
+          const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+        throw new Error("Request timed out. Please try again.");
+      }
+      if (attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise(res => setTimeout(res, delay));
+        continue;
+      }
+      throw error;
     }
-
-    return await r.json();
-  } catch (error) {
-    if ((error as any).name === 'AbortError') {
-      throw new Error("Request timed out. Please try again.");
-    }
-    throw error;
   }
 }
 
@@ -247,7 +272,7 @@ export async function POST(req: NextRequest) {
   ];
 
   // Prefer Kimi (Moonshot) if configured, otherwise fall back to OpenAI
-  const completion = process.env.MOONSHOT_API_KEY
+  const completion = (process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY)
     ? await callKimi(fullMessages)
     : await callOpenAI(fullMessages);
 

@@ -36,6 +36,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         {/* Ensure proper responsive behavior across all devices */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="google-site-verification" content="google9718b1219de35b80" />         
       </head>
       <body className="min-h-screen bg-white text-sm md:text-base">
         {/* ClientLayout provides context providers and client-side functionality */}

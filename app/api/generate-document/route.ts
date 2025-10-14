@@ -334,29 +334,57 @@ Generate a complete, professional legal document using ONLY the information prov
 - Use all available information from uploaded documents
 - Write detailed, comprehensive sections that thoroughly address all issues`;
 
-    // Call AI provider to generate the document
+    // Call AI provider to generate the document with retry logic and fallback
     let completion: any;
-    if (process.env.MOONSHOT_API_KEY) {
-      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY}` },
-        body: JSON.stringify({
-          model: 'kimi-k2-0905-preview',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 4096, // Maximum supported by the model
-          // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
-        })
-      });
-      if (!r.ok) {
-        const text = await r.text();
-        throw new Error(`Kimi API error: ${r.status} - ${text}`);
+    const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
+    const useOpenAI = !!process.env.OPENAI_API_KEY;
+    
+    if (useKimi) {
+      const maxAttempts = 3;
+      const baseDelayMs = 2000;
+      let lastError: any = null;
+      let kimiSuccess = false;
+      
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
+          body: JSON.stringify({
+            model: 'kimi-k2-0905-preview',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 4096, // Maximum supported by the model
+            // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
+          })
+        });
+        
+        if (r.ok) {
+          completion = await r.json();
+          kimiSuccess = true;
+          console.log(`✅ [KIMI] Document generation successful on attempt ${attempt}`);
+          break;
+        }
+        
+        lastError = await r.text();
+        if ([429, 500, 502, 503, 504].includes(r.status) && attempt < maxAttempts) {
+          const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          console.log(`🔄 [RETRY] Kimi overload, retrying in ${delay}ms (attempt ${attempt}/${maxAttempts})`);
+          await new Promise(res => setTimeout(res, delay));
+          continue;
+        }
+        
+        // If not a retryable error or final attempt, throw immediately
+        throw new Error(`Kimi API error: ${r.status} - ${lastError}`);
       }
-      completion = await r.json();
-    } else {
+      
+      // If Kimi failed after all retries, throw error
+      if (!kimiSuccess) {
+        throw new Error(`Kimi API error: ${lastError || 'Unknown error'}`);
+      }
+    } else if (useOpenAI) {
       if (!openai) throw new Error('OpenAI not configured');
       completion = await openai.chat.completions.create({
       model: "gpt-4-turbo",

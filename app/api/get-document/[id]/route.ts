@@ -1,50 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = await params;
+    const docId = params.id;
     
+    if (!docId) {
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });
+    }
+
+    // Create Supabase client
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role to bypass RLS for testing
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
         cookies: {
           get(name: string) {
             return cookieStore.get(name)?.value;
           },
-          set(name: string, value: string, options: CookieOptions) {
+          set(name: string, value: string, options: any) {
             cookieStore.set({ name, value, ...options });
           },
-          remove(name: string, options: CookieOptions) {
+          remove(name: string, options: any) {
             cookieStore.set({ name, value: "", ...options });
-          },
-          getAll() {
-            return cookieStore.getAll().map(c => ({ name: c.name, value: c.value }));
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set({ name, value, ...options })
-            );
           },
         },
       }
     );
 
-    const { data, error } = await supabase
-      .from("documents")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-    
-    if (error) throw new Error(error.message);
-    if (!data) throw new Error("Document not found");
-    
-    return NextResponse.json(data);
-  } catch (e: any) {
-    console.error(e);
-    return NextResponse.json({ error: e.message ?? "Failed to get document" }, { status: 500 });
+    // Fetch document from Supabase
+    const { data: document, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', docId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching document:', error);
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    if (!document) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      id: document.id,
+      title: document.title,
+      content: document.content,
+      metadata: document.metadata,
+      created_at: document.created_at
+    });
+
+  } catch (error) {
+    console.error('Error in get-document API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
