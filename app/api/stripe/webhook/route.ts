@@ -4,20 +4,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createSupabase } from '@supabase/supabase-js';
+import { PRODUCTS, PRICE_MAP } from '@/lib/stripe-config';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY environment variable is not set.');
 }
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const supabaseAdmin = createSupabase(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 async function updateUserSubscription(
   customerId: string,
   subscriptionData: Stripe.Subscription
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     console.log('🔄 Processing subscription update for customer:', customerId);
     
     // First try to find user by stripe_customer_id
@@ -160,7 +165,7 @@ async function updateSubscriptionPaymentStatus(
   status: 'paid' | 'failed'
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     
     const { error: updateError } = await supabase
       .from('subscriptions')
@@ -185,7 +190,7 @@ async function saveTransactionData(
   status: 'paid' | 'failed' | 'canceled'
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = supabaseAdmin;
     console.log('💳 Processing transaction for invoice:', invoiceData.id);
     
     // Get user from subscription
@@ -206,6 +211,27 @@ async function saveTransactionData(
         }
 
         // Create transaction without subscription
+        const baseMetadata: any = {
+          invoice_number: invoiceData.number,
+          billing_reason: invoiceData.billing_reason,
+          attempt_count: invoiceData.attempt_count,
+        };
+        // Merge any custom metadata from source
+        if (invoiceData.metadata && typeof invoiceData.metadata === 'object') {
+          baseMetadata.custom = invoiceData.metadata;
+        }
+        // Include simplified line items if provided
+        if (Array.isArray(invoiceData.line_items)) {
+          baseMetadata.line_items = invoiceData.line_items;
+        }
+        // Include session id/plan if provided
+        if (invoiceData.session_id) {
+          baseMetadata.session_id = invoiceData.session_id;
+        }
+        if (invoiceData.plan) {
+          baseMetadata.plan = invoiceData.plan;
+        }
+
         const transactionData = {
           user_id: userData.id,
           stripe_payment_intent_id: invoiceData.payment_intent || null,
@@ -216,12 +242,10 @@ async function saveTransactionData(
           currency: invoiceData.currency || 'usd',
           status: status,
           payment_method: invoiceData.payment_method_types?.[0] || 'card',
-          description: `One-time payment - Invoice ${invoiceData.number || invoiceData.id}`,
-          metadata: {
-            invoice_number: invoiceData.number,
-            billing_reason: invoiceData.billing_reason,
-            attempt_count: invoiceData.attempt_count,
-          },
+          description: invoiceData.description
+            ? `One-time payment - ${invoiceData.description}`
+            : `One-time payment - Invoice ${invoiceData.number || invoiceData.id}`,
+          metadata: baseMetadata,
           transaction_date: invoiceData.status_transitions?.paid_at 
             ? new Date(invoiceData.status_transitions.paid_at * 1000).toISOString()
             : new Date().toISOString(),
@@ -229,14 +253,44 @@ async function saveTransactionData(
 
         console.log('💾 Saving one-time transaction:', transactionData);
 
-        const { error: insertError } = await supabase
-          .from('transactions')
-          .insert(transactionData);
+        // Idempotent upsert: check for existing by invoice or payment_intent
+        let existingId: string | undefined;
+        if (invoiceData.id) {
+          const { data: existingByInvoice } = await supabase
+            .from('transactions')
+            .select('id')
+            .eq('stripe_invoice_id', invoiceData.id)
+            .limit(1);
+          existingId = existingByInvoice?.[0]?.id;
+        }
+        if (!existingId && invoiceData.payment_intent) {
+          const { data: existingByPi } = await supabase
+            .from('transactions')
+            .select('id')
+            .eq('stripe_payment_intent_id', invoiceData.payment_intent)
+            .limit(1);
+          existingId = existingByPi?.[0]?.id;
+        }
 
-        if (insertError) {
-          console.error('❌ Error saving one-time transaction:', insertError);
+        if (existingId) {
+          const { error: updateError } = await supabase
+            .from('transactions')
+            .update(transactionData)
+            .eq('id', existingId);
+          if (updateError) {
+            console.error('❌ Error updating existing one-time transaction:', updateError);
+          } else {
+            console.log('✅ Updated existing one-time transaction');
+          }
         } else {
-          console.log('✅ Successfully saved one-time transaction');
+          const { error: insertError } = await supabase
+            .from('transactions')
+            .insert(transactionData);
+          if (insertError) {
+            console.error('❌ Error saving one-time transaction:', insertError);
+          } else {
+            console.log('✅ Successfully saved one-time transaction');
+          }
         }
         return;
       }
@@ -275,6 +329,16 @@ async function saveTransactionData(
     }
 
     // Prepare transaction data
+    const subBaseMetadata: any = {
+      invoice_number: invoiceData.number,
+      billing_reason: invoiceData.billing_reason,
+      period_start: invoiceData.period_start,
+      period_end: invoiceData.period_end,
+      attempt_count: invoiceData.attempt_count,
+    };
+    if (invoiceData.metadata && typeof invoiceData.metadata === 'object') {
+      subBaseMetadata.custom = invoiceData.metadata;
+    }
     const transactionData = {
       user_id: subscription.user_id,
       stripe_payment_intent_id: invoiceData.payment_intent || null,
@@ -285,14 +349,10 @@ async function saveTransactionData(
       currency: invoiceData.currency || 'usd',
       status: status,
       payment_method: invoiceData.payment_method_types?.[0] || 'card',
-      description: `Invoice ${invoiceData.number || invoiceData.id} - ${status}`,
-      metadata: {
-        invoice_number: invoiceData.number,
-        billing_reason: invoiceData.billing_reason,
-        period_start: invoiceData.period_start,
-        period_end: invoiceData.period_end,
-        attempt_count: invoiceData.attempt_count,
-      },
+      description: invoiceData.description
+        ? `${invoiceData.description} - ${status}`
+        : `Invoice ${invoiceData.number || invoiceData.id} - ${status}`,
+      metadata: subBaseMetadata,
       transaction_date: invoiceData.status_transitions?.paid_at 
         ? new Date(invoiceData.status_transitions.paid_at * 1000).toISOString()
         : new Date().toISOString(),
@@ -305,15 +365,46 @@ async function saveTransactionData(
       status: transactionData.status
     });
 
-    const { error: insertError } = await supabase
-      .from('transactions')
-      .insert(transactionData);
+    // Idempotent upsert: check for existing invoice or payment intent
+    let existingId: string | undefined;
+    if (invoiceData.id) {
+      const { data: existingByInvoice } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('stripe_invoice_id', invoiceData.id)
+        .limit(1);
+      existingId = existingByInvoice?.[0]?.id;
+    }
+    if (!existingId && invoiceData.payment_intent) {
+      const { data: existingByPi } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('stripe_payment_intent_id', invoiceData.payment_intent)
+        .limit(1);
+      existingId = existingByPi?.[0]?.id;
+    }
 
-    if (insertError) {
-      console.error('❌ Error saving subscription transaction:', insertError);
-      console.error('❌ Transaction data that failed:', transactionData);
+    if (existingId) {
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update(transactionData)
+        .eq('id', existingId);
+      if (updateError) {
+        console.error('❌ Error updating existing subscription transaction:', updateError);
+        console.error('❌ Transaction data that failed:', transactionData);
+      } else {
+        console.log(`✅ Updated existing ${status} transaction for invoice:`, invoiceData.id);
+      }
     } else {
-      console.log(`✅ Successfully saved ${status} transaction for invoice:`, invoiceData.id);
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert(transactionData);
+      if (insertError) {
+        console.error('❌ Error saving subscription transaction:', insertError);
+        console.error('❌ Transaction data that failed:', transactionData);
+      } else {
+        console.log(`✅ Successfully saved ${status} transaction for invoice:`, invoiceData.id);
+      }
     }
   } catch (error) {
     console.error('Error in saveTransactionData:', error);
@@ -363,9 +454,11 @@ export async function POST(req: Request) {
         console.log('Checkout session completed:', session.id);
         
         // Update user with Stripe customer ID from the session
-        if (session.customer && session.metadata?.user_id) {
+        const meta = (session.metadata || {}) as any;
+        const userIdFromMeta = meta.user_id || meta.userId;
+        if (session.customer && userIdFromMeta) {
           try {
-            const supabase = await createClient();
+            const supabase = supabaseAdmin;
             
             const { error: updateError } = await supabase
               .from('users')
@@ -373,22 +466,60 @@ export async function POST(req: Request) {
                 stripe_customer_id: session.customer as string,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', session.metadata.user_id);
+              .eq('id', userIdFromMeta);
 
             if (updateError) {
               console.error('Error updating user with customer ID:', updateError);
             } else {
-              console.log(`Successfully linked user ${session.metadata.user_id} to customer ${session.customer}`);
+              console.log(`Successfully linked user ${userIdFromMeta} to customer ${session.customer}`);
             }
           } catch (error) {
             console.error('Error in checkout.session.completed handler:', error);
           }
         }
 
-        // Record one-time payments (Full Service) when mode is payment
+        // Record one-time payments (e.g., Full Service) when mode is payment
         if (session.mode === 'payment' && session.payment_status === 'paid') {
           try {
-            // Build an invoice-like object for saveTransactionData
+            // Retrieve line items for richer transaction metadata
+            let lineItems: Stripe.ApiList<Stripe.LineItem> | null = null;
+            try {
+              lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+                limit: 50,
+                expand: ['data.price']
+              });
+            } catch (liErr) {
+              console.warn('⚠️ Could not retrieve line items for session:', session.id, liErr);
+            }
+
+            const simplifiedItems = (lineItems?.data || []).map((item) => {
+              const priceObj = item.price && typeof item.price === 'object' ? (item.price as Stripe.Price) : null;
+              const priceId = priceObj ? priceObj.id : (typeof item.price === 'string' ? item.price : undefined);
+              const descriptionFromPrice = priceObj?.nickname || (typeof priceObj?.product === 'string' ? priceObj.product : undefined);
+              return {
+                description: item.description || descriptionFromPrice || 'Item',
+                amount_total: item.amount_total || 0,
+                currency: item.currency || session.currency || 'usd',
+                quantity: item.quantity || 1,
+                price_id: priceId,
+              };
+            });
+
+            // Detect purchased product(s) using configured price IDs
+            const purchasedProductNames: string[] = [];
+            for (const sItem of simplifiedItems) {
+              if (sItem.price_id === PRICE_MAP[PRODUCTS.FULL_SERVICE]) {
+                purchasedProductNames.push(PRODUCTS.FULL_SERVICE);
+              } else if (sItem.price_id === PRICE_MAP[PRODUCTS.COURT_READY]) {
+                purchasedProductNames.push(PRODUCTS.COURT_READY);
+              } else if (sItem.price_id === PRICE_MAP[PRODUCTS.CASE_BUILDER]) {
+                purchasedProductNames.push(PRODUCTS.CASE_BUILDER);
+              } else if (sItem.price_id === PRICE_MAP[PRODUCTS.QUICK_LEGAL]) {
+                purchasedProductNames.push(PRODUCTS.QUICK_LEGAL);
+              }
+            }
+
+            // Build an invoice-like object for saveTransactionData with richer metadata
             const invoiceLike: any = {
               id: session.id,
               customer: session.customer,
@@ -402,6 +533,18 @@ export async function POST(req: Request) {
               number: null,
               billing_reason: 'one_time',
               attempt_count: 1,
+              // Prefer human-readable description if we recognize a product
+              description: purchasedProductNames[0] || (session.metadata?.plan || 'One-time payment'),
+              // Attach metadata to help downstream entitlement checks
+              metadata: {
+                session_id: session.id,
+                plan: meta?.plan,
+                user_id: userIdFromMeta,
+                products: purchasedProductNames,
+                price_ids: simplifiedItems.map(i => i.price_id).filter(Boolean),
+              },
+              // Include simplified line items for purchase history
+              line_items: simplifiedItems
             };
 
             await saveTransactionData(invoiceLike, 'paid');

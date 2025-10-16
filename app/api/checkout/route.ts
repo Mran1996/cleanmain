@@ -281,6 +281,16 @@ export async function POST(req: Request) {
     }
 
     // Prepare checkout session configuration
+    // Compute success/cancel URLs based on env or request origin
+    const reqUrl = new URL(req.url);
+    const origin = reqUrl.origin;
+    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+      || process.env.STRIPE_APP_URL?.replace(/\/$/, '') 
+      || origin);
+    const defaultSuccess = `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+    const defaultCancel = `${baseUrl}/payment/cancelled?session_id={CHECKOUT_SESSION_ID}`;
+    const fullServiceSuccess = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       mode: isSubscriptionPlan ? 'subscription' : 'payment',
@@ -295,8 +305,8 @@ export async function POST(req: Request) {
         user_id: user.id || '',
         user_email: user.email || ''
       },
-      success_url: process.env.STRIPE_SUCCESS_URL || 'https://askailegal.com/payment/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: process.env.STRIPE_CANCEL_URL || 'https://askailegal.com/payment/cancelled?session_id={CHECKOUT_SESSION_ID}',
+      success_url: isSubscriptionPlan ? fullServiceSuccess : defaultSuccess,
+      cancel_url: process.env.STRIPE_CANCEL_URL || defaultCancel,
     };
 
     // Use customer ID if we have one, otherwise pre-fill email

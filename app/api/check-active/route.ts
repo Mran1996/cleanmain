@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from '@/utils/supabase/server';
+import { createClient as createSupabase } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
-    // Get authenticated user from Supabase
-    const supabase = await createClient();
+  // Use service role client to bypass RLS for server-side checks
+  const supabase = createSupabase(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
 
@@ -12,10 +15,11 @@ export async function GET(req: Request) {
   }
 
   const { data, error } = await supabase
-    .from("payments")
+    .from("transactions")
     .select("id")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .eq("status", "paid")
+    .order("transaction_date", { ascending: false })
     .limit(1)
     .single();
 
@@ -24,4 +28,4 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ active: true });
-} 
+}
