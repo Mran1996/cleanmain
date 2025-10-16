@@ -328,7 +328,7 @@
 
 
 "use client";
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -340,7 +340,7 @@ import { CheckCircle2, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 // Generic payment success page for subscriptions and one-time payments.
 // For Full Service one-time purchases, it redirects to the intake success page.
-export default function PaymentSuccessPage() {
+function PaymentSuccessInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams?.get('session_id') || '';
@@ -457,6 +457,14 @@ export default function PaymentSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <PaymentSuccessInner />
+    </Suspense>
   );
 }
 

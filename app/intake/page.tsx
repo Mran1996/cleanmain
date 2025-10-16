@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function IntakePage() {
+function IntakePageInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams?.get('session_id') || null;
   const [loading, setLoading] = useState(true);
@@ -158,5 +158,13 @@ export default function IntakePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function IntakePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <IntakePageInner />
+    </Suspense>
   );
 }

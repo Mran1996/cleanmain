@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2 } from 'lucide-react';
 
-export default function SuccessIntakePage() {
+function SuccessIntakeInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams?.get('session_id') || null;
   const [loading, setLoading] = useState(true);
@@ -272,5 +272,13 @@ export default function SuccessIntakePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SuccessIntakePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>}>
+      <SuccessIntakeInner />
+    </Suspense>
   );
 }
