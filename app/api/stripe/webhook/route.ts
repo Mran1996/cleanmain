@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-05-28.basil',
+  apiVersion: '2025-07-30.basil',
 });
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -384,6 +384,32 @@ export async function POST(req: Request) {
             console.error('Error in checkout.session.completed handler:', error);
           }
         }
+
+        // Record one-time payments (Full Service) when mode is payment
+        if (session.mode === 'payment' && session.payment_status === 'paid') {
+          try {
+            // Build an invoice-like object for saveTransactionData
+            const invoiceLike: any = {
+              id: session.id,
+              customer: session.customer,
+              subscription: null,
+              payment_intent: session.payment_intent,
+              amount_paid: session.amount_total ?? session.amount_subtotal ?? 0,
+              total: session.amount_total ?? 0,
+              currency: session.currency ?? 'usd',
+              payment_method_types: ['card'],
+              status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
+              number: null,
+              billing_reason: 'one_time',
+              attempt_count: 1,
+            };
+
+            await saveTransactionData(invoiceLike, 'paid');
+            console.log('Recorded one-time payment transaction from checkout.session.completed');
+          } catch (recordError) {
+            console.error('Failed to record one-time payment from session:', recordError);
+          }
+        }
         break;
       }
 
@@ -444,4 +470,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}

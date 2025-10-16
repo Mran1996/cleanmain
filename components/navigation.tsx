@@ -88,11 +88,7 @@ export function Navigation() {
                 
                 {/* Mobile authentication and language controls */}
                 <div className="mt-4 flex flex-col gap-2">
-                  <Link href="/login">
-                    <button className="rounded px-4 py-2 transition-colors font-medium bg-green-600 text-white hover:bg-green-700 w-full">
-                      Sign In
-                    </button>
-                  </Link>
+                  <AuthButton />
                   <LanguageSelector />
                 </div>
               </nav>
@@ -111,11 +107,7 @@ export function Navigation() {
         
         {/* Desktop authentication and language controls */}
         <div className="hidden md:flex items-center gap-x-4">
-          <Link href="/login">
-            <button className="rounded px-4 py-2 transition-colors font-medium bg-green-600 text-white hover:bg-green-700">
-              Sign In
-            </button>
-          </Link>
+          <AuthButton />
           <LanguageSelector />
         </div>
       </div>

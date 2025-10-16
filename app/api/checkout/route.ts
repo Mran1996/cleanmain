@@ -184,8 +184,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check for active subscriptions directly from Stripe
-    if (customerId) {
+    // Check for active subscriptions directly from Stripe (skip for one-time Full Service)
+    const isSubscriptionPlan = plan !== PRODUCTS.FULL_SERVICE;
+    if (customerId && isSubscriptionPlan) {
       try {
         console.log('🔍 Checking for active subscriptions for customer:', customerId);
         
@@ -282,7 +283,7 @@ export async function POST(req: Request) {
     // Prepare checkout session configuration
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
-      mode: 'subscription',
+      mode: isSubscriptionPlan ? 'subscription' : 'payment',
       line_items: [
         {
           price: priceId,
@@ -323,4 +324,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}
