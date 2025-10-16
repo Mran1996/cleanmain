@@ -80,4 +80,30 @@ export async function createClient() {
       },
     }
   )
-} 
+}
+
+// Service-role Supabase client for server-side operations that must bypass RLS.
+// Uses SUPABASE_SERVICE_ROLE_KEY. Do not expose this to browsers.
+export async function createAdminClient() {
+  const cookieStore = await cookies();
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('[Server] Missing SUPABASE_SERVICE_ROLE_KEY; admin client will fail.');
+  }
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          cookieStore.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
+}

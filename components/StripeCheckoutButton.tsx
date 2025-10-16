@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { redirectToCheckout } from "@/lib/checkout";
 import type { ProductName } from "@/lib/stripe-config";
+import { PRODUCTS } from "@/lib/stripe-config";
 import { CreditCard, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
@@ -21,7 +22,6 @@ interface SubscriptionStatus {
   hasActiveSubscription: boolean;
   subscriptionDetails?: {
     status: string;
-    plan_name: string;
     current_period_end: string;
   };
   error?: string;
@@ -39,77 +39,71 @@ export default function StripeCheckoutButton({
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     hasActiveSubscription: false
   });
+  const [oneTimeLoading, setOneTimeLoading] = useState(false);
+  const [oneTimeRemaining, setOneTimeRemaining] = useState<number | null>(null);
+  const [oneTimeLimit, setOneTimeLimit] = useState<number | null>(null);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Check subscription status when user is available
+  // Pre-checks depending on plan
   useEffect(() => {
+    if (!user || authLoading) return;
+    const isOneTime = plan === PRODUCTS.FULL_SERVICE;
+
     const checkSubscriptionStatus = async () => {
-      if (!user || authLoading) return;
-      
       setCheckingSubscription(true);
       try {
-        console.log('🔍 Checking subscription status for user:', user.email);
-        
-        // Try to create a checkout session to see if user has active subscription
-        const response = await fetch('/api/checkout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ plan }),
-        });
-
-        if (response.status === 409) {
-          // User has active subscription
+        const response = await fetch('/api/subscription/status');
+        if (response.ok) {
           const data = await response.json();
-          console.log('⚠️ Active subscription detected:', data);
-          
-          setSubscriptionStatus({
-            hasActiveSubscription: true,
-            subscriptionDetails: {
-              status: data.details?.status || 'active',
-              plan_name: data.details?.plan_name || 'Premium Plan',
-              current_period_end: data.details?.current_period_end || ''
-            }
-          });
-        } else if (response.ok) {
-          // No active subscription, user can proceed
-          console.log('✅ No active subscription, user can purchase');
-          setSubscriptionStatus({ hasActiveSubscription: false });
-        } else {
-          // Other error
-          const data = await response.json();
-          console.error('❌ Error checking subscription:', data);
-          setSubscriptionStatus({ 
-            hasActiveSubscription: false, 
-            error: data.error || 'Failed to check subscription status'
-          });
-          
-          // Only show error toast for critical errors, not for normal "no subscription" cases
-          if (response.status >= 500) {
-            toast.error("Subscription Check Failed", {
-              description: "Unable to verify subscription status. You can still proceed with checkout."
+          const status = data?.subscription?.status;
+          const periodEnd = data?.subscription?.current_period_end || '';
+          if (status === 'active' || status === 'trialing') {
+            setSubscriptionStatus({
+              hasActiveSubscription: true,
+              subscriptionDetails: { status, current_period_end: periodEnd }
             });
+          } else {
+            setSubscriptionStatus({ hasActiveSubscription: false });
           }
+        } else {
+          const data = await response.json().catch(() => ({}));
+          setSubscriptionStatus({ hasActiveSubscription: false, error: data?.error || 'Failed to check subscription status' });
         }
       } catch (error) {
-        console.error('❌ Failed to check subscription status:', error);
-        setSubscriptionStatus({ 
-          hasActiveSubscription: false, 
-          error: 'Failed to check subscription status'
-        });
-        
-        // Show toast for network errors
-        toast.error("Connection Error", {
-          description: "Unable to check subscription status. Please check your connection."
-        });
+        setSubscriptionStatus({ hasActiveSubscription: false, error: 'Failed to check subscription status' });
       } finally {
         setCheckingSubscription(false);
       }
     };
 
-    checkSubscriptionStatus();
+    const checkOneTimeCredits = async () => {
+      setOneTimeLoading(true);
+      try {
+        const response = await fetch('/api/usage/one-time');
+        if (response.ok) {
+          const data = await response.json();
+          const remaining = data?.usage?.one_time_remaining;
+          const limit = data?.usage?.one_time_limit_per_purchase;
+          setOneTimeRemaining(typeof remaining === 'number' ? remaining : 0);
+          setOneTimeLimit(typeof limit === 'number' ? limit : null);
+        } else {
+          setOneTimeRemaining(null);
+          setOneTimeLimit(null);
+        }
+      } catch (error) {
+        setOneTimeRemaining(null);
+        setOneTimeLimit(null);
+      } finally {
+        setOneTimeLoading(false);
+      }
+    };
+
+    if (isOneTime) {
+      checkOneTimeCredits();
+    } else {
+      checkSubscriptionStatus();
+    }
   }, [user, authLoading, plan]);
 
   console.log('💳 StripeCheckoutButton state:', { 
@@ -122,12 +116,12 @@ export default function StripeCheckoutButton({
 
   const handleCheckout = async () => {
     // Check if user has active subscription
-    if (subscriptionStatus.hasActiveSubscription) {
+    const isOneTime = plan === PRODUCTS.FULL_SERVICE;
+    if (!isOneTime && subscriptionStatus.hasActiveSubscription) {
       const status = subscriptionStatus.subscriptionDetails?.status || 'active';
-      const planName = subscriptionStatus.subscriptionDetails?.plan_name || 'subscription';
       
       toast.warning("Subscription Already Active", {
-        description: `You already have an ${status} ${planName}. Manage it from your account page.`,
+        description: `You already have an ${status} subscription. Manage it from your account page.`,
         action: {
           label: "Go to Account",
           onClick: () => router.push('/account')
@@ -201,15 +195,24 @@ export default function StripeCheckoutButton({
   };
 
   // Determine button state and content
-  const isDisabled = isLoading || checkingSubscription || subscriptionStatus.hasActiveSubscription;
-  const buttonVariant = subscriptionStatus.hasActiveSubscription ? "outline" : variant;
+  const isOneTime = plan === PRODUCTS.FULL_SERVICE;
+  const isDisabled = isLoading || (isOneTime ? oneTimeLoading : checkingSubscription) || (!isOneTime && subscriptionStatus.hasActiveSubscription);
+  const buttonVariant = (!isOneTime && subscriptionStatus.hasActiveSubscription) ? "outline" : variant;
   
   const getButtonContent = () => {
-    if (checkingSubscription) {
+    if (!isOneTime && checkingSubscription) {
       return (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Checking subscription...
+        </>
+      );
+    }
+    if (isOneTime && oneTimeLoading) {
+      return (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Checking credits...
         </>
       );
     }
@@ -275,38 +278,15 @@ export default function StripeCheckoutButton({
       >
         {getButtonContent()}
       </Button>
-      
-      {/* Show subscription details message */}
-      {subscriptionStatus.hasActiveSubscription && subscriptionStatus.subscriptionDetails && (
-        <div className="text-sm text-gray-600 text-center">
-          <p>
-            You have an <strong>{subscriptionStatus.subscriptionDetails.status}</strong> subscription
-            {subscriptionStatus.subscriptionDetails.plan_name && (
-              <> ({subscriptionStatus.subscriptionDetails.plan_name})</>
-            )}
-          </p>
+      {/* Basic subscription info (status + next renewal) */}
+      {!isOneTime && subscriptionStatus.subscriptionDetails && (
+        <p className="text-xs text-muted-foreground">
+          Subscription: {subscriptionStatus.subscriptionDetails.status}
           {subscriptionStatus.subscriptionDetails.current_period_end && (
-            <p className="text-xs text-gray-500 mt-1">
-              {subscriptionStatus.subscriptionDetails.status === 'active' 
-                ? 'Renews on' 
-                : 'Expires on'
-              }: {new Date(subscriptionStatus.subscriptionDetails.current_period_end).toLocaleDateString()}
-            </p>
+            <> • Renews {new Date(subscriptionStatus.subscriptionDetails.current_period_end).toLocaleDateString()}</>
           )}
-          <p className="text-xs text-blue-600 mt-1">
-            <a href="/account" className="underline hover:no-underline">
-              Manage subscription →
-            </a>
-          </p>
-        </div>
-      )}
-      
-      {/* Show error message */}
-      {subscriptionStatus.error && (
-        <div className="text-sm text-red-600 text-center">
-          <p>{subscriptionStatus.error}</p>
-        </div>
+        </p>
       )}
     </div>
   );
-} 
+}

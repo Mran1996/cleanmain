@@ -6,7 +6,7 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 }) : null;
 import { NextResponse } from 'next/server';
 import { PRICE_MAP, PRODUCTS } from '@/lib/stripe-config';
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 
 export async function POST(req: Request) {
   try {
@@ -39,6 +39,9 @@ export async function POST(req: Request) {
     }
 
     console.log('💳 Creating checkout for user:', user.email);
+
+    // Admin client for DB sync operations (bypass RLS)
+    const supabaseAdmin = await createAdminClient();
 
     // Resolve price ID from the PRICE_MAP using the provided plan, then fall back to
     // any known single-price env vars (your env uses STRIPE_PREMIUM_MONTHLY_PRICE_ID).
@@ -230,6 +233,42 @@ export async function POST(req: Request) {
             errorMessage = 'You already have a trial subscription';
           }
 
+          // Attempt to sync subscription details into the database for consistency
+          try {
+            const planId = activeSubscription.items?.data?.[0]?.price?.id || null;
+            const subUpdate = {
+              user_id: user.id,
+              stripe_subscription_id: activeSubscription.id,
+              stripe_customer_id: customerId,
+              status: activeSubscription.status,
+              plan_id: planId,
+              current_period_start: activeSubscription.current_period_start
+                ? new Date(activeSubscription.current_period_start * 1000).toISOString()
+                : null,
+              current_period_end: activeSubscription.current_period_end
+                ? new Date(activeSubscription.current_period_end * 1000).toISOString()
+                : null,
+              canceled_at: activeSubscription.canceled_at
+                ? new Date(activeSubscription.canceled_at * 1000).toISOString()
+                : null,
+              cancel_at_period_end: !!activeSubscription.cancel_at_period_end,
+              updated_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+            } as any;
+
+            const { error: upsertError } = await supabaseAdmin
+              .from('subscriptions')
+              .upsert(subUpdate, { onConflict: 'stripe_subscription_id', ignoreDuplicates: false });
+
+            if (upsertError) {
+              console.warn('⚠️ Failed to upsert subscription during checkout pre-check:', upsertError);
+            } else {
+              console.log('✅ Synced active subscription to database via checkout pre-check');
+            }
+          } catch (syncErr) {
+            console.warn('⚠️ Error syncing subscription to database:', syncErr);
+          }
+
           return NextResponse.json({
             error: errorMessage,
             details: {
@@ -305,7 +344,8 @@ export async function POST(req: Request) {
         user_id: user.id || '',
         user_email: user.email || ''
       },
-      success_url: isSubscriptionPlan ? fullServiceSuccess : defaultSuccess,
+      // Redirect logic: use intake success for one-time Full Service, generic success for subscriptions
+      success_url: isSubscriptionPlan ? defaultSuccess : fullServiceSuccess,
       cancel_url: process.env.STRIPE_CANCEL_URL || defaultCancel,
     };
 

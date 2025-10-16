@@ -329,16 +329,138 @@
 
 "use client";
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, CheckCircle, XCircle, Clock } from 'lucide-react';
 
-export default function SuccessIntakePage() {
+// Generic payment success page for subscriptions and one-time payments.
+// For Full Service one-time purchases, it redirects to the intake success page.
+export default function PaymentSuccessPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sessionId = searchParams?.get('session_id') || '';
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionData, setSessionData] = useState<{
+    payment_status?: string | null;
+    subscription?: string | null;
+    amount_total?: number | null;
+    currency?: string | null;
+    customer_email?: string | null;
+    customer_name?: string | null;
+    line_items?: any[] | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      if (!sessionId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/stripe/session?session_id=${encodeURIComponent(sessionId)}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Failed to fetch session');
+        setSessionData(json);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load session');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSession();
+  }, [sessionId]);
+
+  const isSubscription = !!sessionData?.subscription;
+  const paymentStatus = (sessionData?.payment_status || 'paid').toLowerCase();
+  const hasSucceeded = paymentStatus === 'paid' || paymentStatus === 'succeeded' || paymentStatus === 'success';
+
+  // If it's a one-time Full Service purchase, redirect to intake success
+  useEffect(() => {
+    if (!loading && sessionData && !isSubscription && hasSucceeded) {
+      const hasFullService = (sessionData.line_items || []).some((item: any) => {
+        const nickname = item?.price?.nickname || item?.description || '';
+        return typeof nickname === 'string' && nickname.toLowerCase().includes('full service');
+      });
+      if (hasFullService && sessionId) {
+        router.replace(`/success?session_id=${encodeURIComponent(sessionId)}`);
+      }
+    }
+  }, [loading, sessionData, isSubscription, hasSucceeded, router, sessionId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <Card className="max-w-lg w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="h-6 w-6" />
+              Couldn’t verify session
+            </CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">Back to Pricing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const title = isSubscription ? 'Subscription Activated' : 'Payment Successful';
+  const description = isSubscription
+    ? 'Your subscription is now active. You can manage it from your account.'
+    : 'Your payment has been processed successfully.';
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {sessionData?.amount_total ? (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Amount:</span>
+              <span className="font-medium text-gray-900">
+                {(sessionData.currency || 'USD').toUpperCase()} {(sessionData.amount_total / 100).toFixed(2)}
+              </span>
+            </div>
+          ) : null}
+          <div className="flex gap-3">
+            <Button asChild>
+              <Link href="/account">Go to Account</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">Back to Pricing</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function SuccessIntakePage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams?.get('session_id') || null;
   const [loading, setLoading] = useState(true);

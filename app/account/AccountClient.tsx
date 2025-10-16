@@ -7,6 +7,7 @@ import { BillingData, StripeSubscription, Purchase } from "@/types/billing";
 import { getPlanFeatures } from "@/lib/plan-features";
 import { BillingService } from "@/services/billing";
 import { createClient } from "@/utils/supabase/client";
+import UsageStats from "@/components/UsageStats";
 
 type AccountClientProps = {
   avatarUrl?: string | null;
@@ -684,6 +685,9 @@ export default function AccountClient({
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
+              <div className="mt-6">
+                <UsageStats />
+              </div>
             </div>
           ) : activeTab === 'billing' ? (
             <div className="w-full flex justify-center">
@@ -1341,4 +1345,4 @@ export default function AccountClient({
       )}
     </div>
   );
-} 
+}

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
+import { consumeCredit } from '@/lib/usage';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { OpenAI } from 'openai';
 import { getRelevantCaseLaw } from '@/lib/perplexity';
+type ChatMessage = { role: 'user' | 'assistant' | string; content?: string };
 
 export const runtime = 'nodejs';
 
@@ -44,8 +47,8 @@ export async function POST(req: NextRequest) {
       opposingParty,
       courtName,
       includeCaseLaw,
-      chatHistory
     } = body;
+    const chatHistory: ChatMessage[] = Array.isArray(body.chatHistory) ? (body.chatHistory as ChatMessage[]) : [];
 
     // Check if we have real data - if not, return error
     if (!chatHistory || chatHistory.length === 0) {
@@ -53,6 +56,44 @@ export async function POST(req: NextRequest) {
         success: false,
         error: 'No real case information provided. Please complete Step 1 first.'
       }, { status: 400 });
+    }
+
+    // Gate on available credits before heavy work
+    try {
+      const supabase = await createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const uid = userId || authUser?.id;
+      if (!uid) {
+        return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+      }
+      // Check subscription status and remaining credits
+      const { data: subRows } = await supabase
+        .from('subscriptions')
+        .select('status')
+        .eq('user_id', uid)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      const subActive = Array.isArray(subRows) && subRows[0] && ['active','trialing'].includes(subRows[0].status);
+
+      const { data: usage } = await supabase
+        .from('document_usage')
+        .select('monthly_remaining, one_time_remaining')
+        .eq('user_id', uid)
+        .single();
+
+      const monthlyRemaining = usage?.monthly_remaining || 0;
+      const oneTimeRemaining = usage?.one_time_remaining || 0;
+
+      const hasCredits = (subActive && monthlyRemaining > 0) || oneTimeRemaining > 0;
+      if (!hasCredits) {
+        return NextResponse.json({
+          success: false,
+          error: 'Insufficient credits. Please purchase a document pack or renew your subscription.',
+        }, { status: 402 });
+      }
+    } catch (gateErr) {
+      console.error('⚠️ Credit gating failed, proceeding cautiously:', gateErr);
+      // Do not block if gating fails; continue to avoid false negatives
     }
 
     // Debug logging to track what data we're receiving
@@ -68,7 +109,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Log the actual conversation content for debugging
-    console.log('📝 Conversation History Content:', chatHistory.map((msg, index) => ({
+    console.log('📝 Conversation History Content:', chatHistory.map((msg: ChatMessage, index: number) => ({
       index: index + 1,
       role: msg.role,
       contentLength: msg.content?.length || 0,
@@ -77,11 +118,11 @@ export async function POST(req: NextRequest) {
 
     // Log specific details that should be used
     console.log('🔍 Key Details to Extract:', {
-      hasSpecificNames: chatHistory.some(msg => msg.content?.includes('name') || msg.content?.includes('Name')),
-      hasSpecificDates: chatHistory.some(msg => msg.content?.includes('date') || msg.content?.includes('Date')),
-      hasSpecificLocations: chatHistory.some(msg => msg.content?.includes('address') || msg.content?.includes('location')),
-      hasSpecificCaseNumbers: chatHistory.some(msg => msg.content?.includes('case') || msg.content?.includes('Case')),
-      hasUploadedDocuments: chatHistory.some(msg => msg.content?.includes('upload') || msg.content?.includes('document'))
+      hasSpecificNames: chatHistory.some((msg: ChatMessage) => msg.content?.includes('name') || msg.content?.includes('Name')),
+      hasSpecificDates: chatHistory.some((msg: ChatMessage) => msg.content?.includes('date') || msg.content?.includes('Date')),
+      hasSpecificLocations: chatHistory.some((msg: ChatMessage) => msg.content?.includes('address') || msg.content?.includes('location')),
+      hasSpecificCaseNumbers: chatHistory.some((msg: ChatMessage) => msg.content?.includes('case') || msg.content?.includes('Case')),
+      hasUploadedDocuments: chatHistory.some((msg: ChatMessage) => msg.content?.includes('upload') || msg.content?.includes('document'))
     });
 
     // Generate unique document ID using UUID
@@ -92,7 +133,7 @@ export async function POST(req: NextRequest) {
     if (includeCaseLaw && state) {
       try {
         console.log('🔍 [PERPLEXITY] Researching case law for:', { state, county, caseNumber });
-        const legalIssue = chatHistory.find(msg => msg.role === 'user')?.content?.substring(0, 100) || 'legal matter';
+        const legalIssue = chatHistory.find((msg: ChatMessage) => msg.role === 'user')?.content?.substring(0, 100) || 'legal matter';
         caseLawResearch = await getRelevantCaseLaw(legalIssue, 'general', state);
         console.log('📚 [PERPLEXITY] Case law research completed:', caseLawResearch.substring(0, 200) + '...');
       } catch (error) {
@@ -226,7 +267,7 @@ Use the following information to create the document:`;
     let userPrompt = `Create a comprehensive legal document using ALL the information provided below:
 
 CONVERSATION HISTORY (ANALYZE EVERY DETAIL):
-${chatHistory.map((msg: any, index: number) => 
+${chatHistory.map((msg: ChatMessage, index: number) => 
   `MESSAGE ${index + 1} - ${msg.role === 'user' ? 'CLIENT' : 'ATTORNEY'}: ${msg.content}`
 ).join('\n\n')}
 
@@ -465,6 +506,24 @@ Generate a complete, professional legal document using ONLY the information prov
     if (documentError) {
       console.error('Error storing document in Supabase:', documentError);
       // Continue anyway - we'll still return the document
+    }
+
+    // On success, decrement the appropriate credit bucket
+    try {
+      const supabase = await createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const uid = userId || authUser?.id;
+      if (!uid) {
+        console.warn('⚠️ No user available to consume credit');
+      }
+      const consumed = await consumeCredit(supabase, uid!);
+      if (!consumed.ok) {
+        console.warn('⚠️ Credit consumption failed post-generation; user may be out of credits.');
+      } else {
+        console.log(`✅ Credit consumed from ${consumed.source}, remaining: ${consumed.remaining}`);
+      }
+    } catch (consumeErr) {
+      console.error('❌ Error consuming credit post-generation:', consumeErr);
     }
 
     return NextResponse.json({

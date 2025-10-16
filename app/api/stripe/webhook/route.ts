@@ -6,6 +6,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient as createSupabase } from '@supabase/supabase-js';
 import { PRODUCTS, PRICE_MAP } from '@/lib/stripe-config';
+import { creditOneTime, resetMonthly } from '@/lib/usage';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY environment variable is not set.');
@@ -548,6 +549,48 @@ export async function POST(req: Request) {
             };
 
             await saveTransactionData(invoiceLike, 'paid');
+
+            // Avoid duplicate credit by checking if transaction already exists
+            const paymentIntentId = session.payment_intent as string | undefined;
+            const invoiceId = session.invoice as string | undefined;
+            const { data: existingTx } = await supabaseAdmin
+              .from('transactions')
+              .select('id')
+              .or(
+                [
+                  paymentIntentId ? `stripe_payment_intent_id.eq.${paymentIntentId}` : '',
+                  invoiceId ? `stripe_invoice_id.eq.${invoiceId}` : ''
+                ].filter(Boolean).join(',')
+              )
+              .eq('status', 'paid')
+              .limit(1);
+
+            if (existingTx && existingTx.length > 0) {
+              console.log('ℹ️ Skipping credit: transaction already recorded as paid');
+              break;
+            }
+
+            // Credit one-time document pack (150) to the user
+            try {
+              const userIdToCredit = userIdFromMeta || undefined;
+              let resolvedUserId = userIdToCredit;
+              if (!resolvedUserId && session.customer) {
+                const { data: byCust } = await supabaseAdmin
+                  .from('users')
+                  .select('id')
+                  .eq('stripe_customer_id', session.customer as string)
+                  .single();
+                resolvedUserId = byCust?.id;
+              }
+              if (resolvedUserId) {
+                await creditOneTime(supabaseAdmin, resolvedUserId, 150);
+                console.log('✅ Credited one-time document pack to user:', resolvedUserId);
+              } else {
+                console.warn('⚠️ Could not resolve user to credit one-time pack');
+              }
+            } catch (creditErr) {
+              console.error('❌ Failed to credit one-time document pack:', creditErr);
+            }
             console.log('Recorded one-time payment transaction from checkout.session.completed');
           } catch (recordError) {
             console.error('Failed to record one-time payment from session:', recordError);
@@ -569,6 +612,26 @@ export async function POST(req: Request) {
           
           // Save transaction record
           await saveTransactionData(invoice, 'paid');
+
+          // Reset monthly credits to 150 for this subscription's user
+          try {
+            const { data: sub } = await supabaseAdmin
+              .from('subscriptions')
+              .select('user_id')
+              .eq('stripe_subscription_id', invoice.subscription as string)
+              .single();
+            const userId = sub?.user_id;
+            if (userId) {
+              const start = invoice.period_start ? new Date(invoice.period_start * 1000) : undefined;
+              const end = invoice.period_end ? new Date(invoice.period_end * 1000) : undefined;
+              await resetMonthly(supabaseAdmin, userId, 150, start, end);
+              console.log('✅ Reset monthly credits to 150 for user:', userId);
+            } else {
+              console.warn('⚠️ Subscription user not found when resetting monthly credits');
+            }
+          } catch (resetErr) {
+            console.error('❌ Failed to reset monthly credits:', resetErr);
+          }
         }
         break;
       }
