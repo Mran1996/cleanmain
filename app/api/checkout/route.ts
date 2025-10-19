@@ -47,9 +47,8 @@ export async function POST(req: Request) {
     // any known single-price env vars (your env uses STRIPE_PREMIUM_MONTHLY_PRICE_ID).
     // This avoids checkout failing when the exact env name expected by older code
     // isn't present.
-  const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP] ||
-      process.env.STRIPE_COURT_READY_PRICE_ID;
-
+  const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP];
+    console.log('💳 Resolved price ID:', priceId)
     // Stripe debug log for runtime diagnosis
     console.log('[STRIPE DEBUG]', {
       stripeKey: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '...' : 'undefined',
