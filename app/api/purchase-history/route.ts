@@ -2,29 +2,16 @@ import { NextResponse } from "next/server";
 import { Purchase } from "@/types/billing";
 import { getServerUser } from '@/utils/server-auth';
 import { createClient } from '@/utils/supabase/server';
-import Stripe from 'stripe';
-
-// Initialize Stripe client
-const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-07-30.basil',
-}) : null;
 
 // Check if we're in build time and skip operations
 const isBuildTime = process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV;
 const isVercelBuild = process.env.VERCEL === '1' && process.env.NODE_ENV === 'production';
 
 export async function GET(req: Request) {
-
-  // Check if Stripe is configured
-  if (!stripe) {
-    return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
-  }
-
   // Parse URL parameters for pagination
   const url = new URL(req.url);
   const page = parseInt(url.searchParams.get('page') || '1');
-  const limit = parseInt(url.searchParams.get('limit') || '5');
-  const startingAfter = url.searchParams.get('starting_after') || undefined;
+  const limit = parseInt(url.searchParams.get('limit') || '10');
 
   try {
     // Get authenticated user using the new server auth utility
@@ -40,158 +27,85 @@ export async function GET(req: Request) {
     // Create Supabase client for database operations
     const supabase = await createClient();
 
-    console.log('🔍 Fetching purchase history from Stripe for user:', user.email, 'Page:', page, 'Limit:', limit);
+    console.log('🎯 Fetching purchase history from Supabase for user:', user.email, 'Page:', page, 'Limit:', limit);
 
-    // Get user's Stripe customer ID from multiple sources
-    let stripeCustomerId = null;
-    
-    // Check users table first
-    const { data: userData, error: userDataError } = await supabase
-      .from('users')
-      .select('stripe_customer_id')
-      .eq('id', user.id)
-      .single();
-    
-    if (userData && userData.stripe_customer_id) {
-      // Verify the customer ID is valid in the current Stripe environment
-      try {
-        await stripe.customers.retrieve(userData.stripe_customer_id);
-        stripeCustomerId = userData.stripe_customer_id;
-        console.log('✅ Verified existing Stripe customer:', stripeCustomerId);
-      } catch (error) {
-        console.error('❌ Error retrieving customer from Stripe:', error);
-        
-        // Check if it's a test/live mode mismatch or invalid customer
-        if (error instanceof Error && error.message.includes('similar object exists in test mode')) {
-          console.log('🔄 Test/Live mode mismatch detected, clearing invalid customer ID');
-        } else if (error instanceof Error && error.message.includes('No such customer')) {
-          console.log('🔄 Invalid customer ID detected, clearing from database');
-        }
-        
-        // Clear the invalid customer ID from Supabase
-        try {
-          await supabase
-            .from('users')
-            .update({ 
-              stripe_customer_id: null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
-          console.log('🧹 Cleared invalid customer ID from Supabase');
-        } catch (updateError) {
-          console.error('❌ Error clearing invalid customer ID:', updateError);
-        }
-        
-        // Will search by email below
-        stripeCustomerId = null;
-      }
-    }
-    
-    // If not found, try to find by email in Stripe
-    if (!stripeCustomerId) {
-      try {
-        const customers = await stripe.customers.list({
-          email: user.email,
-          limit: 1,
-        });
-        if (customers.data.length > 0) {
-          stripeCustomerId = customers.data[0].id;
-          console.log(`Found customer by email: ${user.email} -> ${stripeCustomerId}`);
-          
-          // Store the customer ID for future use
-          await supabase
-            .from('users')
-            .update({ stripe_customer_id: stripeCustomerId })
-            .eq('id', user.id);
-        }
-      } catch (error) {
-        console.error('Error searching for customer by email:', error);
-      }
-    }
-    
-    if (!stripeCustomerId) {
-      console.log('No Stripe customer found for user:', user.email);
+    // 🎯 STEP 1: Count total transactions for pagination
+    const { count: totalCount, error: countError } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    if (countError) {
+      console.error('❌ Error counting transactions:', countError);
       return NextResponse.json({ 
         purchases: [], 
-        pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
-      });
+        pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        error: 'Failed to count transactions'
+      }, { status: 500 });
     }
 
-    // Build Stripe pagination parameters
-    const stripeParams: any = {
-      customer: stripeCustomerId,
-      limit: limit,
-      status: 'paid', // Only paid invoices
-      expand: ['data.payment_intent'],
-    };
+    const total = totalCount || 0;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
 
-    // Add cursor-based pagination if provided
-    if (startingAfter) {
-      stripeParams.starting_after = startingAfter;
+    console.log(`📊 Total transactions: ${total}, Total pages: ${totalPages}, Current page: ${page}`);
+
+    // 🎯 STEP 2: Fetch transactions from Supabase with pagination
+    const { data: transactions, error: txError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('transaction_date', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (txError) {
+      console.error('❌ Error fetching transactions:', txError);
+      return NextResponse.json({ 
+        purchases: [], 
+        pagination: { page: 1, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        error: 'Failed to fetch transactions'
+      }, { status: 500 });
     }
 
-    console.log('🔍 Stripe query params:', stripeParams);
+    console.log(`✅ Found ${transactions?.length || 0} transactions from Supabase`);
 
-    // Fetch invoices directly from Stripe with native pagination
-    const invoicesResponse = await stripe.invoices.list(stripeParams);
-
-    console.log('✅ Found', invoicesResponse.data.length, 'paid invoices from Stripe');
-
-    // Transform Stripe invoices to Purchase format
-    const purchases: Purchase[] = invoicesResponse.data.map((invoice: any) => ({
-      id: invoice.id,
-      document_name: invoice.description || 
-                   (invoice.lines?.data?.[0]?.description) || 
-                   `Invoice ${invoice.number || invoice.id.slice(-8)}`,
-      price: invoice.amount_paid ? invoice.amount_paid / 100 : 0, // Convert cents to dollars
-      created_at: invoice.status_transitions?.paid_at 
-        ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
-        : new Date(invoice.created * 1000).toISOString(),
-      // Additional invoice info
-      currency: invoice.currency || 'usd',
-      status: 'paid',
-      payment_method: invoice.payment_intent?.payment_method_types?.[0] || 'card',
-      stripe_invoice_id: invoice.id,
-      stripe_payment_intent_id: invoice.payment_intent?.id || null,
+    // 🎯 STEP 3: Transform Supabase transactions to Purchase format
+    const purchases: Purchase[] = (transactions || []).map((tx: any) => ({
+      id: tx.stripe_invoice_id || tx.stripe_payment_intent_id || tx.id,
+      document_name: tx.description || `Transaction ${tx.id.slice(0, 8)}`,
+      price: tx.amount || 0,
+      created_at: tx.transaction_date || tx.created_at,
+      currency: tx.currency || 'usd',
+      status: tx.status || 'paid',
+      payment_method: 'card',
+      stripe_invoice_id: tx.stripe_invoice_id,
+      stripe_payment_intent_id: tx.stripe_payment_intent_id,
       metadata: {
-        invoice_number: invoice.number,
-        billing_reason: invoice.billing_reason,
-        subscription_id: invoice.subscription,
-        customer_email: invoice.customer_email,
-        hosted_invoice_url: invoice.hosted_invoice_url,
-        invoice_pdf: invoice.invoice_pdf,
+        transaction_type: tx.transaction_type,
+        plan_id: tx.plan_id,
+        subscription_id: tx.stripe_subscription_id,
       }
     }));
 
-    // Prepare Stripe-based pagination metadata
-    const hasNext = invoicesResponse.has_more;
-    const hasPrev = page > 1 || !!startingAfter;
+    // 🎯 STEP 4: Prepare pagination metadata
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
     
-    // Get cursor for next page (last item ID)
-    const nextCursor = purchases.length > 0 ? purchases[purchases.length - 1].id : null;
-    
-    // Estimate total count (Stripe doesn't provide exact counts)
-    const estimatedTotal = hasNext ? (page * limit) + 1 : (page - 1) * limit + purchases.length;
-    const estimatedTotalPages = Math.ceil(estimatedTotal / limit);
-    
-    // Prepare pagination metadata with Stripe cursors
     const pagination = {
       page,
       limit,
-      total: estimatedTotal,
-      totalPages: estimatedTotalPages,
+      total,
+      totalPages,
       hasNext,
       hasPrev,
-      nextCursor: hasNext ? nextCursor : null,
-      currentCursor: startingAfter || null,
     };
     
-    console.log('📄 Stripe purchase history pagination:', pagination);
+    console.log('📄 Supabase purchase history pagination:', pagination);
     
-    // Cache the response for 1 minute (60 seconds) - shorter cache for real-time Stripe data
+    // Cache the response for 5 minutes (300 seconds) - longer cache for Supabase data
     return NextResponse.json({ purchases, pagination }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     });
   } catch (error: any) {

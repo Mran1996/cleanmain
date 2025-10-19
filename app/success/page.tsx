@@ -104,7 +104,7 @@ function SuccessIntakeInner() {
           <CardHeader>
             <CardTitle>Thank you for your purchase!</CardTitle>
             <CardDescription>
-              Your intake has been submitted successfully. Our team will review your case details and follow up via email.
+              Your intake has been submitted successfully. Our team will review your case details and follow up via email within 24-48 hours.
             </CardDescription>
           </CardHeader>
           <CardContent>

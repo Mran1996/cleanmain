@@ -165,63 +165,108 @@ export async function POST(request: NextRequest) {
     }
 
     // Store submission in Supabase
+    console.log('💾 Saving intake submission to Supabase for user:', user.id);
+    const submissionData = {
+      user_id: user.id,
+      stripe_session_id,
+      full_name,
+      email,
+      phone: phone || null,
+      state: stateCode,
+      county,
+      case_number,
+      opposing_party,
+      description,
+      file_url: storedFilePath,
+      file_type,
+      file_size,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
     const { error: insertError } = await supabaseAdmin
       .from('full_service_requests')
-      .insert([{
-        user_id: user.id,
-        stripe_session_id,
-        full_name,
-        email,
-        phone: phone || null,
-        state: stateCode,
-        county,
-        case_number,
-        opposing_party,
-        description,
-        file_url: storedFilePath,
-        file_type,
-        file_size,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }]);
+      .insert([submissionData]);
 
     if (insertError) {
+      console.error('❌ Database insert failed:', insertError);
       return NextResponse.json({ error: 'Database insert failed', details: insertError.message }, { status: 500 });
     }
+    
+    console.log('✅ Intake submission saved successfully to database');
+    console.log('📊 Submission summary:', {
+      user_id: user.id,
+      case: `${stateCode}/${county} - ${case_number}`,
+      has_file: !!storedFilePath,
+      timestamp: new Date().toISOString()
+    });
 
-    // Send notification email
+    // Send notification email to admin
     try {
       const transporter = createTransporter();
-      const toAddress =  'support@askailegal.com';
+      const toAddress = 'support@askailegal.com';
       const fromAddress = process.env.SMTP_FROM || 'support@askailegal.com';
-      const subject = `New Full Service Intake: ${full_name} (${stateCode}/${county})`;
+      const subject = `🔔 New Full Service Intake: ${full_name} (${stateCode}/${county})`;
       const emailHtml = `
-        <h2>New Full Service Intake Submission</h2>
-        <p><strong>User ID:</strong> ${user.id}</p>
-        <p><strong>Stripe Session:</strong> ${stripe_session_id}</p>
-        <p><strong>Name:</strong> ${full_name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
-        <p><strong>State/County:</strong> ${stateCode}/${county}</p>
-        <p><strong>Case Number:</strong> ${case_number}</p>
-        <p><strong>Opposing Party:</strong> ${opposing_party}</p>
-        <p><strong>Description:</strong><br/>${description.replace(/\n/g, '<br/>')}</p>
-        <p><strong>File Path:</strong> ${storedFilePath || 'No file uploaded'}</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #10b981; border-bottom: 2px solid #10b981; padding-bottom: 10px;">New Full Service Intake Submission</h2>
+          
+          <h3 style="color: #374151; margin-top: 20px;">Client Information</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Name:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${full_name}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><a href="mailto:${email}">${email}</a></td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${phone || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>User ID:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${user.id}</code></td></tr>
+          </table>
+          
+          <h3 style="color: #374151; margin-top: 20px;">Case Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>State/County:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${stateCode} / ${county}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Case Number:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${case_number}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Opposing Party:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${opposing_party}</td></tr>
+          </table>
+          
+          <h3 style="color: #374151; margin-top: 20px;">Description</h3>
+          <div style="background: #f9fafb; padding: 15px; border-left: 4px solid #10b981; margin: 10px 0;">
+            ${description.replace(/\n/g, '<br/>')}
+          </div>
+          
+          <h3 style="color: #374151; margin-top: 20px;">Payment Information</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Stripe Session:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${stripe_session_id}</code></td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Uploaded:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${storedFilePath ? '✅ Yes (stored in Supabase)' : '❌ No file'}</td></tr>
+            ${storedFilePath ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Path:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${storedFilePath}</code></td></tr>` : ''}
+            ${file_type ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${file_type}</td></tr>` : ''}
+            ${file_size ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Size:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${(file_size / 1024).toFixed(2)} KB</td></tr>` : ''}
+          </table>
+          
+          <div style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px;">
+            <p style="margin: 0; color: #1e40af;">📋 <strong>Next Steps:</strong> Review this intake and contact the client within 24-48 hours to discuss their case.</p>
+          </div>
+          
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+            <p>This is an automated notification from Ask AI Legal</p>
+            <p>Submission received at ${new Date().toISOString()}</p>
+          </div>
+        </div>
       `;
-
-      const attachments = [] as any[];
-      // For security, do not attach uploaded file; rely on secure storage retrieval if needed
 
       await transporter.sendMail({
         from: fromAddress,
         to: toAddress,
         subject,
         html: emailHtml,
-        attachments,
       });
-    } catch (mailError) {
+      
+      console.log('✅ Admin notification email sent successfully to:', toAddress);
+    } catch (mailError: any) {
       // Log, but do not fail the submission
-      console.error('Notification email error:', mailError);
+      console.error('❌ Notification email error:', mailError?.message || mailError);
+      console.error('Email config:', {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        user: process.env.SMTP_USER?.substring(0, 10) + '...',
+      });
     }
 
     return NextResponse.json({ success: true, file_path: storedFilePath });

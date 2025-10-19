@@ -187,45 +187,30 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check for active subscriptions directly from Stripe (skip for one-time Full Service)
+    // Check for active subscriptions from Supabase (skip for one-time Full Service)
     const isSubscriptionPlan = plan !== PRODUCTS.FULL_SERVICE;
-    if (customerId && isSubscriptionPlan) {
+    if (isSubscriptionPlan) {
       try {
-        console.log('🔍 Checking for active subscriptions for customer:', customerId);
+        console.log('🔍 Checking for active subscriptions in Supabase for user:', user.id);
         
-        // Check for any subscription that should prevent new purchases
-        const subscriptions = await stripe.subscriptions.list({
-          customer: customerId,
-          limit: 10,
-        });
+        // Check for active subscription in Supabase database
+        const { data: activeSubscriptions, error: subError } = await supabaseAdmin
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['active', 'trialing'])
+          .order('updated_at', { ascending: false });
 
-        // Categorize subscriptions by status
-        const activeSubscriptions = subscriptions.data.filter(sub => 
-          ['active', 'trialing'].includes(sub.status)
-        );
-        const pastDueSubscriptions = subscriptions.data.filter(sub => 
-          sub.status === 'past_due'
-        );
-        const canceledSubscriptions = subscriptions.data.filter(sub => 
-          ['canceled', 'incomplete_expired'].includes(sub.status)
-        );
-        const incompleteSubscriptions = subscriptions.data.filter(sub => 
-          sub.status === 'incomplete'
-        );
-
-        console.log('📊 Subscription status summary:', {
-          active: activeSubscriptions.length,
-          pastDue: pastDueSubscriptions.length,
-          canceled: canceledSubscriptions.length,
-          incomplete: incompleteSubscriptions.length
-        });
-
-        // Block only truly active subscriptions (active, trialing)
-        if (activeSubscriptions.length > 0) {
-          const activeSubscription = activeSubscriptions[0] as any;
-          console.log('⚠️ Active subscription found - blocking new checkout:', {
-            id: activeSubscription.id,
-            status: activeSubscription.status
+        if (subError) {
+          console.error('❌ Error checking subscriptions in Supabase:', subError);
+          // Continue with checkout - don't block on database error
+        } else if (activeSubscriptions && activeSubscriptions.length > 0) {
+          const activeSubscription = activeSubscriptions[0];
+          console.log('⚠️ Active subscription found in Supabase - blocking new checkout:', {
+            id: activeSubscription.stripe_subscription_id,
+            status: activeSubscription.status,
+            plan_id: activeSubscription.plan_id,
+            current_period_end: activeSubscription.current_period_end
           });
 
           let errorMessage = 'You already have an active subscription';
@@ -233,90 +218,27 @@ export async function POST(req: Request) {
             errorMessage = 'You already have a trial subscription';
           }
 
-          // Attempt to sync subscription details into the database for consistency
-          try {
-            const planId = activeSubscription.items?.data?.[0]?.price?.id || null;
-            const subUpdate = {
-              user_id: user.id,
-              stripe_subscription_id: activeSubscription.id,
-              stripe_customer_id: customerId,
-              status: activeSubscription.status,
-              plan_id: planId,
-              current_period_start: activeSubscription.current_period_start
-                ? new Date(activeSubscription.current_period_start * 1000).toISOString()
-                : null,
-              current_period_end: activeSubscription.current_period_end
-                ? new Date(activeSubscription.current_period_end * 1000).toISOString()
-                : null,
-              canceled_at: activeSubscription.canceled_at
-                ? new Date(activeSubscription.canceled_at * 1000).toISOString()
-                : null,
-              cancel_at_period_end: !!activeSubscription.cancel_at_period_end,
-              updated_at: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-            } as any;
-
-            const { error: upsertError } = await supabaseAdmin
-              .from('subscriptions')
-              .upsert(subUpdate, { onConflict: 'stripe_subscription_id', ignoreDuplicates: false });
-
-            if (upsertError) {
-              console.warn('⚠️ Failed to upsert subscription during checkout pre-check:', upsertError);
-            } else {
-              console.log('✅ Synced active subscription to database via checkout pre-check');
-            }
-          } catch (syncErr) {
-            console.warn('⚠️ Error syncing subscription to database:', syncErr);
-          }
-
           return NextResponse.json({
             error: errorMessage,
             details: {
-              subscription_id: activeSubscription.id,
+              subscription_id: activeSubscription.stripe_subscription_id,
               status: activeSubscription.status,
-              current_period_end: activeSubscription.current_period_end 
-                ? new Date(activeSubscription.current_period_end * 1000).toISOString()
-                : null,
-              plan_name: activeSubscription.items?.data?.[0]?.price?.nickname || 'Premium Plan'
+              current_period_end: activeSubscription.current_period_end,
+              plan_id: activeSubscription.plan_id,
+              created_at: activeSubscription.created_at,
+              updated_at: activeSubscription.updated_at
             }
           }, { status: 409 }); // 409 Conflict
         }
 
-        // Handle past due subscriptions - allow new subscription (reactivation)
-        if (pastDueSubscriptions.length > 0) {
-          console.log('💳 Past due subscription found - allowing reactivation via new subscription:', {
-            pastDueCount: pastDueSubscriptions.length,
-            ids: pastDueSubscriptions.map(sub => sub.id)
-          });
-          console.log('✅ Proceeding with new subscription to reactivate service');
-        }
-
-        // Handle canceled subscriptions - allow re-subscription
-        if (canceledSubscriptions.length > 0) {
-          console.log('🔄 Canceled subscription found - allowing re-subscription:', {
-            canceledCount: canceledSubscriptions.length,
-            ids: canceledSubscriptions.map(sub => sub.id)
-          });
-          console.log('✅ Proceeding with re-subscription for previously canceled customer');
-        }
-
-        // Handle incomplete subscriptions - allow new attempt
-        if (incompleteSubscriptions.length > 0) {
-          console.log('⏳ Incomplete subscription found - allowing new subscription attempt:', {
-            incompleteCount: incompleteSubscriptions.length,
-            ids: incompleteSubscriptions.map(sub => sub.id)
-          });
-          console.log('✅ Proceeding with new subscription attempt');
-        }
-
-        console.log('✅ No active subscriptions found, proceeding with checkout');
+        console.log('✅ No active subscriptions found in Supabase, proceeding with checkout');
       } catch (error) {
         console.error('❌ Error checking active subscriptions:', error);
         // Continue with checkout - better to allow than block incorrectly
         console.log('⚠️ Continuing with checkout despite subscription check error');
       }
     } else {
-      console.log('📝 No customer ID available, skipping subscription check (new customer)');
+      console.log('📄 One-time purchase detected (Full Service), skipping subscription check');
     }
 
     // Prepare checkout session configuration

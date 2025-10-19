@@ -8,15 +8,6 @@ export interface SubscriptionStatus {
 }
 
 export async function checkSubscriptionStatus(userId: string): Promise<SubscriptionStatus> {
-  // If in development mode or on localhost, allow access
-  if (isLocalhost() || config.features.debugMode) {
-    return {
-      hasActiveSubscription: true,
-      isLocalhost: isLocalhost(),
-      shouldRedirect: false
-    };
-  }
-  
   // In production, check actual subscription status
   try {
     return await checkSubscriptionStatusServerEnhanced(userId);

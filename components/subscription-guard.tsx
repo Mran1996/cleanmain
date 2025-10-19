@@ -53,50 +53,24 @@ export function SubscriptionGuard({
 
     const checkSubscription = async () => {
       try {
-        console.log('💳 Checking subscription status directly from Stripe for user:', user.email);
+        console.log('💳 Checking subscription status from Supabase for user:', user.email);
         setSubscriptionLoading(true);
 
-        // Check subscription status using the same method as checkout button
-        // Try to create a checkout session to see if user has active subscription
-        const response = await fetch('/api/checkout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ plan: 'premium' }), // Use any plan for checking
-        });
+        // Check subscription status directly from Supabase
+        const { data: subscriptions, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['active', 'trialing'])
+          .maybeSingle();
 
-        if (response.status === 409) {
-          // User has active subscription (409 = Conflict)
-          const data = await response.json();
-          console.log('✅ Active subscription detected via Stripe:', data);
-          setHasActiveSubscription(true);
-        } else if (response.ok) {
-          // No active subscription, user can proceed with checkout
-          console.log('❌ No active subscription found via Stripe');
+        if (error) {
+          console.error('❌ Supabase subscription query error:', error);
           setHasActiveSubscription(false);
         } else {
-          // Other error - be conservative and allow access
-          const data = await response.json();
-          console.error('⚠️ Error checking subscription via Stripe:', data);
-          console.log('🔄 Falling back to Supabase check...');
-          
-          // Fallback to Supabase check
-          const { data: subscriptions, error } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .maybeSingle();
-
-          if (error) {
-            console.error('❌ Supabase subscription query error:', error);
-            setHasActiveSubscription(false);
-          } else {
-            const isActive = !!subscriptions;
-            setHasActiveSubscription(isActive);
-            console.log('🔍 Supabase fallback result:', { hasSubscription: isActive });
-          }
+          const isActive = !!subscriptions;
+          setHasActiveSubscription(isActive);
+          console.log(isActive ? '✅ Active subscription found in Supabase' : '❌ No active subscription found in Supabase', { subscription: subscriptions });
         }
       } catch (error: any) {
         console.error('❌ Error checking subscription:', error);

@@ -202,27 +202,44 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                {/* Payment Methods */}
-                {billingData?.paymentMethods && billingData.paymentMethods.length > 0 && (
+                {/* Payment Methods - Only show last transaction */}
+                {billingData?.invoices && billingData.invoices.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       💳 Payment Methods
                     </h3>
                     <div className="space-y-2">
-                      {billingData.paymentMethods.map((pm, index) => (
-                        <div key={pm.id} className="flex items-center justify-between bg-white p-3 rounded border">
-                          <div className="flex items-center gap-3">
-                            <span className="capitalize font-medium">{pm.card?.brand}</span>
-                            <span>•••• {pm.card?.last4}</span>
-                            <span className="text-gray-500 text-sm">
-                              {pm.card?.exp_month}/{pm.card?.exp_year}
-                            </span>
+                      {/* Show only the last (most recent) transaction */}
+                      {(() => {
+                        const lastInvoice = billingData.invoices[0]; // Most recent invoice
+                        return (
+                          <div key={lastInvoice.id} className="flex items-center justify-between bg-white p-3 rounded border">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-3 mb-1">
+                                <span className="font-medium">{lastInvoice.number || `Invoice ${lastInvoice.id.slice(-8)}`}</span>
+                                <span className={`text-sm px-2 py-0.5 rounded ${
+                                  lastInvoice.status === 'paid' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {lastInvoice.status?.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="text-gray-500 text-sm">
+                                {new Date(lastInvoice.created * 1000).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-lg">
+                                ${(lastInvoice.amount_paid / 100).toFixed(2)}
+                              </div>
+                              <div className="text-gray-500 text-xs">
+                                {lastInvoice.currency?.toUpperCase() || 'USD'}
+                              </div>
+                            </div>
                           </div>
-                          {index === 0 && (
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 text-xs rounded font-medium">Default</span>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

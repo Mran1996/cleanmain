@@ -18,6 +18,7 @@ type AccountClientProps = {
   createdAt?: string | null;
   subscription?: StripeSubscription;
   billingData?: BillingData;
+  loadingBilling?: boolean; // ⭐ Add loading state prop
 };
 
 export default function AccountClient({
@@ -28,7 +29,8 @@ export default function AccountClient({
   email,
   createdAt,
   subscription,
-  billingData
+  billingData,
+  loadingBilling = false // ⭐ Default to false
 }: AccountClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,6 +91,10 @@ export default function AccountClient({
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const [deletingDocument, setDeletingDocument] = useState(false);
   
+  // Usage stats state
+  const [usageData, setUsageData] = useState<any>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
+  
   // Handle download receipt
   const handleDownloadReceipt = () => {
     try {
@@ -99,6 +105,24 @@ export default function AccountClient({
       alert('No receipt available');
     }
   };
+
+  // Fetch usage data to check for one-time credits
+  const fetchUsageData = async () => {
+    try {
+      setLoadingUsage(true);
+      const res = await fetch('/api/usage', { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        setUsageData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching usage data:', error);
+    } finally {
+      setLoadingUsage(false);
+    }
+  };
+
+
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,6 +200,18 @@ export default function AccountClient({
       fetchSavedDocuments(1);
     }
   }, [activeTab]);
+
+  // Fetch usage data on initial load (always needed for access control)
+  useEffect(() => {
+    // Only run in browser, not during build
+    if (typeof window === 'undefined') return;
+    
+    // Fetch immediately on mount - always needed for "Purchase Required" overlay
+    if (!usageData && !loadingUsage) {
+      console.log('🔄 Fetching usage data for access check...')
+      fetchUsageData();
+    }
+  }, []); // Empty array = run once on mount
 
   // Handle load more purchases (not needed for server-side pagination)
   // Removed as we're using page-based navigation instead
@@ -685,8 +721,13 @@ export default function AccountClient({
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
-              <div className="mt-6">
-                <UsageStats />
+              <div className="mt-6 relative">
+                {/* Usage Stats Container */}
+               
+                  <UsageStats />
+              
+                
+            
               </div>
             </div>
           ) : activeTab === 'billing' ? (
@@ -891,7 +932,7 @@ export default function AccountClient({
                                 </div>
                                 <div className="text-right">
                                   <div className="font-medium">
-                                    ${purchase.price?.toFixed(2) || '0.00'}
+                                    ${((purchase.price || 0) / 100)?.toFixed(2) || '0.00'}
                                   </div>
                                   <div className="text-green-600 text-xs">
                                     PAID
@@ -1062,14 +1103,17 @@ export default function AccountClient({
                         </button>
                       )}
                       
-                      <button 
-                        className="flex items-center justify-center gap-2 border rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold text-black bg-white hover:bg-gray-100 hover:ring-1 hover:ring-gray-300 transition w-full sm:w-auto"
-                        onClick={handleDownloadReceipt}
-                        disabled={!billingData?.invoices?.[0]?.invoice_pdf}
-                      >
-                        <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>
-                        Download Receipt
-                      </button>
+                      {/* Download Receipt Button - Only show when invoice PDF is available */}
+                      {billingData?.invoices?.[0]?.invoice_pdf && (
+                        <button 
+                          className="flex items-center justify-center gap-2 border rounded-lg px-3 md:px-4 py-2 text-sm md:text-base font-bold transition w-full sm:w-auto text-black bg-white hover:bg-gray-100 hover:ring-1 hover:ring-gray-300 cursor-pointer"
+                          onClick={handleDownloadReceipt}
+                          title="Download your receipt"
+                        >
+                          <svg xmlns='http://www.w3.org/2000/svg' className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' /></svg>
+                          Download Receipt
+                        </button>
+                      )}
                       
                     </div>
 

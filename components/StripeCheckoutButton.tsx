@@ -278,8 +278,8 @@ export default function StripeCheckoutButton({
       >
         {getButtonContent()}
       </Button>
-      {/* Basic subscription info (status + next renewal) */}
-      {!isOneTime && subscriptionStatus.subscriptionDetails && (
+      {/* Basic subscription info (status + next renewal) - only show for active/trialing subscriptions */}
+      {!isOneTime && subscriptionStatus.hasActiveSubscription && subscriptionStatus.subscriptionDetails && (
         <p className="text-xs text-muted-foreground">
           Subscription: {subscriptionStatus.subscriptionDetails.status}
           {subscriptionStatus.subscriptionDetails.current_period_end && (

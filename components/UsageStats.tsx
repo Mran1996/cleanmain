@@ -13,8 +13,12 @@ type UsageResponse = {
   usage: {
     monthly_limit?: number;
     monthly_remaining?: number;
+    monthly_used?: number; // ⭐ NEW: Used from API calculation
     one_time_limit_per_purchase?: number;
     one_time_remaining?: number;
+    one_time_total_granted?: number; // ⭐ Total credits ever granted
+    one_time_used?: number; // ⭐ Credits used from one-time purchases
+    one_time_purchase_count?: number; // ⭐ Number of one-time purchases
     api_generated_total?: number;
     monthly_period_start?: string | null;
     monthly_period_end?: string | null;
@@ -52,7 +56,7 @@ export default function UsageStats() {
   const monthly = useMemo(() => {
     const limit = Math.max(0, data?.usage?.monthly_limit ?? 0);
     const remaining = Math.max(0, data?.usage?.monthly_remaining ?? 0);
-    const used = Math.max(0, limit - remaining);
+    const used = Math.max(0, data?.usage?.monthly_used ?? (limit - remaining)); // ⭐ Use API value or calculate
     const pctUsed = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
     return { limit, remaining, used, pctUsed };
   }, [data]);
@@ -60,12 +64,20 @@ export default function UsageStats() {
   const oneTime = useMemo(() => {
     const perPurchaseLimit = Math.max(0, data?.usage?.one_time_limit_per_purchase ?? 0);
     const remaining = Math.max(0, data?.usage?.one_time_remaining ?? 0);
-    // Progress shown against a single purchase limit (approximation)
-    const usedAgainstSingle = Math.max(0, perPurchaseLimit - Math.min(perPurchaseLimit, remaining));
-    const pctUsedApprox = perPurchaseLimit > 0 ? Math.min(100, Math.round((usedAgainstSingle / perPurchaseLimit) * 100)) : 0;
-    const totalGenerated = Math.max(0, data?.usage?.api_generated_total ?? 0);
-    return { perPurchaseLimit, remaining, usedAgainstSingle, pctUsedApprox, totalGenerated };
+    const totalGranted = Math.max(0, data?.usage?.one_time_total_granted ?? 0); // Total ever granted
+    const used = Math.max(0, data?.usage?.one_time_used ?? 0); // Used amount
+    const purchaseCount = Math.max(0, data?.usage?.one_time_purchase_count ?? 0);
+    
+    // Calculate percentage used
+    const pctUsed = totalGranted > 0 ? Math.min(100, Math.round((used / totalGranted) * 100)) : 0;
+    
+    return { perPurchaseLimit, remaining, used, totalGranted, pctUsed, purchaseCount };
   }, [data]);
+
+  // ⭐ Calculate total available credits
+  const totalAvailable = useMemo(() => {
+    return monthly.remaining + oneTime.remaining;
+  }, [monthly.remaining, oneTime.remaining]);
 
   const periodEnd = useMemo(() => {
     const end = data?.usage?.monthly_period_end || data?.subscription?.current_period_end || null;
@@ -81,9 +93,17 @@ export default function UsageStats() {
               <CardTitle>Usage & Credits</CardTitle>
               <CardDescription>Track monthly and one-time credits with live updates.</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchUsage} disabled={loading}>
-              {loading ? "Loading..." : "Refresh"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fetchUsage} 
+                disabled={loading}
+                title="Refresh credit data (auto-verification runs on every load)"
+              >
+                {loading ? "Loading..." : "Refresh"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -97,22 +117,29 @@ export default function UsageStats() {
             </div>
           ) : data ? (
             <div className="space-y-6">
+              {/* ⭐ TOTAL AVAILABLE CREDITS - Prominent Display */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-700">Total Available Credits</h3>
+               
+                </div>
+                <div className="text-4xl font-bold text-green-700 mb-1">
+                  {totalAvailable.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {monthly.remaining} monthly + {oneTime.remaining} one-time
+                </div>
+              </div>
+
               {/* Monthly Usage */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold">Monthly Usage</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    (data.subscription?.status || "inactive") === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-700"
-                  }`}>
-                    {data.subscription?.status || "inactive"}
-                  </span>
+                  <h3 className="text-sm font-semibold">Monthly Subscription Credits</h3>
                 </div>
                 <div className="text-sm text-gray-700 mb-2">
                   <span className="font-medium">{monthly.used}</span> used of <span className="font-medium">{monthly.limit}</span> credits
                   {typeof monthly.remaining === "number" && (
-                    <> · <span className="font-medium">{monthly.remaining}</span> remaining</>
+                    <> · <span className="font-medium text-green-600">{monthly.remaining} remaining</span></>
                   )}
                 </div>
                 <div className="w-full h-3 bg-gray-200 rounded overflow-hidden">
@@ -134,27 +161,32 @@ export default function UsageStats() {
               {/* One-Time Credits */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold">One-Time Credits</h3>
-                  <span className="text-xs text-gray-500">Per purchase limit {oneTime.perPurchaseLimit}</span>
+                  <h3 className="text-sm font-semibold">One-Time Purchase Credits</h3>
+                  <span className="text-xs text-gray-500">Per purchase: {oneTime.perPurchaseLimit}</span>
                 </div>
                 <div className="text-sm text-gray-700 mb-2">
-                  <span className="font-medium">{oneTime.remaining}</span> credits remaining
-                  {typeof oneTime.totalGenerated === "number" && (
-                    <> · <span className="font-medium">{oneTime.totalGenerated}</span> generated total</>
+                  <span className="font-medium">{oneTime.used}</span> used of <span className="font-medium">{oneTime.totalGranted}</span> credits
+                  {typeof oneTime.remaining === "number" && (
+                    <> · <span className="font-medium text-emerald-600">{oneTime.remaining} remaining</span></>
                   )}
                 </div>
                 <div className="w-full h-3 bg-gray-200 rounded overflow-hidden">
                   <div
                     className="h-3 bg-emerald-500"
-                    style={{ width: `${oneTime.pctUsedApprox}%` }}
-                    aria-label={`One-time used (approx) ${oneTime.pctUsedApprox}%`}
+                    style={{ width: `${oneTime.pctUsed}%` }}
+                    aria-label={`One-time used ${oneTime.pctUsed}%`}
                   />
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Graph approximates usage against one purchase’s limit.</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {oneTime.purchaseCount > 0 
+                    ? `From ${oneTime.purchaseCount} purchase${oneTime.purchaseCount !== 1 ? 's' : ''}. Never expires.`
+                    : 'Accumulates across all purchases. Never expires.'
+                  }
+                </div>
               </div>
 
               {/* Updated timestamp */}
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 border-t pt-3">
                 Updated {data.usage?.updated_at ? new Date(data.usage.updated_at).toLocaleString() : "recently"}
               </div>
             </div>

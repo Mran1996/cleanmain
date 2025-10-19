@@ -241,9 +241,13 @@ function Step2Content() {
       const hasRealData = checkForRealUserData();
       if (!hasRealData) {
         setError("No real data found from Step 1. Please complete Step 1 with your case information first.");
+        toast.error("No real data found from Step 1. Please complete Step 1 with your case information first.");
         setGenerating(false);
         return;
       }
+      
+      // ⭐ Show loading message - backend will check credits
+      toast.info('Preparing to generate your document...');
       
       // Get real data from Step 1
       const firstName = localStorage.getItem("firstName");
@@ -319,24 +323,57 @@ function Step2Content() {
 
       console.log("📤 Sending REAL data to OpenAI API:", payload);
       
-      // Call the document generation API
+      // ⭐ SINGLE API CALL - Backend handles credit check, generation, and consumption
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       
+      // ⭐ Handle different error responses with appropriate toast messages
       if (!response.ok) {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to generate document");
+        const errorMessage = errorData.error || "Failed to generate document";
+        
+        // HTTP 402: Insufficient credits
+        if (response.status === 402) {
+          setError(errorMessage);
+          toast.error(errorMessage, { duration: 6000 });
+          console.error("❌ Insufficient credits:", errorMessage);
+        }
+        // HTTP 401: Authentication error
+        else if (response.status === 401) {
+          setError(errorMessage);
+          toast.error(errorMessage, { duration: 5000 });
+          console.error("❌ Authentication error:", errorMessage);
+        }
+        // Other errors
+        else {
+          setError(errorMessage);
+          toast.error(errorMessage, { duration: 5000 });
+          console.error("❌ Generation error:", errorMessage);
+        }
+        
         setGenerating(false);
         return;
       }
       
-      // Handle the API response format
+      // ⭐ Handle successful response with credit information
       const result = await response.json();
       
       if (result.success && result.data?.docId) {
+        // Display credit usage information from backend
+        if (result.creditInfo) {
+          const { source, remaining, message } = result.creditInfo;
+          if (source === 'subscription') {
+            toast.success(`✅ ${message}`, { duration: 5000 });
+            console.log(`✅ Used monthly subscription credit. ${remaining} remaining.`);
+          } else if (source === 'one_time') {
+            toast.success(`✅ ${message}`, { duration: 5000 });
+            console.log(`✅ Used one-time credit. ${remaining} remaining.`);
+          }
+        }
+        
         // Fetch the document content using the docId
         const docResponse = await fetch(`/api/get-document/${result.data.docId}`);
         if (docResponse.ok) {
@@ -344,31 +381,35 @@ function Step2Content() {
           if (docData.content) {
             setDocumentText(docData.content);
             localStorage.setItem("finalDocument", docData.content);
-            localStorage.setItem("currentDocumentId", result.data.docId); // Store document ID for case analysis
-            localStorage.setItem("documentGeneratedAt", new Date().toISOString()); // Store generation timestamp
+            localStorage.setItem("currentDocumentId", result.data.docId);
+            localStorage.setItem("documentGeneratedAt", new Date().toISOString());
             
             // Reset save state for new document generation
             setSavedDocumentId(null);
             setIsDocumentSaved(false);
-            localStorage.removeItem("savedDocumentId"); // Clear any previous save state
+            localStorage.removeItem("savedDocumentId");
             console.log("✅ Document generated successfully with REAL data!");
             console.log("✅ Document ID:", result.data.docId);
-            toast.success('Legal document generated successfully using your real case information!');
+            toast.success('Legal document generated successfully!', { duration: 4000 });
             
             // 🚀 Automatically trigger case analysis after document generation
             console.log("🔍 Automatically triggering case analysis for generated document...");
             toast.info('Analyzing your document for case success insights...');
             setTimeout(() => {
               handleGenerateCaseAnalysis();
-            }, 1000); // Small delay to ensure document state is updated
+            }, 1000);
           } else {
             setError("Document content not found");
+            toast.error("Document content not found");
           }
         } else {
           setError("Failed to fetch document content");
+          toast.error("Failed to fetch document content");
         }
       } else {
-        setError(result.error || "Failed to generate document");
+        const errorMessage = result.error || "Failed to generate document";
+        setError(errorMessage);
+        toast.error(errorMessage);
         console.error("❌ API error:", result);
       }
       

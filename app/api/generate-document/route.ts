@@ -58,21 +58,29 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Gate on available credits before heavy work
+    // ⭐ STEP 1: Check authentication first
     try {
       const supabase = await createClient();
       const { data: { user: authUser } } = await supabase.auth.getUser();
       const uid = userId || authUser?.id;
       if (!uid) {
-        return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+        console.error('❌ No user ID - authentication required');
+        return NextResponse.json({ 
+          success: false, 
+          error: 'User authentication required. Please log in to generate documents.' 
+        }, { status: 401 });
       }
-      // Check subscription status and remaining credits
+      
+      // ⭐ STEP 2: Check subscription status and credit availability
+      console.log('💳 Checking credit availability for user:', uid);
+      
       const { data: subRows } = await supabase
         .from('subscriptions')
         .select('status')
         .eq('user_id', uid)
         .order('updated_at', { ascending: false })
         .limit(1);
+      
       const subActive = Array.isArray(subRows) && subRows[0] && ['active','trialing'].includes(subRows[0].status);
 
       const { data: usage } = await supabase
@@ -83,17 +91,37 @@ export async function POST(req: NextRequest) {
 
       const monthlyRemaining = usage?.monthly_remaining || 0;
       const oneTimeRemaining = usage?.one_time_remaining || 0;
+      const totalAvailable = monthlyRemaining + oneTimeRemaining;
+      
+      console.log('📊 Credit status:', {
+        subscriptionActive: subActive,
+        monthlyRemaining,
+        oneTimeRemaining,
+        totalAvailable
+      });
 
-      const hasCredits = (subActive && monthlyRemaining > 0) || oneTimeRemaining > 0;
-      if (!hasCredits) {
+      // ⭐ STEP 3: Block generation if no credits available
+      if (totalAvailable === 0) {
+        console.error('❌ No credits available - blocking generation');
         return NextResponse.json({
           success: false,
-          error: 'Insufficient credits. Please purchase a document pack or renew your subscription.',
+          error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
         }, { status: 402 });
       }
+      
+      // ⭐ STEP 4: Inform which credits will be used
+      const creditSource = (subActive && monthlyRemaining > 0) ? 'subscription' : 'one_time';
+      const creditsToUse = creditSource === 'subscription' ? monthlyRemaining : oneTimeRemaining;
+      
+      console.log(`✅ Credits available: Will use ${creditSource} credits (${creditsToUse} available)`);
+      
     } catch (gateErr) {
-      console.error('⚠️ Credit gating failed, proceeding cautiously:', gateErr);
-      // Do not block if gating fails; continue to avoid false negatives
+      console.error('❌ Credit check failed:', gateErr);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to verify credit balance. Please try again.',
+        details: gateErr instanceof Error ? gateErr.message : String(gateErr)
+      }, { status: 500 });
     }
 
     // Debug logging to track what data we're receiving
@@ -490,51 +518,152 @@ Generate a complete, professional legal document using ONLY the information prov
       }
     );
 
-    // Store document in Supabase
+    // Get authenticated user for linking document
+    const authSupabase = await createClient();
+    const { data: { user: authUser } } = await authSupabase.auth.getUser();
+    const uid = userId || authUser?.id;
+    
+    if (!uid) {
+      console.error('❌ No user ID available - cannot save document');
+      return NextResponse.json({
+        success: false,
+        error: 'User authentication required to save document'
+      }, { status: 401 });
+    }
+
+    // Store document in Supabase with user_id for proper linking
     const { data: documentData, error: documentError } = await supabase
       .from('documents')
       .insert([{
         id: docId,
+        user_id: uid, // ⭐ CRITICAL: Link document to user
         title: documentTitle,
+        filename: `${documentTitle.replace(/[^a-z0-9\s\-_]/gi, '_').replace(/\s+/g, '_')}.txt`,
+        original_filename: `${documentTitle}.txt`,
+        file_size: Buffer.byteLength(documentContent, 'utf8'),
+        file_type: 'text/plain',
         content: documentContent,
-        metadata: metadata,
+        metadata: {
+          ...metadata,
+          generated_by_api: true,
+          credit_source: 'pending', // Will be updated after credit consumption
+          generation_timestamp: new Date().toISOString()
+        },
         created_at: new Date().toISOString()
       }])
       .select()
       .single();
 
     if (documentError) {
-      console.error('Error storing document in Supabase:', documentError);
-      // Continue anyway - we'll still return the document
+      console.error('❌ Error storing document in Supabase:', documentError);
+      console.error('❌ Document data:', { docId, uid, title: documentTitle });
+      // Don't continue if document save fails - user paid for this!
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to save document to database',
+        details: documentError.message
+      }, { status: 500 });
     }
+    
+    console.log('✅ Document saved to Supabase:', { docId, userId: uid, title: documentTitle });
 
-    // On success, decrement the appropriate credit bucket
+    // ⭐ On success, consume credit and return detailed information
     try {
-      const supabase = await createClient();
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      const uid = userId || authUser?.id;
-      if (!uid) {
-        console.warn('⚠️ No user available to consume credit');
+      // ⭐ FINAL VERIFICATION: Re-check credits immediately before consumption
+      console.log('💳 [FINAL CHECK] Verifying credits before consumption...');
+      const { data: finalCheck } = await authSupabase
+        .from('document_usage')
+        .select('monthly_remaining, one_time_remaining')
+        .eq('user_id', uid)
+        .single();
+      
+      const finalMonthly = finalCheck?.monthly_remaining || 0;
+      const finalOneTime = finalCheck?.one_time_remaining || 0;
+      const finalTotal = finalMonthly + finalOneTime;
+      
+      console.log('📊 [FINAL CHECK] Credits before consumption:', {
+        monthly: finalMonthly,
+        oneTime: finalOneTime,
+        total: finalTotal
+      });
+      
+      if (finalTotal === 0) {
+        console.error('❌ [FINAL CHECK] Race condition: Credits consumed between check and generation');
+        // Rollback document creation
+        await supabase.from('documents').delete().eq('id', docId);
+        return NextResponse.json({
+          success: false,
+          error: 'Credits were consumed during document generation. Please try again.',
+        }, { status: 402 });
       }
-      const consumed = await consumeCredit(supabase, uid!);
+      
+      const consumed = await consumeCredit(authSupabase, uid);
       if (!consumed.ok) {
-        console.warn('⚠️ Credit consumption failed post-generation; user may be out of credits.');
+        console.warn('⚠️ Credit consumption failed - insufficient credits');
+        console.warn('⚠️ Message:', consumed.message || 'No credits available');
+        
+        // Rollback document creation if credit consumption fails
+        await supabase
+          .from('documents')
+          .delete()
+          .eq('id', docId);
+        
+        return NextResponse.json({
+          success: false,
+          error: consumed.message || 'Insufficient credits. Please purchase a document pack or subscribe to continue.',
+        }, { status: 402 });
       } else {
         console.log(`✅ Credit consumed from ${consumed.source}, remaining: ${consumed.remaining}`);
+        console.log(`✅ ${consumed.message}`);
+        
+        // Update document metadata with credit source
+        await supabase
+          .from('documents')
+          .update({
+            metadata: {
+              ...metadata,
+              generated_by_api: true,
+              credit_source: consumed.source,
+              credits_remaining_after: consumed.remaining,
+              generation_timestamp: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', docId);
+        
+        console.log('✅ Document metadata updated with credit tracking');
+        
+        // ⭐ Return success with credit information
+        return NextResponse.json({
+          success: true,
+          data: {
+            docId,
+            title: documentTitle,
+            document: documentContent,
+            metadata
+          },
+          creditInfo: {
+            source: consumed.source,
+            remaining: consumed.remaining,
+            message: consumed.message
+          }
+        });
       }
     } catch (consumeErr) {
       console.error('❌ Error consuming credit post-generation:', consumeErr);
+      
+      // Rollback document creation on credit error
+      await supabase
+        .from('documents')
+        .delete()
+        .eq('id', docId);
+      
+      return NextResponse.json({
+        success: false,
+        error: 'Credit system error - document generation cancelled',
+        details: consumeErr instanceof Error ? consumeErr.message : String(consumeErr)
+      }, { status: 500 });
     }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        docId,
-        title: documentTitle,
-        document: documentContent,
-        metadata
-      }
-    });
 
   } catch (error) {
     console.error('Document generation error:', error);
