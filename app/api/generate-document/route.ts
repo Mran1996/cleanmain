@@ -415,20 +415,20 @@ Generate a complete, professional legal document using ONLY the information prov
       let kimiSuccess = false;
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-          method: 'POST',
+      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
-          body: JSON.stringify({
-            model: 'kimi-k2-0905-preview',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature: 0.3,
-            max_tokens: 4096, // Maximum supported by the model
-            // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
-          })
-        });
+        body: JSON.stringify({
+          model: 'kimi-k2-0905-preview',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 4096, // Maximum supported by the model
+          // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
+        })
+      });
         
         if (r.ok) {
           completion = await r.json();
@@ -634,13 +634,13 @@ Generate a complete, professional legal document using ONLY the information prov
         console.log('✅ Document metadata updated with credit tracking');
         
         // ⭐ Return success with credit information
-        return NextResponse.json({
-          success: true,
-          data: {
-            docId,
-            title: documentTitle,
-            document: documentContent,
-            metadata
+    return NextResponse.json({
+      success: true,
+      data: {
+        docId,
+        title: documentTitle,
+        document: documentContent,
+        metadata
           },
           creditInfo: {
             source: consumed.source,

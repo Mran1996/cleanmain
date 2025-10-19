@@ -35,7 +35,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
               </div>
               <CardHeader className="text-center space-y-3 pt-12">
                 <div className="text-2xl font-bold text-gray-900">🏆 Full Service Legal Support</div>
-                <div className="text-4xl font-bold text-emerald-600">$479</div>
+                <div className="text-4xl font-bold text-emerald-600">$499</div>
                 <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
               </CardHeader>
               <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">

@@ -47,7 +47,7 @@ export function ServiceBanner() {
                 <div className="text-sm text-slate-200">
                   We now offer a <span className="font-semibold text-amber-300">full service option</span> - 
                   document preparation, legal analysis, and more - 
-                  <span className="font-bold text-amber-300"> starting at $497</span>
+                  <span className="font-bold text-amber-300"> starting at $499</span>
                 </div>
               )}
             </div>
