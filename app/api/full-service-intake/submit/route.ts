@@ -9,30 +9,8 @@ import nodemailer from 'nodemailer';
 
 // Basic file type validation and signature scanning
 function validateAndScanFile(buffer: Buffer, filename: string, mimetype?: string) {
-  const ext = (filename.split('.').pop() || '').toLowerCase();
-  const allowedExts = ['pdf', 'docx', 'jpg', 'jpeg'];
-  const allowedMime = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg'];
-
-  if (!allowedExts.includes(ext)) return { ok: false, reason: 'Invalid file extension' };
-  if (mimetype && !allowedMime.includes(mimetype)) return { ok: false, reason: 'Invalid MIME type' };
-
-  // Magic bytes signatures
-  const sigPDF = buffer.slice(0, 5).toString('ascii'); // %PDF-
-  const sigZIP = buffer.slice(0, 4).toString('ascii'); // PK\x03\x04 for docx
-  const sigJPEG = buffer.slice(0, 3);
-
-  if (ext === 'pdf') {
-    if (sigPDF !== '%PDF-') return { ok: false, reason: 'Invalid PDF signature' };
-  } else if (ext === 'docx') {
-    if (sigZIP !== 'PK\x03\x04' && sigZIP !== 'PK\x05\x06') return { ok: false, reason: 'Invalid DOCX signature' };
-    // Minimal malware check: disallow potentially dangerous embedded macros by scanning for vbaProject
-    // This is heuristic since parsing zip is heavy; we scan raw buffer for the marker
-    const marker = Buffer.from('vbaProject.bin', 'ascii');
-    if (buffer.includes(marker)) return { ok: false, reason: 'DOCX contains macros' };
-  } else if (ext === 'jpg' || ext === 'jpeg') {
-    if (!(sigJPEG[0] === 0xFF && sigJPEG[1] === 0xD8 && sigJPEG[2] === 0xFF)) return { ok: false, reason: 'Invalid JPEG signature' };
-  }
-
+  // Allow all file types - no extension restrictions
+  // Just perform basic size validation (handled separately)
   return { ok: true };
 }
 
@@ -137,17 +115,31 @@ export async function POST(request: NextRequest) {
       const fileBuffer = Buffer.from(arrayBuffer);
       const scan = validateAndScanFile(fileBuffer, uploaded.name || 'file', uploaded.type || undefined);
       if (!scan.ok) {
-        return NextResponse.json({ error: `Invalid or unsafe file: ${scan.reason}` }, { status: 400 });
+        // This won't happen since we allow all file types, but keeping for code consistency
+        return NextResponse.json({ error: 'File validation failed' }, { status: 400 });
       }
 
-      // Ensure bucket exists (private)
-      try {
-        await supabaseAdmin.storage.createBucket('full_service_uploads', { public: false });
-      } catch (e) {
-        // ignore if already exists
+      // Check if bucket exists - if not, provide setup instructions
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      const bucketExists = buckets?.some(b => b.name === 'full_service_uploads');
+      
+      if (!bucketExists) {
+        console.error('❌ Storage bucket "full_service_uploads" does not exist');
+        console.error('📋 Setup Instructions:');
+        console.error('   1. Go to Supabase Dashboard → Storage');
+        console.error('   2. Click "New Bucket"');
+        console.error('   3. Name: full_service_uploads, Public: OFF, File size: 5MB');
+        console.error('   4. Click "Create Bucket"');
+        
+        console.log({   details: 'Please create the "full_service_uploads" bucket in your Supabase Dashboard (Storage → New Bucket → Name: full_service_uploads, Private, 5MB limit)',
+          setup_url: 'https://supabase.com/dashboard/project/_/storage/buckets'})
+        return NextResponse.json({ 
+          error: 'Falied to upload file', 
+       
+        }, { status: 500 });
       }
 
-      const safeName = `${user.id}-${Date.now()}-${(uploaded.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const safeName = `${user.id}/${Date.now()}-${(uploaded.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
         .from('full_service_uploads')
         .upload(safeName, fileBuffer, {
@@ -234,7 +226,7 @@ export async function POST(request: NextRequest) {
           <h3 style="color: #374151; margin-top: 20px;">Payment Information</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Stripe Session:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${stripe_session_id}</code></td></tr>
-            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Uploaded:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${storedFilePath ? '✅ Yes (stored in Supabase)' : '❌ No file'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Uploaded:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${storedFilePath ? '✅ Yes (attached to this email)' : '❌ No file'}</td></tr>
             ${storedFilePath ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Path:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${storedFilePath}</code></td></tr>` : ''}
             ${file_type ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${file_type}</td></tr>` : ''}
             ${file_size ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Size:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${(file_size / 1024).toFixed(2)} KB</td></tr>` : ''}
@@ -251,12 +243,44 @@ export async function POST(request: NextRequest) {
         </div>
       `;
 
-      await transporter.sendMail({
+      // Prepare email options
+      const mailOptions: any = {
         from: fromAddress,
         to: toAddress,
         subject,
         html: emailHtml,
-      });
+      };
+
+      // Attach file if it was uploaded
+      if (storedFilePath && uploaded) {
+        try {
+          // Download the file from Supabase Storage
+          const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+            .from('full_service_uploads')
+            .download(storedFilePath);
+
+          if (!downloadError && fileData) {
+            // Convert blob to buffer
+            const arrayBuffer = await fileData.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuffer);
+            
+            mailOptions.attachments = [{
+              filename: uploaded.name || 'attachment',
+              content: fileBuffer,
+              contentType: file_type || 'application/octet-stream'
+            }];
+            
+            console.log('📎 File attached to email:', uploaded.name);
+          } else {
+            console.warn('⚠️  Could not download file for email attachment:', downloadError?.message);
+          }
+        } catch (attachError: any) {
+          console.error('⚠️  Failed to attach file to email:', attachError?.message);
+          // Continue sending email without attachment
+        }
+      }
+
+      await transporter.sendMail(mailOptions);
       
       console.log('✅ Admin notification email sent successfully to:', toAddress);
     } catch (mailError: any) {

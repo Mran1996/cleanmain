@@ -481,15 +481,14 @@ function PaymentSuccessInner() {
                   <div className="space-y-2">
                     <Label htmlFor="email">Email *</Label>
                     <Input 
-                      id="email" 
-                      name="email" 
+                      id="email-display" 
                       type="email" 
-                      required 
                       disabled
                       value={sessionData?.customer_email || ''}
                       placeholder="john.doe@example.com"
                       className="bg-gray-100 cursor-not-allowed" 
                     />
+                    <input type="hidden" name="email" value={sessionData?.customer_email || ''} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="phone">Phone</Label>
@@ -593,9 +592,9 @@ function PaymentSuccessInner() {
 
                 {/* Attachments */}
                 <div className="space-y-2">
-                  <Label htmlFor="file">File Upload (PDF, DOCX, JPG - max 5MB)</Label>
-                  <Input id="file" name="file" type="file" accept=".pdf,.docx,.jpg,.jpeg,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg" />
-                  <p className="text-xs text-gray-500">Optional. Files are scanned for safety and stored securely.</p>
+                  <Label htmlFor="file">File Upload (Any type - max 5MB)</Label>
+                  <Input id="file" name="file" type="file" />
+                  <p className="text-xs text-gray-500">Optional. Upload any document type (max 5MB). Files are stored securely.</p>
                 </div>
 
                 {/* Submit */}
