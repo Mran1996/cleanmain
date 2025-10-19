@@ -17,6 +17,7 @@ function SuccessIntakeInner() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState<string>('');
 
   useEffect(() => {
     async function verify() {
@@ -26,6 +27,15 @@ function SuccessIntakeInner() {
         return;
       }
       try {
+        // Fetch session data to get customer email
+        const sessionRes = await fetch(`/api/stripe/session?session_id=${encodeURIComponent(sessionId)}`);
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json();
+          if (sessionData.customer_email) {
+            setCustomerEmail(sessionData.customer_email);
+          }
+        }
+
         const res = await fetch(`/api/full-service-intake/verify?session_id=${encodeURIComponent(sessionId)}`, {
           headers: { 'Cache-Control': 'no-cache' },
         });
@@ -152,7 +162,16 @@ function SuccessIntakeInner() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email *</Label>
-                  <Input id="email" name="email" type="email" required placeholder="john.doe@example.com" />
+                  <Input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    required 
+                    disabled
+                    value={customerEmail}
+                    placeholder="john.doe@example.com"
+                    className="bg-gray-100 cursor-not-allowed" 
+                  />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="phone">Phone</Label>

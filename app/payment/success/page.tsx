@@ -480,7 +480,16 @@ function PaymentSuccessInner() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email *</Label>
-                    <Input id="email" name="email" type="email" required placeholder="john.doe@example.com" />
+                    <Input 
+                      id="email" 
+                      name="email" 
+                      type="email" 
+                      required 
+                      disabled
+                      value={sessionData?.customer_email || ''}
+                      placeholder="john.doe@example.com"
+                      className="bg-gray-100 cursor-not-allowed" 
+                    />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="phone">Phone</Label>
