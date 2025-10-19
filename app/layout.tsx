@@ -15,6 +15,7 @@ import "./globals.css";
 import { ReactNode } from "react";
 import ClientLayout from './ClientLayout';
 
+
 // Application metadata for SEO and browser configuration
 export const metadata = {
   title: 'Ask AI Legal™ - Where Law Meets Intelligence',
