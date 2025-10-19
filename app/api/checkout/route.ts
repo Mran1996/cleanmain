@@ -48,8 +48,6 @@ export async function POST(req: Request) {
     // This avoids checkout failing when the exact env name expected by older code
     // isn't present.
   const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP] ||
-      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_MONTHLY_PRICE_ID ||
-      process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID ||
       process.env.STRIPE_COURT_READY_PRICE_ID;
 
     // Stripe debug log for runtime diagnosis
@@ -290,6 +288,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ sessionId: session.id });
   } catch (error) {
+   
     console.error('Error in create-checkout:', error);
     return NextResponse.json(
       { error: 'Error creating checkout session' },

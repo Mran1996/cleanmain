@@ -5,6 +5,9 @@ import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { PRODUCTS } from "@/lib/stripe-config";
 
 export function PricingSection({ isHomePage = false }: { isHomePage?: boolean }) {
+
+
+  console.log(PRODUCTS,"PRODUCTS")
   return (
     <section className="bg-gray-50 py-16">
       <div className="container mx-auto px-4">
