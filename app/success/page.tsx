@@ -18,6 +18,7 @@ function SuccessIntakeInner() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   useEffect(() => {
     async function verify() {
@@ -42,8 +43,10 @@ function SuccessIntakeInner() {
         const data = await res.json();
         if (!res.ok || !data.allowed) {
           setError(data.error || data.reason || 'Verification failed.');
+          setAlreadySubmitted(Boolean(data.already_submitted));
           setAllowed(false);
         } else {
+          setAlreadySubmitted(false);
           setAllowed(true);
         }
       } catch (e: any) {
@@ -85,6 +88,26 @@ function SuccessIntakeInner() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-700">Verifying your payment...</div>
+      </div>
+    );
+  }
+
+  if (alreadySubmitted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <Card className="max-w-lg w-full">
+          <CardHeader>
+            <CardTitle>Intake Already Submitted</CardTitle>
+            <CardDescription>
+              We've received your intake for this payment session. Our team will follow up via email.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Link href="/account">Go to Account</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

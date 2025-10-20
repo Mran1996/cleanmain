@@ -18,7 +18,7 @@ interface SubscriptionGuardProps {
 
 export function SubscriptionGuard({ 
   children, 
-  fallbackTitle = "Premium Feature",
+  fallbackTitle = "",
   fallbackMessage = "This feature requires an active subscription to access."
 }: SubscriptionGuardProps) {
   const { user, loading } = useAuth();
@@ -139,34 +139,24 @@ export function SubscriptionGuard({
   if (!hasActiveSubscription) {
     console.log('🚫 SubscriptionGuard: No active subscription, showing upgrade prompt');
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
         <Card className="w-full max-w-md shadow-lg border-0">
           <CardHeader className="text-center pb-4">
-            <div className="mb-6">
+            <div className="mb-4 flex justify-center">
               <Logo size="lg" />
             </div>
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="h-8 w-8 text-emerald-600" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">{fallbackTitle}</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900">Purchase Required</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-6">
-            <p className="text-gray-600 text-lg leading-relaxed">
+            <p className="text-gray-600 text-lg">
               {fallbackMessage}
             </p>
-            <div className="space-y-3">
-              <Link href="/pricing">
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg font-semibold">
-                  <CreditCard className="mr-2 h-5 w-5" />
-                  View Pricing Plans
-                </Button>
-              </Link>
+            <div className="space-y-3 flex justify-center">
               <Button 
-                variant="outline"
-                onClick={() => router.back()}
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 py-3 text-lg"
+                onClick={() => router.push('/pricing')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg font-semibold"
               >
-                Go Back
+                 Purchased
               </Button>
             </div>
           </CardContent>

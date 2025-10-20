@@ -357,6 +357,10 @@ function PaymentSuccessInner() {
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [intakeAllowed, setIntakeAllowed] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -387,6 +391,41 @@ function PaymentSuccessInner() {
     const nickname = item?.price?.nickname || item?.description || '';
     return typeof nickname === 'string' && nickname.toLowerCase().includes('full service');
   });
+
+  // Verify intake eligibility and prevent duplicates
+  useEffect(() => {
+    const verify = async () => {
+      if (!sessionId || !hasFullService || !hasSucceeded || isSubscription) {
+        setIntakeAllowed(false);
+        setAlreadySubmitted(false);
+        setVerifyError(null);
+        setVerifyLoading(false);
+        return;
+      }
+      setVerifyLoading(true);
+      setVerifyError(null);
+      try {
+        const res = await fetch(`/api/full-service-intake/verify?session_id=${encodeURIComponent(sessionId)}`, {
+          headers: { 'Cache-Control': 'no-cache' },
+        });
+        const data = await res.json();
+        if (!res.ok || !data.allowed) {
+          setIntakeAllowed(false);
+          setAlreadySubmitted(Boolean(data.already_submitted));
+          setVerifyError(data.error || data.reason || 'Verification failed.');
+        } else {
+          setAlreadySubmitted(false);
+          setIntakeAllowed(true);
+        }
+      } catch (e: any) {
+        setIntakeAllowed(false);
+        setVerifyError(e.message || 'Verification error.');
+      } finally {
+        setVerifyLoading(false);
+      }
+    };
+    verify();
+  }, [sessionId, hasFullService, hasSucceeded, isSubscription]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -445,6 +484,53 @@ function PaymentSuccessInner() {
 
   // Show intake form for Full Service one-time purchases
   if (!isSubscription && hasSucceeded && hasFullService && !success) {
+    // Gate by verification results
+    if (verifyLoading) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-gray-700">Verifying your eligibility...</div>
+        </div>
+      );
+    }
+
+    if (alreadySubmitted) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+          <Card className="max-w-lg w-full">
+            <CardHeader>
+              <CardTitle>Intake Already Submitted</CardTitle>
+              <CardDescription>
+                We've received your intake for this payment session. Our team will follow up via email.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Link href="/account">Go to Account</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    if (!intakeAllowed) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+          <Card className="max-w-lg w-full">
+            <CardHeader>
+              <CardTitle>Access Restricted</CardTitle>
+              <CardDescription>{verifyError || 'This intake form is only available after a successful Full Service purchase.'}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                <Link href="/account">Go to Account</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
         {/* Hero Header */}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe-server';
 import { PRODUCTS } from '@/lib/stripe-config';
 import { getServerUser } from '@/utils/server-auth';
+import { createAdminClient } from '@/utils/supabase/server';
 
 export async function GET(req: NextRequest) {
   try {
@@ -41,8 +42,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ allowed: false, reason: 'Session user mismatch' }, { status: 403 });
     }
 
+    // Check if intake already submitted for this session
+    const supabaseAdmin = await createAdminClient();
+    const { data: existing } = await supabaseAdmin
+      .from('full_service_requests')
+      .select('id')
+      .eq('stripe_session_id', sessionId)
+      .limit(1);
+
+    const alreadySubmitted = Array.isArray(existing) && existing.length > 0;
+    if (alreadySubmitted) {
+      return NextResponse.json({
+        allowed: false,
+        already_submitted: true,
+        reason: 'Intake already submitted for this session',
+        session_id: sessionId
+      }, { status: 409 });
+    }
+
     return NextResponse.json({
       allowed: true,
+      already_submitted: false,
       session_id: sessionId,
       amount_total: session.amount_total,
       currency: session.currency,

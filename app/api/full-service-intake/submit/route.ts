@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { createClient } from '@/utils/supabase/server';
-// Use Web-standard FormData parsing via NextRequest.formData()
+
+import { createClient, createAdminClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe-server';
 import { PRODUCTS } from '@/lib/stripe-config';
 import nodemailer from 'nodemailer';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // Basic file type validation and signature scanning
 function validateAndScanFile(buffer: Buffer, filename: string, mimetype?: string) {
@@ -34,8 +34,31 @@ function createTransporter() {
 // Ensure Node runtime for libraries like nodemailer
 export const runtime = 'nodejs';
 
+// AWS S3 client configuration
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+});
+const s3Bucket = process.env.AWS_S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || '';
+const s3Region = process.env.AWS_REGION || 'us-east-1';
+
+// Helper to convert Node stream to Buffer
+async function streamToBuffer(stream: any): Promise<Buffer> {
+  return await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk: any) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    stream.on('error', (err: any) => reject(err));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
+
 
   // User-level client to verify auth
   const supabaseUserClient = await createClient();
@@ -44,18 +67,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Admin client for storage/db operations
-  const supabaseAdmin = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set(name: string, value: string, options: any) { cookieStore.set({ name, value, ...options }); },
-        remove(name: string, options: any) { cookieStore.set({ name, value: '', ...options }); },
-      },
-    }
-  );
+
+
+  const supabaseAdmin = await createAdminClient();
 
   try {
     // Parse multipart form using Web API
@@ -104,6 +118,16 @@ export async function POST(request: NextRequest) {
     let storedFilePath: string | null = null;
     let file_type: string | null = null;
     let file_size: number | null = null;
+    let signedFileUrl: string | null = null;
+let publicReadApplied: boolean = false;
+
+    // Requested validity; default to 100 years if not specified
+    const expiresParam = formData.get('expires_in');
+    const REQUESTED_100_YEARS_SECS = 100 * 365 * 24 * 60 * 60; // ~3.15B seconds
+    const S3_MAX_EXPIRES_SECS = 7 * 24 * 60 * 60; // AWS S3 presigned max = 7 days
+    const requestedExpires =  REQUESTED_100_YEARS_SECS;
+    const effectiveExpires = Math.min(requestedExpires, S3_MAX_EXPIRES_SECS);
+    const makePublic = !expiresParam || requestedExpires > S3_MAX_EXPIRES_SECS; // "no validity" or beyond S3 max => try unlimited via public read
 
     if (uploaded && uploaded.size > 0) {
       // Validate file type and size
@@ -115,49 +139,60 @@ export async function POST(request: NextRequest) {
       const fileBuffer = Buffer.from(arrayBuffer);
       const scan = validateAndScanFile(fileBuffer, uploaded.name || 'file', uploaded.type || undefined);
       if (!scan.ok) {
-        // This won't happen since we allow all file types, but keeping for code consistency
         return NextResponse.json({ error: 'File validation failed' }, { status: 400 });
       }
 
-      // Check if bucket exists - if not, provide setup instructions
-      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-      const bucketExists = buckets?.some(b => b.name === 'full_service_uploads');
-      
-      if (!bucketExists) {
-        console.error('❌ Storage bucket "full_service_uploads" does not exist');
-        console.error('📋 Setup Instructions:');
-        console.error('   1. Go to Supabase Dashboard → Storage');
-        console.error('   2. Click "New Bucket"');
-        console.error('   3. Name: full_service_uploads, Public: OFF, File size: 5MB');
-        console.error('   4. Click "Create Bucket"');
-        
-        console.log({   details: 'Please create the "full_service_uploads" bucket in your Supabase Dashboard (Storage → New Bucket → Name: full_service_uploads, Private, 5MB limit)',
-          setup_url: 'https://supabase.com/dashboard/project/_/storage/buckets'})
-        return NextResponse.json({ 
-          error: 'Falied to upload file', 
-       
-        }, { status: 500 });
+      if (!s3Bucket) {
+        return NextResponse.json({ error: 'S3 bucket not configured' }, { status: 500 });
       }
 
       const safeName = `${user.id}/${Date.now()}-${(uploaded.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-        .from('full_service_uploads')
-        .upload(safeName, fileBuffer, {
-          contentType: uploaded.type || 'application/octet-stream',
-          upsert: false,
-        });
 
-      if (uploadError) {
-        return NextResponse.json({ error: 'Upload failed', details: uploadError.message }, { status: 500 });
+      try {
+        await s3Client.send(new PutObjectCommand({
+          Bucket: s3Bucket,
+          Key: safeName,
+          Body: fileBuffer,
+          ContentType: uploaded.type || 'application/octet-stream',
+          ACL: makePublic ? 'public-read' : undefined,
+        }));
+        publicReadApplied = !!makePublic;
+      } catch (uploadErr: any) {
+        // Fallback for buckets that enforce object ownership and disallow ACLs
+        try {
+          await s3Client.send(new PutObjectCommand({
+            Bucket: s3Bucket,
+            Key: safeName,
+            Body: fileBuffer,
+            ContentType: uploaded.type || 'application/octet-stream',
+          }));
+          publicReadApplied = false;
+        } catch (fallbackErr: any) {
+          return NextResponse.json({ error: 'Upload failed', details: fallbackErr?.message || uploadErr?.message || 'S3 error' }, { status: 500 });
+        }
       }
 
-      storedFilePath = uploadData?.path || safeName;
+      storedFilePath = safeName;
       file_type = uploaded.type || null;
       file_size = uploaded.size || null;
+
+      // Generate a presigned URL for viewable access (max 7 days due to AWS limits)
+      try {
+        signedFileUrl = await getSignedUrl(s3Client, new GetObjectCommand({
+          Bucket: s3Bucket,
+          Key: storedFilePath,
+        }), { expiresIn: effectiveExpires });
+      } catch (signErr: any) {
+        console.warn('⚠️  Failed to generate presigned URL:', signErr?.message);
+      }
     }
 
     // Store submission in Supabase
     console.log('💾 Saving intake submission to Supabase for user:', user.id);
+    const fileUrl = storedFilePath ? `https://${s3Bucket}.s3.${s3Region}.amazonaws.com/${storedFilePath}` : null;
+const appOrigin = new URL(request.url).origin;
+const appViewUrl = storedFilePath ? `${appOrigin}/api/open-file?key=${encodeURIComponent(storedFilePath)}` : null;
+const finalViewUrl = publicReadApplied ? fileUrl : appViewUrl;
     const submissionData = {
       user_id: user.id,
       stripe_session_id,
@@ -169,7 +204,7 @@ export async function POST(request: NextRequest) {
       case_number,
       opposing_party,
       description,
-      file_url: storedFilePath,
+      file_url: finalViewUrl,
       file_type,
       file_size,
       created_at: new Date().toISOString(),
@@ -227,7 +262,8 @@ export async function POST(request: NextRequest) {
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Stripe Session:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${stripe_session_id}</code></td></tr>
             <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Uploaded:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${storedFilePath ? '✅ Yes (attached to this email)' : '❌ No file'}</td></tr>
-            ${storedFilePath ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Path:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><code>${storedFilePath}</code></td></tr>` : ''}
+            ${fileUrl ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File URL:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><a href="${fileUrl}" target="_blank" rel="noopener noreferrer">${fileUrl}</a></td></tr>` : ''}
+            ${finalViewUrl ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>${publicReadApplied ? 'Public File URL' : 'Permanent File Link'}:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><a href="${finalViewUrl}" target="_blank" rel="noopener noreferrer">Open File</a></td></tr>` : ''}
             ${file_type ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Type:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${file_type}</td></tr>` : ''}
             ${file_size ? `<tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>File Size:</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${(file_size / 1024).toFixed(2)} KB</td></tr>` : ''}
           </table>
@@ -254,25 +290,22 @@ export async function POST(request: NextRequest) {
       // Attach file if it was uploaded
       if (storedFilePath && uploaded) {
         try {
-          // Download the file from Supabase Storage
-          const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-            .from('full_service_uploads')
-            .download(storedFilePath);
+          const obj = await s3Client.send(new GetObjectCommand({
+            Bucket: s3Bucket,
+            Key: storedFilePath,
+          }));
 
-          if (!downloadError && fileData) {
-            // Convert blob to buffer
-            const arrayBuffer = await fileData.arrayBuffer();
-            const fileBuffer = Buffer.from(arrayBuffer);
-            
+          const fileBuffer = obj.Body ? await streamToBuffer(obj.Body as any) : null;
+
+          if (fileBuffer) {
             mailOptions.attachments = [{
               filename: uploaded.name || 'attachment',
               content: fileBuffer,
-              contentType: file_type || 'application/octet-stream'
+              contentType: file_type || 'application/octet-stream',
             }];
-            
             console.log('📎 File attached to email:', uploaded.name);
           } else {
-            console.warn('⚠️  Could not download file for email attachment:', downloadError?.message);
+            console.warn('⚠️  Could not read file from S3 for email attachment');
           }
         } catch (attachError: any) {
           console.error('⚠️  Failed to attach file to email:', attachError?.message);
@@ -293,7 +326,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, file_path: storedFilePath });
+    return NextResponse.json({ success: true, file_url: fileUrl, s3_key: storedFilePath, signed_file_url: signedFileUrl, view_url: finalViewUrl, app_view_url: appViewUrl, public_read: publicReadApplied, requested_expires_in: requestedExpires, expires_in_used: effectiveExpires, expires_capped: requestedExpires > S3_MAX_EXPIRES_SECS });
   } catch (error: any) {
     return NextResponse.json({ error: 'Submission failed', message: error.message }, { status: 500 });
   }

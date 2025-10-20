@@ -220,11 +220,11 @@ Key rules:
         setChatResponses(newHistory.filter(msg => msg.sender === "user").map(msg => msg.text));
       }
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Chat Error:", err);
       
       let errorMessage = "I'm having technical difficulties right now. Please try again in a moment.";
-      if (err.message?.includes('timeout')) {
+      if (err instanceof Error && err.message.includes('timeout')) {
         errorMessage = "The request is taking longer than expected. Please try again.";
       }
       
@@ -414,7 +414,7 @@ Key rules:
           isWaitingForResponse={isWaiting}
           currentQuestion=""
           userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
-          suggestedResponses={suggestedResponses}
+          suggestedResponses={suggestedResponses.map((text) => ({ text }))}
           onDocumentUpload={() => {}}
           legalCategory="criminal"
         />
@@ -490,10 +490,10 @@ Key rules:
 export default function AIAssistantStep1Page() {
   return (
     <SubscriptionGuard
-      fallbackTitle="AI Legal Assistant - Premium Feature"
-      fallbackMessage="Access to the AI legal assistant requires an active subscription. This interactive chat helps gather information for your legal case and generates professional legal documents."
+      fallbackTitle=""
+      fallbackMessage="Access to the AI legal assistant requires an active subscription or a one-time purchase. This interactive chat helps gather information for your legal case and generates professional legal documents."
     >
       <AIAssistantStep1Content />
     </SubscriptionGuard>
   );
-} 
+}
