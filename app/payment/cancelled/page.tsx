@@ -11,7 +11,7 @@ function SearchParamsContent() {
   
   return (
     <div className="text-center">
-      <div className="text-6xl mb-4">❌</div>
+ 
       <h1 className="text-2xl font-bold text-red-600 mb-4">Payment Cancelled</h1>
       <p className="text-gray-600 mb-6">
         Your payment was cancelled. No charges have been made.
