@@ -17,7 +17,8 @@ function SearchParamsContent() {
         Your payment was cancelled. No charges have been made.
       </p>
       {sessionId && (
-        <p className="text-sm text-gray-500 mb-6">
+
+        <p className="text-sm text-gray-500 mb-6 break-words overflow-wrap-anywhere">
           Session ID: {sessionId}
         </p>
       )}
