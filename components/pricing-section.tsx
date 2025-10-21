@@ -75,8 +75,8 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           <Card className="w-full max-w-md mx-auto border-green-500 border shadow-lg flex flex-col">
             <CardHeader className="text-center space-y-3 pt-6">
               <div className="text-2xl font-bold text-gray-900">📚 AI Legal Pro</div>
-              <div className="text-4xl font-bold text-green-600">$179</div>
-              <div className="text-sm text-gray-500 font-medium">$179 monthly cancel anytime</div>
+              <div className="text-4xl font-bold text-green-600">$199</div>
+              <div className="text-sm text-gray-500 font-medium">$199 monthly cancel anytime</div>
               <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
             </CardHeader>
             <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">

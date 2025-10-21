@@ -28,7 +28,7 @@ export const PLAN_DETAILS: Record<PlanName, {
   },
   [PLANS.COURT_READY]: {
     name: PLANS.COURT_READY,
-    price: 179,
+    price: 199,
     features: [
       "Unlimited pages",
       "Advanced legal formatting",

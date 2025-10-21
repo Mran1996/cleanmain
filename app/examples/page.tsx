@@ -86,7 +86,7 @@ export default function ExamplesPage() {
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
                     <th className="p-3 font-medium border border-gray-200">Feature</th>
-                    <th className="p-3 font-medium text-green-700 border border-gray-200">Ask AI Legal ($179)</th>
+                    <th className="p-3 font-medium text-green-700 border border-gray-200">Ask AI Legal ($199)</th>
                     <th className="p-3 font-medium text-gray-600 border border-gray-200">Attorney (Avg)</th>
                   </tr>
                 </thead>
@@ -108,7 +108,7 @@ export default function ExamplesPage() {
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="p-3 border border-gray-200">Flat Rate — No Surprises</td>
-                    <td className="p-3 border border-gray-200">✅ One-Time $179</td>
+                    <td className="p-3 border border-gray-200">✅ One-Time $199</td>
                     <td className="p-3 border border-gray-200">❌ Hourly Billing ($200–$400/hr)</td>
                   </tr>
                 </tbody>

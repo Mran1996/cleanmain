@@ -17,7 +17,7 @@ export function PricingComparisonTable() {
           </tr>
           <tr className="bg-gray-50">
             <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">Document Drafting</td>
-            <td className="border border-gray-200 px-4 py-3 text-center text-sm text-green-600 font-semibold">$179/month</td>
+            <td className="border border-gray-200 px-4 py-3 text-center text-sm text-green-600 font-semibold">$199/month</td>
             <td className="border border-gray-200 px-4 py-3 text-center text-sm text-gray-700">$2,000-8,000</td>
           </tr>
           <tr>

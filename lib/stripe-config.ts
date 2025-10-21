@@ -6,7 +6,7 @@ export const PRODUCTS = {
 export type ProductName = typeof PRODUCTS[keyof typeof PRODUCTS];
 
 export const PRICE_MAP: Record<ProductName, string> = {
-  [PRODUCTS.COURT_READY]: "price_1RifhKD8ZPcBhwZRYWFEQwjd",
+  [PRODUCTS.COURT_READY]: "price_1SKisYD8ZPcBhwZRUcV2cEq5",
   [PRODUCTS.FULL_SERVICE]: "price_1SK1zED8ZPcBhwZR8GEGgPQL",
 };
 
@@ -14,7 +14,7 @@ export const PRODUCT_DETAILS = {
 
   [PRODUCTS.COURT_READY]: {
     name: PRODUCTS.COURT_READY,
-    price: 179,
+    price: 199,
     features: [
       "Unlimited pages",
       "Advanced legal formatting",
