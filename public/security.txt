@@ -1,0 +1,15 @@
+# Security Contact Information
+# https://securitytxt.org/
+
+Contact: mailto:security@askai.legal
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://askailegal.com/.well-known/security.txt
+
+# Policy
+Policy: https://askailegal.com/security
+
+# Acknowledgments
+Acknowledgments: https://askailegal.com/security#acknowledgments
+
+# Please report security vulnerabilities responsibly
