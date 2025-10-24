@@ -821,7 +821,7 @@ function Step2Content() {
               <Button 
                 onClick={handleSave} 
                 disabled={generating || !documentText.trim() || saving} 
-                className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
               >
                 {saving ? (
                   <div className="flex items-center gap-2">
@@ -829,11 +829,28 @@ function Step2Content() {
                     Saving...
                   </div>
                 ) : (
-                  'Save'
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </>
                 )}
               </Button>
-              <Button onClick={handleEmail} disabled={generating || !documentText.trim()} className="bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Email</Button>
-              <Button onClick={handleDownload} disabled={generating || !documentText.trim()} className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">Download</Button>
+              <Button 
+                onClick={handleEmail} 
+                disabled={generating || !documentText.trim()} 
+                className="bg-white border border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              >
+                <Mail className="h-4 w-4 mr-1" />
+                Email
+              </Button>
+              <Button 
+                onClick={handleDownload} 
+                disabled={generating || !documentText.trim()} 
+                className="bg-white border border-purple-300 text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
             </div>
           {error && <div className="text-red-600 mb-4">{error}</div>}
           

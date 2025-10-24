@@ -1,6 +1,6 @@
 // Input validation and sanitization utilities
 
-export function sanitizeString(input: string, maxLength: number = 10000): string {
+export function sanitizeString(input: string, maxLength: number = 100000): string {
   if (typeof input !== 'string') {
     return '';
   }
@@ -8,7 +8,7 @@ export function sanitizeString(input: string, maxLength: number = 10000): string
   // Remove null bytes and control characters (except newlines and tabs)
   let sanitized = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
   
-  // Limit length
+  // Limit length (increased to 100,000 characters to allow unlimited information)
   if (sanitized.length > maxLength) {
     sanitized = sanitized.substring(0, maxLength);
   }
@@ -47,8 +47,8 @@ export function validateMessages(messages: any[]): boolean {
            (msg.sender || msg.role) && 
            (msg.text || msg.content) &&
            typeof (msg.text || msg.content) === 'string' &&
-           (msg.text || msg.content).length > 0 &&
-           (msg.text || msg.content).length <= 10000;
+           (msg.text || msg.content).length > 0;
+           // Removed 10,000 character limit to allow unlimited information
   });
 }
 

@@ -954,7 +954,7 @@ export function EnhancedChatInterface({
             disabled={isWaitingForResponse || isUploading}
             rows={1}
             style={{
-              maxHeight: '12rem', // approx 6 lines
+              maxHeight: '50rem', // increased to allow much longer messages
               minHeight: '2.5rem', // initial height
             }}
           />

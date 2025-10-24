@@ -4,16 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
-import { ProgressSteps } from "@/components/ProgressSteps";
 import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "./prompts/attorney-interview";
-import { Loader2, FileText, Trash2 } from "lucide-react";
+import { Loader2, FileText, Trash2, Info, Save, Download, Mail, MessageSquare } from "lucide-react";
 import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
+import { SplitPaneLayout } from "@/components/split-pane-layout";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { createClient } from "@/utils/supabase/client";
 
 function AIAssistantStep1Content() {
   const router = useRouter();
@@ -22,6 +26,14 @@ function AIAssistantStep1Content() {
   const [allDocuments, setAllDocuments] = useState<DocumentData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showSplitPane, setShowSplitPane] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState("");
+  const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
   const { 
     chatHistory, 
     setChatHistory, 
@@ -52,6 +64,87 @@ function AIAssistantStep1Content() {
   const getLegalCategory = () => {
     if (typeof window === 'undefined') return 'General';
     return localStorage.getItem("legalCategory") || "General";
+  };
+
+  // Button handlers
+  const handleSave = async () => {
+    if (!documentPreview.trim()) {
+      toast.error('No document to save');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('Please sign in to save documents');
+        return;
+      }
+
+      const response = await fetch('/api/save-generated-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Legal Document',
+          content: documentPreview,
+          document_type: 'legal_document',
+          legal_category: getLegalCategory(),
+          metadata: {
+            generated_from: 'step1_preview',
+            legal_category: getLegalCategory()
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save document');
+      }
+
+      const result = await response.json();
+      toast.success('Document saved successfully!');
+      console.log('Document saved:', result);
+    } catch (error) {
+      console.error('Error saving document:', error);
+      toast.error('Failed to save document');
+    }
+  };
+
+  const handleEmail = () => {
+    if (!documentPreview.trim()) {
+      toast.error('No document to email');
+      return;
+    }
+
+    try {
+      const subject = encodeURIComponent('Legal Document');
+      const body = encodeURIComponent(documentPreview);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    } catch (err) {
+      toast.error('Failed to open email client');
+    }
+  };
+
+  const handleDownload = () => {
+    if (!documentPreview.trim()) {
+      toast.error('No document to download');
+      return;
+    }
+
+    try {
+      const blob = new Blob([documentPreview], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Legal_Document.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Document downloaded!');
+    } catch (err) {
+      toast.error('Failed to download document');
+    }
   };
 
   const getCategoryPrompt = (category: string) => {
@@ -262,6 +355,98 @@ Key rules:
     setShowClearModal(false);
   };
 
+  // Fetch projects from database
+  const fetchProjects = async () => {
+    if (typeof window === 'undefined') return;
+    
+    setProjectsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Please sign in to view your projects");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching projects:", error);
+        toast.error("Failed to load projects");
+      } else {
+        setProjects(data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      toast.error("Failed to load projects");
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
+
+  // Handle project selection
+  const handleSelectProject = (project: any) => {
+    setSelectedProject(project);
+    setOpen(false);
+    
+    // Load project data into the interface
+    if (project.content) {
+      setDocumentPreview(project.content);
+    }
+    if (project.chat_history) {
+      try {
+        const parsedHistory = JSON.parse(project.chat_history);
+        setChatHistory(parsedHistory);
+        toast.success(`Loaded project: ${project.title}`);
+      } catch (error) {
+        console.error("Error parsing chat history:", error);
+        toast.error("Failed to load chat history");
+      }
+    }
+  };
+
+  // Save current project
+  const saveCurrentProject = async () => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error("Please sign in to save projects");
+        return;
+      }
+
+      const projectData = {
+        user_id: user.id,
+        title: `Legal Document - ${new Date().toLocaleDateString()}`,
+        content: documentPreview,
+        chat_history: JSON.stringify(chatHistory),
+      };
+
+      const { error } = await supabase
+        .from("projects")
+        .insert(projectData);
+
+      if (error) {
+        console.error("Error saving project:", error);
+        toast.error("Failed to save project");
+      } else {
+        toast.success("Project saved successfully!");
+        fetchProjects(); // Refresh the list
+      }
+    } catch (error) {
+      console.error("Error saving project:", error);
+      toast.error("Failed to save project");
+    }
+  };
+
   const handleGenerateDocument = async () => {
     if (typeof window === 'undefined') {
       toast.error("Browser environment required");
@@ -289,7 +474,7 @@ Key rules:
     console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
     
     // Show immediate feedback
-    toast.info("Starting document generation...");
+    toast.info("Starting document generation... This may take up to 5 minutes for complex documents.");
     setIsProcessing(true);
     
     try {
@@ -334,8 +519,19 @@ Key rules:
 
       // Add timeout for large documents
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+      const timeoutId = setTimeout(() => {
+        console.log("⏰ API call timed out after 5 minutes");
+        controller.abort();
+      }, 300000); // 5 minutes timeout for full document generation
 
+      // Add progress updates for long-running requests
+      const progressInterval = setInterval(() => {
+        toast.info("AI is still processing your document... This is normal for complex legal documents.");
+      }, 60000); // Show progress every minute
+
+      console.log("🚀 Making API call to /api/generate-document (full processing)");
+      
+      // Use the main document generation API that processes chat history
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -344,6 +540,8 @@ Key rules:
       });
 
       clearTimeout(timeoutId);
+      clearInterval(progressInterval);
+      console.log("📥 API response received:", response.status);
       console.log("📥 API response status:", response.status);
 
       if (!response.ok) {
@@ -369,13 +567,65 @@ Key rules:
         }
       }
 
-      const { docId } = data.data;
-      console.log("✅ Document generated successfully, navigating to Step 2 with docId:", docId);
-      router.push(`/ai-assistant/step-2?docId=${docId}`);
+      const { docId, document } = data.data;
+      console.log("✅ Document generated successfully, updating document preview");
+      
+      // Update the document preview with the generated content
+      if (document) {
+        setDocumentPreview(document);
+        toast.success("Document generated successfully! Check the preview on the right.");
+        
+        // Auto-save the project to database
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            const projectData = {
+              user_id: user.id,
+              title: `Legal Document - ${new Date().toLocaleDateString()}`,
+              content: document,
+              chat_history: JSON.stringify(finalChatHistory),
+            };
+
+            const { error } = await supabase
+              .from("projects")
+              .insert(projectData);
+
+            if (!error) {
+              console.log("✅ Project auto-saved to database");
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error auto-saving project:", error);
+        }
+      } else {
+        console.error("❌ No document content in API response");
+        toast.error("Document generated but content not received. Please try again.");
+      }
       
     } catch (error) {
       console.error("Error generating document:", error);
-      toast.error(`Failed to generate document: ${error instanceof Error ? error.message : "An unexpected error occurred"}`);
+      
+      // Clear any pending intervals
+      if (typeof progressInterval !== 'undefined') {
+        clearInterval(progressInterval);
+      }
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          toast.error("Document generation timed out after 5 minutes. The AI is processing a complex document. Please try again or contact support if this persists.");
+        } else if (error.message.includes('fetch')) {
+          toast.error("Network error. Please check your connection and try again.");
+        } else if (error.message.includes('API Error')) {
+          toast.error(`API Error: ${error.message}`);
+        } else {
+          toast.error(`Failed to generate document: ${error.message}`);
+        }
+      } else {
+        toast.error("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -383,18 +633,22 @@ Key rules:
 
 
 
-  return (
-    <StepLayout
-      headerTitle="Step 1: Chat With Your Legal Assistant"
-      headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
-    >
-      <div className="max-w-screen-sm mx-auto py-6 px-4 md:px-8">
-        <div className="mb-4"><ProgressSteps current="chat" /></div>
-        <div className="bg-white rounded-xl border p-4 md:p-6 shadow-sm">
-        
-        {/* Chat Controls */}
-        {chatHistory.length > 0 && (
-          <div className="mb-4 flex justify-center">
+  // Chat content for left pane
+  const chatContent = (
+    <div className="h-full flex flex-col">
+      {/* Chat Header with Clear Conversation button */}
+      {chatHistory.length > 0 && (
+        <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <span className="font-semibold text-gray-900">Chat</span>
+              <p className="text-xs text-gray-500">AI Legal Assistant</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <Button
               onClick={handleClearConversation}
               variant="outline"
@@ -404,6 +658,323 @@ Key rules:
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Conversation
             </Button>
+          </div>
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        
+        {/* Enhanced Chat Interface */}
+        <EnhancedChatInterface
+          messages={chatHistory}
+          onSendMessage={handleUserResponse}
+          isWaitingForResponse={isWaiting}
+          currentQuestion=""
+          userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
+          suggestedResponses={suggestedResponses.map((text) => ({ text }))}
+          onDocumentUpload={() => {}}
+          legalCategory="criminal"
+        />
+
+        {/* Generate Document Button - Only show if we have chat history */}
+        {chatHistory.length >= 2 && (
+          <div className="mt-6 flex justify-center gap-2">
+            <Button
+                onClick={() => {
+                  console.log("🔘 Generate Document button clicked!");
+                  console.log("📊 Chat history length:", chatHistory.length);
+                  console.log("📊 Is processing:", isProcessing);
+                  handleGenerateDocument();
+                }}
+                title={`Generate document from ${chatHistory.length} chat messages`}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white w-full md:w-auto"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Document...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Document and Case Analysis
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+        
+        {/* Show message if no chat history */}
+        {chatHistory.length < 2 && (
+          <div className="mt-6 text-center text-gray-500">
+            <p>Please have a conversation with the AI assistant first to generate a document.</p>
+            <p className="text-sm">Current messages: {chatHistory.length}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Document preview content for right pane - matches Step 2 layout
+  const documentPreviewContent = (
+    <div className="h-full flex flex-col">
+      {/* Match chat header spacing/style so rows align horizontally */}
+      <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+            <FileText className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <span className="font-semibold text-gray-900">Document</span>
+            <p className="text-xs text-gray-500">Legal Document Preview</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleSave}
+            disabled={!documentPreview.trim()} 
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+          >
+            <Save className="h-4 w-4 mr-1" />
+            Save
+          </Button>
+          <Button 
+            onClick={handleEmail}
+            disabled={!documentPreview.trim()} 
+            size="sm"
+            className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+          >
+            <Mail className="h-4 w-4 mr-1" />
+            Email
+          </Button>
+          <Button 
+            onClick={handleDownload}
+            disabled={!documentPreview.trim()} 
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Download
+          </Button>
+          <Button
+            onClick={() => setShowSplitPane(!showSplitPane)}
+            variant="outline"
+            size="sm"
+            className="border-gray-300 hover:bg-gray-50"
+          >
+            {showSplitPane ? "Hide Preview" : "Show Preview"}
+          </Button>
+        </div>
+      </div>
+      {/* Content area */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto">
+          {/* Document Textarea */}
+          <div className="bg-gray-50 border border-gray-300 rounded-lg shadow-sm">
+            <Textarea
+              className="w-full min-h-[300px] font-mono text-base border-0 focus:ring-0 p-6 bg-transparent"
+              value={documentPreview}
+              onChange={e => setDocumentPreview(e.target.value)}
+              disabled={isProcessing}
+              placeholder={
+                isProcessing ? "Generating document..." : 
+                documentPreview ? "Your generated legal document appears above..." :
+                "Your generated legal document will appear here..."
+              }
+            />
+          </div>
+          {isProcessing && <div className="flex items-center mt-2 text-gray-500"><Loader2 className="animate-spin mr-2" /> Generating document...</div>}
+          {documentPreview && !isProcessing && (
+            <div className="flex items-center mt-2 text-green-600">
+              <FileText className="mr-2 h-4 w-4" />
+              Document generated successfully! You can edit it above or proceed to Step 2.
+            </div>
+          )}
+
+          {/* AI Case Success Analysis Section */}
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6">
+            <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
+            
+            {/* Generate AI Case Analysis Buttons */}
+            <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
+              <Button 
+                onClick={async () => {
+                  if (!documentPreview.trim()) {
+                    toast.error('Please generate a document first before creating case analysis');
+                    return;
+                  }
+                  
+                  setAnalysisLoading(true);
+                  setCaseAnalysis(null);
+                  
+                  try {
+                    toast.info('Generating AI Case Analysis...');
+                    
+                    const analysisResponse = await fetch('/api/case-success-analysis', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        documentText: documentPreview,
+                        state: 'Washington',
+                        legalCategory: 'Criminal',
+                        courtName: 'King County Superior Court',
+                        caseNumber: '24-12345',
+                        userInfo: { firstName: 'John', lastName: 'Doe' },
+                        caseInfo: { opposingParty: 'State of Washington' }
+                      })
+                    });
+                    
+                    if (analysisResponse.ok) {
+                      const analysisData = await analysisResponse.json();
+                      console.log('✅ Case analysis generated:', analysisData);
+                      setCaseAnalysis(analysisData);
+                      toast.success('AI Case Analysis generated successfully!');
+                    } else {
+                      const errorData = await analysisResponse.json();
+                      throw new Error(errorData.error || 'Analysis generation failed');
+                    }
+                  } catch (error) {
+                    console.error('❌ Case analysis error:', error);
+                    toast.error(`Failed to generate case analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  } finally {
+                    setAnalysisLoading(false);
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white" 
+                disabled={isProcessing || !documentPreview.trim() || analysisLoading}
+              >
+                {analysisLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing Case...
+                  </>
+                ) : (
+                  'Generate AI Case Analysis'
+                )}
+              </Button>
+              <Button 
+                onClick={() => {
+                  toast.info('Download AI Case Analysis coming soon!');
+                }}
+                className="bg-teal-600 hover:bg-teal-700 text-white" 
+                disabled={isProcessing}
+              >
+                Download AI Case Analysis
+              </Button>
+            </div>
+            
+            <div className="max-h-[400px] overflow-y-auto pr-2">
+              {caseAnalysis ? (
+                <div className="prose max-w-none">
+                  <h2 className="text-2xl font-bold mb-2">{caseAnalysis.title || "Case Analysis"}</h2>
+                  <div className="mb-2"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
+                  <div className="mb-2"><b>Case Type:</b> {caseAnalysis.caseType}</div>
+                  <div className="mb-2"><b>Success Rate:</b> {caseAnalysis.successRate}%</div>
+                  <div className="mb-2"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
+                  <div className="mb-2"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
+                  <div className="mb-2"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
+                  <div className="mb-2"><b>Strengths:</b>
+                    <ul className="list-disc ml-6">
+                      {Array.isArray(caseAnalysis.strengths) ? caseAnalysis.strengths.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.strengths}</li>}
+                    </ul>
+                  </div>
+                  <div className="mb-2"><b>Weaknesses:</b>
+                    <ul className="list-disc ml-6">
+                      {Array.isArray(caseAnalysis.weaknesses) ? caseAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>) : <li>{caseAnalysis.weaknesses}</li>}
+                    </ul>
+                  </div>
+                  <div className="mb-2"><b>Timeline:</b> {caseAnalysis.timeline}</div>
+                  <div className="mb-2"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
+                  <div className="mb-2"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
+                </div>
+              ) : (
+                <div className="text-gray-500 mb-4">
+                  {analysisLoading ? "Generating case analysis..." : "Generate a document first, then click 'Generate AI Case Analysis' to see expert insights for your legal matter."}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-center items-center mt-8 pt-6 border-t border-gray-200">
+            <Button className="bg-green-700 hover:bg-green-800 text-white" onClick={() => {}}>Message</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // If split pane is enabled and we have chat history, show split layout
+  if (showSplitPane && chatHistory.length > 0) {
+    return (
+      <StepLayout
+        headerTitle="Step 1: Chat With Your Legal Assistant"
+        headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
+      >
+        <div className="h-[calc(100vh-200px)] mt-8">
+          <SplitPaneLayout
+            leftContent={chatContent}
+            rightContent={documentPreviewContent}
+            leftTitle="Ask AI Legal"
+            rightTitle="Document Preview"
+          />
+        </div>
+      </StepLayout>
+    );
+  }
+
+  // Original layout for single pane
+  return (
+    <StepLayout
+      headerTitle="Step 1: Chat With Your Legal Assistant"
+      headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
+    >
+      <div className="max-w-screen-sm mx-auto py-6 px-4 md:px-8">
+        <div className="bg-white rounded-xl border p-4 md:p-6 shadow-sm">
+        
+        {/* Chat Controls */}
+        {chatHistory.length > 0 && (
+          <div className="mb-4 flex justify-center gap-2">
+            <Button
+              onClick={handleClearConversation}
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear Conversation
+            </Button>
+            <Button
+              onClick={() => setShowSplitPane(!showSplitPane)}
+              variant="outline"
+              size="sm"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              {showSplitPane ? "Hide Document Preview" : "Show Document Preview"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                fetchProjects();
+                setOpen(true);
+              }}
+              size="sm"
+              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+            >
+              📁 My Projects
+            </Button>
+            {documentPreview && (
+              <Button
+                variant="outline"
+                onClick={saveCurrentProject}
+                size="sm"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              >
+                💾 Save Project
+              </Button>
+            )}
           </div>
         )}
         
@@ -421,7 +992,7 @@ Key rules:
 
         {/* Generate Document Button - Only show if we have chat history */}
         {chatHistory.length >= 2 && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex justify-center gap-2">
             <Button
                 onClick={() => {
                   console.log("🔘 Generate Document button clicked!");
@@ -483,6 +1054,50 @@ Key rules:
           </div>
         </div>
       )}
+
+      {/* My Projects Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>My Previous Projects</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-80">
+            {projectsLoading ? (
+              <div className="p-4 text-center text-muted-foreground">Loading projects...</div>
+            ) : projects.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground">No saved projects yet.</div>
+            ) : (
+              projects.map((p) => (
+                <div 
+                  key={p.id} 
+                  className="p-2 border-b hover:bg-muted rounded-md cursor-pointer"
+                  onClick={() => handleSelectProject(p)}
+                >
+                  <p className="font-medium">{p.title || "Untitled Document"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(p.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              ))
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button 
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                setOpen(false);
+                // Start a new project by clearing current state
+                setSelectedProject(null);
+                setDocumentPreview("");
+                setChatHistory([]);
+                toast.success("Started new project");
+              }}
+            >
+              + New Project
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </StepLayout>
   );
 }

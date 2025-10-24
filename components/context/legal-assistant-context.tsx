@@ -122,10 +122,23 @@ interface LegalAssistantContextType {
   setIncludeCaseLaw: React.Dispatch<React.SetStateAction<boolean>>
   documentFacts: string
   setDocumentFacts: React.Dispatch<React.SetStateAction<string>>
+  // Split-pane mode state
+  isSplitPaneMode: boolean
+  setIsSplitPaneMode: React.Dispatch<React.SetStateAction<boolean>>
+  chatCollapsed: boolean
+  setChatCollapsed: React.Dispatch<React.SetStateAction<boolean>>
+  documentContent: string
+  setDocumentContent: React.Dispatch<React.SetStateAction<string>>
+  documentId: string | null
+  setDocumentId: React.Dispatch<React.SetStateAction<string | null>>
   // Helper function to get all step data
   getAllStepData: () => StepData
   // Function to reset all context data
   resetContext: () => void
+  // Function to enter split-pane mode
+  enterSplitPaneMode: (documentId: string, documentContent: string) => void
+  // Function to exit split-pane mode
+  exitSplitPaneMode: () => void
 }
 
 // Create context with default values
@@ -180,6 +193,12 @@ export function LegalAssistantProvider({ children }: { children: ReactNode }) {
   const [includeCaseLaw, setIncludeCaseLaw] = useState<boolean>(true)
   const [documentFacts, setDocumentFacts] = useState<string>("")
 
+  // Split-pane mode state
+  const [isSplitPaneMode, setIsSplitPaneMode] = useState<boolean>(false)
+  const [chatCollapsed, setChatCollapsed] = useState<boolean>(false)
+  const [documentContent, setDocumentContent] = useState<string>("")
+  const [documentId, setDocumentId] = useState<string | null>(null)
+
   // Calculate if we have the minimum required data
   const isDataComplete = Boolean(userInfo.firstName && userInfo.category && caseInfo.state)
 
@@ -196,6 +215,22 @@ export function LegalAssistantProvider({ children }: { children: ReactNode }) {
       legalCategory: userInfo.category
     }
   }
+
+  // Function to enter split-pane mode
+  const enterSplitPaneMode = (docId: string, docContent: string) => {
+    setDocumentId(docId);
+    setDocumentContent(docContent);
+    setIsSplitPaneMode(true);
+    setChatCollapsed(false);
+  };
+
+  // Function to exit split-pane mode
+  const exitSplitPaneMode = () => {
+    setIsSplitPaneMode(false);
+    setChatCollapsed(false);
+    setDocumentContent("");
+    setDocumentId(null);
+  };
 
   // Function to reset all context data
   const resetContext = () => {
@@ -235,6 +270,11 @@ export function LegalAssistantProvider({ children }: { children: ReactNode }) {
     setChatHistory([])
     setIncludeCaseLaw(true)
     setDocumentFacts("")
+    // Reset split-pane mode
+    setIsSplitPaneMode(false)
+    setChatCollapsed(false)
+    setDocumentContent("")
+    setDocumentId(null)
   }
 
   return (
@@ -263,8 +303,19 @@ export function LegalAssistantProvider({ children }: { children: ReactNode }) {
         setIncludeCaseLaw,
         documentFacts,
         setDocumentFacts,
+        // Split-pane mode state
+        isSplitPaneMode,
+        setIsSplitPaneMode,
+        chatCollapsed,
+        setChatCollapsed,
+        documentContent,
+        setDocumentContent,
+        documentId,
+        setDocumentId,
         getAllStepData,
         resetContext,
+        enterSplitPaneMode,
+        exitSplitPaneMode,
       }}
     >
       {children}
