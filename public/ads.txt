@@ -1,0 +1,8 @@
+# Ads.txt file for Ask AI Legal™
+# This file is used to declare authorized digital sellers
+# Add your ad network information here if you plan to monetize with ads
+
+# Example format:
+# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+
+# Leave empty if not using ads

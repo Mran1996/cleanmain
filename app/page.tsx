@@ -22,35 +22,138 @@ import { KeyFeatures } from "@/components/key-features"
 import { PricingSection } from "@/components/pricing-section"
 import { SuccessStories } from "@/components/success-stories"
 import Footer from "@/components/footer"
+import type { Metadata } from 'next';
+
+// SEO metadata for homepage
+export const metadata: Metadata = {
+  title: 'Ask AI Legal™ - Where Law Meets Intelligence | AI-Powered Legal Assistant',
+  description: 'Get instant legal guidance with Ask AI Legal™. Upload documents, analyze cases, and generate professional legal paperwork. Affordable, fast, and AI-powered legal assistance for housing, family, employment, and more.',
+  keywords: [
+    'AI legal assistant',
+    'legal document generator',
+    'affordable legal help',
+    'legal AI',
+    'self-represented litigant',
+    'legal document analysis',
+    'case success analysis',
+    'legal chatbot',
+    'eviction defense',
+    'divorce documents',
+    'employment law',
+  ],
+  openGraph: {
+    title: 'Ask AI Legal™ - AI-Powered Legal Assistant',
+    description: 'Get instant legal guidance and professional document generation with AI. Affordable legal help for everyone.',
+    type: 'website',
+    url: 'https://askailegal.com',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Ask AI Legal™ - AI-Powered Legal Assistant',
+    description: 'Get instant legal guidance and professional document generation with AI.',
+  },
+  alternates: {
+    canonical: 'https://askailegal.com',
+  },
+};
 
 export default function Home() {
+  // Structured data for homepage
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': 'https://askailegal.com/#organization',
+        name: 'Ask AI Legal™',
+        url: 'https://askailegal.com',
+        logo: {
+          '@type': 'ImageObject',
+          url: 'https://askailegal.com/logo/logo.png',
+        },
+        description: 'AI-powered legal assistant helping you navigate legal matters with confidence',
+        sameAs: [],
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://askailegal.com/#website',
+        url: 'https://askailegal.com',
+        name: 'Ask AI Legal™',
+        description: 'Empowering access to justice with AI',
+        publisher: {
+          '@id': 'https://askailegal.com/#organization',
+        },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: 'https://askailegal.com/search?q={search_term_string}',
+          },
+          'query-input': 'required name=search_term_string',
+        },
+      },
+      {
+        '@type': 'WebPage',
+        '@id': 'https://askailegal.com/#webpage',
+        url: 'https://askailegal.com',
+        name: 'Ask AI Legal™ - Where Law Meets Intelligence',
+        isPartOf: {
+          '@id': 'https://askailegal.com/#website',
+        },
+        about: {
+          '@id': 'https://askailegal.com/#organization',
+        },
+        description: 'Get instant legal guidance with AI-powered legal assistance. Upload documents, analyze cases, and generate professional legal paperwork.',
+      },
+      {
+        '@type': 'Service',
+        '@id': 'https://askailegal.com/#service',
+        serviceType: 'Legal Technology',
+        provider: {
+          '@id': 'https://askailegal.com/#organization',
+        },
+        areaServed: 'US',
+        availableChannel: {
+          '@type': 'ServiceChannel',
+          serviceUrl: 'https://askailegal.com',
+        },
+      },
+    ],
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Main navigation header */}
-      <Navigation />
-      
-      {/* Service banner */}
-      <ServiceBanner />
-      
-      {/* Main content area with responsive padding and max width */}
-      <main className="flex-grow w-full max-w-screen-sm mx-auto p-4 md:p-8 flex flex-col gap-y-8">
-        {/* Value proposition banner */}
-        <div className="bg-white py-6 px-4 text-center">
-          <p className="text-xl font-semibold">
-            We don't bill by the hour. We don't cut corners. We help you take back control of your legal case — fast.
-          </p>
-        </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <div className="min-h-screen flex flex-col bg-white">
+        {/* Main navigation header */}
+        <Navigation />
         
-        {/* Main page sections */}
-        <HeroSection />
-        <HowItWorks />
-        <KeyFeatures />
-        <PricingSection isHomePage={true} />
-        <SuccessStories />
-      </main>
-      
-      {/* Footer with links and legal information */}
-      <Footer />
-    </div>
+        {/* Service banner */}
+        <ServiceBanner />
+        
+        {/* Main content area with responsive padding and max width */}
+        <main className="flex-grow w-full max-w-screen-sm mx-auto p-4 md:p-8 flex flex-col gap-y-8">
+          {/* Value proposition banner */}
+          <div className="bg-white py-6 px-4 text-center">
+            <h1 className="text-xl font-semibold">
+              We don't bill by the hour. We don't cut corners. We help you take back control of your legal case — fast.
+            </h1>
+          </div>
+          
+          {/* Main page sections */}
+          <HeroSection />
+          <HowItWorks />
+          <KeyFeatures />
+          <PricingSection isHomePage={true} />
+          <SuccessStories />
+        </main>
+        
+        {/* Footer with links and legal information */}
+        <Footer />
+      </div>
+    </>
   )
 }
