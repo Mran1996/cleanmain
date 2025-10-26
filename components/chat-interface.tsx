@@ -259,7 +259,7 @@ function ChatBubble({ sender, text, time }: { sender: "khristian" | "user"; text
           </div>
         )}
         <div>
-          <div className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`}>{text}</div>
+          <div className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`} dangerouslySetInnerHTML={{ __html: text }}></div>
           <div className="text-[10px] text-gray-400 mt-1 text-right">{time}</div>
         </div>
         {isUser && (

@@ -97,7 +97,7 @@ function AIAssistantStep1SplitPaneContent() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi ${firstName}, 👋 I'm Khristian, your AI legal assistant.\n\nI'm going to conduct a comprehensive attorney-client interview with you. This thorough process involves 15-25 detailed questions across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, court-ready legal document based on all the information we've gathered.\n\nYou can upload documents anytime during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
         setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -644,8 +644,8 @@ ${documentInfo}`;
   // Regular Step 1 layout (before document generation)
   return (
     <StepLayout
-      headerTitle="Step 1: Chat With Your Legal Assistant"
-      headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
+      headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+      headerSubtitle=""
     >
       <div className="max-w-screen-sm mx-auto py-6 px-4 md:px-8">
         <div className="mb-4"><ProgressSteps current="chat" /></div>
@@ -710,8 +710,6 @@ ${documentInfo}`;
         {/* Show message if no chat history */}
         {chatHistory.length < 2 && (
           <div className="mt-6 text-center text-gray-500">
-            <p>Please have a conversation with the AI assistant first to generate a document.</p>
-            <p className="text-sm">Current messages: {chatHistory.length}</p>
           </div>
         )}
         </div>

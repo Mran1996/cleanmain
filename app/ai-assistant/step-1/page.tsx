@@ -181,7 +181,7 @@ function AIAssistantStep1Content() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi ${firstName}, 👋 I'm Khristian, your AI legal assistant.\n\nI'm going to conduct a comprehensive attorney-client interview with you. This thorough process involves 15-25 detailed questions across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, court-ready legal document based on all the information we've gathered.\n\nYou can upload documents anytime during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
       setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -661,7 +661,7 @@ Key rules:
           </div>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="overflow-y-auto px-6 py-0">
         
         {/* Enhanced Chat Interface */}
         <EnhancedChatInterface
@@ -707,8 +707,6 @@ Key rules:
         {/* Show message if no chat history */}
         {chatHistory.length < 2 && (
           <div className="mt-6 text-center text-gray-500">
-            <p>Please have a conversation with the AI assistant first to generate a document.</p>
-            <p className="text-sm">Current messages: {chatHistory.length}</p>
           </div>
         )}
       </div>
@@ -743,7 +741,7 @@ Key rules:
             onClick={handleEmail}
             disabled={!documentPreview.trim()} 
             size="sm"
-            className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+            className="bg-yellow-600 hover:bg-yellow-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
           >
             <Mail className="h-4 w-4 mr-1" />
             Email
@@ -788,12 +786,12 @@ Key rules:
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
               <FileText className="mr-2 h-4 w-4" />
-              Document generated successfully! You can edit it above or proceed to Step 2.
+              Document generated successfully! You can edit it above.
             </div>
           )}
 
           {/* AI Case Success Analysis Section */}
-          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6 mt-2">
             <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
             
             {/* Generate AI Case Analysis Buttons */}
@@ -862,6 +860,12 @@ Key rules:
               >
                 Download AI Case Analysis
               </Button>
+              <Button 
+                className="bg-green-700 hover:bg-green-800 text-white" 
+                onClick={() => {}}
+              >
+                Message
+              </Button>
             </div>
             
             <div className="max-h-[400px] overflow-y-auto pr-2">
@@ -896,10 +900,6 @@ Key rules:
             </div>
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-center items-center mt-8 pt-6 border-t border-gray-200">
-            <Button className="bg-green-700 hover:bg-green-800 text-white" onClick={() => {}}>Message</Button>
-          </div>
         </div>
       </div>
     </div>
@@ -909,8 +909,8 @@ Key rules:
   if (showSplitPane && chatHistory.length > 0) {
     return (
       <StepLayout
-        headerTitle="Step 1: Chat With Your Legal Assistant"
-        headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
+        headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+        headerSubtitle=""
       >
         <div className="h-[calc(100vh-200px)] mt-8">
           <SplitPaneLayout
@@ -920,6 +920,32 @@ Key rules:
             rightTitle="Document Preview"
           />
         </div>
+        
+        {/* Clear Conversation Confirmation Modal */}
+        {showClearModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Conversation?</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to clear the conversation? This will remove all chat history and start fresh. This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  onClick={cancelClearConversation}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                  onClick={confirmClearConversation}
+                >
+                  Yes, Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </StepLayout>
     );
   }
@@ -927,8 +953,8 @@ Key rules:
   // Original layout for single pane
   return (
     <StepLayout
-      headerTitle="Step 1: Chat With Your Legal Assistant"
-      headerSubtitle="Have a conversation with your AI legal assistant — we'll collect all the information needed for your legal document"
+      headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+      headerSubtitle=""
     >
       <div className="max-w-screen-sm mx-auto py-6 px-4 md:px-8">
         <div className="bg-white rounded-xl border p-4 md:p-6 shadow-sm">
@@ -1022,8 +1048,6 @@ Key rules:
         {/* Show message if no chat history */}
         {chatHistory.length < 2 && (
           <div className="mt-6 text-center text-gray-500">
-            <p>Please have a conversation with the AI assistant first to generate a document.</p>
-            <p className="text-sm">Current messages: {chatHistory.length}</p>
           </div>
         )}
         </div>

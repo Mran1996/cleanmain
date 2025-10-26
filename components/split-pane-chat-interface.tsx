@@ -35,6 +35,15 @@ export function SplitPaneChatInterface({
   onToggleCollapse,
   className = ""
 }: SplitPaneChatInterfaceProps) {
+  const formatContent = (content: string) => {
+    // Simple formatting for bold, italic, and code
+    const formattedContent = content
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
+      .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
+
+    return formattedContent
+  }
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -94,22 +103,17 @@ export function SplitPaneChatInterface({
   return (
     <div className={`h-full flex flex-col bg-white ${className}`}>
       {/* Chat Header */}
-      <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-white" />
+      <div className="p-3 border-b bg-gray-50 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <MessageSquare className="h-5 w-5 text-blue-600" />
+          <span className="font-medium text-gray-900">AI Assistant</span>
           </div>
-          <div>
-            <span className="font-semibold text-gray-900">Chat</span>
-            <p className="text-xs text-gray-500">AI Legal Assistant</p>
-          </div>
-        </div>
         {onToggleCollapse && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleCollapse}
-            className="h-8 w-8 p-0 hover:bg-gray-100"
+            className="h-8 w-8 p-0"
           >
             <ChevronDown className="h-4 w-4" />
           </Button>
@@ -117,7 +121,7 @@ export function SplitPaneChatInterface({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-6">
         {messages.map((message, index) => (
           <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div
@@ -143,7 +147,7 @@ export function SplitPaneChatInterface({
                   </div>
                 </div>
               )}
-              <div className="whitespace-pre-wrap">{message.text}</div>
+              <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatContent(message.text) }}></div>
             </div>
           </div>
         ))}
@@ -172,8 +176,8 @@ export function SplitPaneChatInterface({
 
       {/* Suggested Responses */}
       {suggestedResponses.length > 0 && showSuggestions && !isWaitingForResponse && (
-        <div className="px-6 py-3 border-t border-gray-300 bg-gray-50">
-          <div className="text-xs text-gray-600 mb-2 font-medium">Suggested responses:</div>
+        <div className="p-3 border-t bg-gray-50">
+          <div className="text-xs text-gray-600 mb-2">Suggested responses:</div>
           <div className="flex flex-wrap gap-2">
             {suggestedResponses.slice(0, 3).map((suggestion, index) => (
               <Button
@@ -181,7 +185,7 @@ export function SplitPaneChatInterface({
                 variant="outline"
                 size="sm"
                 onClick={() => handleSuggestionClick(suggestion.text)}
-                className="text-xs h-8 px-3 border-gray-300 hover:bg-gray-100"
+                className="text-xs h-8 px-3"
               >
                 {suggestion.text}
               </Button>
@@ -191,7 +195,7 @@ export function SplitPaneChatInterface({
       )}
 
       {/* Input Area */}
-      <div className="px-6 py-4 border-t border-gray-300 bg-white">
+      <div className="p-3 border-t bg-white">
         <div className="flex items-end space-x-2">
           <div className="flex-1">
             <Textarea

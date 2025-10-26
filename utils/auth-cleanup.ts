@@ -1,56 +1,35 @@
 /**
- * Utility functions to clean up corrupted authentication data
+ * Authentication Cleanup Utilities
+ * 
+ * These utilities help resolve authentication issues by clearing
+ * invalid sessions and forcing users to re-authenticate properly.
  */
 
-export function clearSupabaseAuth() {
+export function clearSupabaseAuth(): boolean {
   try {
-    // Clear localStorage
-    const keysToRemove = Object.keys(localStorage).filter(key => 
-      key.includes('supabase') || 
-      key.includes('auth') ||
-      key.includes('sb-')
-    );
+    // Clear all Supabase-related localStorage items
+    const keysToRemove = [
+      'sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token',
+      'supabase.auth.token',
+      'supabase.auth.session',
+      'sb-uqvgyxrjatjrtzscgdgv-auth-token', // Your specific project token
+    ];
     
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
-      console.log('Removed localStorage key:', key);
     });
-
-    // Clear sessionStorage
-    const sessionKeysToRemove = Object.keys(sessionStorage).filter(key => 
-      key.includes('supabase') || 
-      key.includes('auth') ||
-      key.includes('sb-')
-    );
     
-    sessionKeysToRemove.forEach(key => {
-      sessionStorage.removeItem(key);
-      console.log('Removed sessionStorage key:', key);
-    });
-
-    // Clear cookies (including malformed ones)
-    const cookies = document.cookie.split(';');
-    cookies.forEach(cookie => {
-      const eqPos = cookie.indexOf('=');
-      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-      if (name.includes('supabase') || name.includes('auth') || name.includes('sb-')) {
-        // Clear with multiple path and domain combinations to ensure removal
-        const clearOptions = [
-          '; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;',
-          '; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + window.location.hostname,
-          '; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.' + window.location.hostname,
-          '; expires=Thu, 01 Jan 1970 00:00:00 GMT;'
-        ];
-        
-        clearOptions.forEach(option => {
-          document.cookie = `${name}=${option}`;
-        });
-        
-        console.log('Removed cookie:', name);
+    // Clear all localStorage items that start with 'sb-'
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-')) {
+        localStorage.removeItem(key);
       }
     });
-
-    console.log('✅ Supabase auth data cleared successfully');
+    
+    // Clear sessionStorage as well
+    sessionStorage.clear();
+    
+    console.log('✅ Authentication data cleared');
     return true;
   } catch (error) {
     console.error('❌ Error clearing auth data:', error);
@@ -58,37 +37,35 @@ export function clearSupabaseAuth() {
   }
 }
 
-export function addAuthCleanupButton() {
-  // Add a temporary cleanup button to the page
-  const button = document.createElement('button');
-  button.innerHTML = '🧹 Clear Auth Data';
-  button.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 9999;
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-  `;
+export function clearAllAuthData(): boolean {
+  try {
+    // Clear localStorage
+    localStorage.clear();
+    
+    // Clear sessionStorage
+    sessionStorage.clear();
+    
+    // Clear cookies (if any)
+    document.cookie.split(";").forEach((c) => {
+      const eqPos = c.indexOf("=");
+      const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    });
+    
+    console.log('✅ All authentication data cleared');
+    return true;
+  } catch (error) {
+    console.error('❌ Error clearing all auth data:', error);
+    return false;
+  }
+}
+
+export function forceReauth(): void {
+  // Clear auth data
+  clearAllAuthData();
   
-  button.onclick = () => {
-    if (clearSupabaseAuth()) {
-      alert('Auth data cleared! Please refresh the page and log in again.');
-      window.location.reload();
-    }
-  };
-  
-  document.body.appendChild(button);
-  
-  // Auto-remove after 30 seconds
-  setTimeout(() => {
-    if (document.body.contains(button)) {
-      document.body.removeChild(button);
-    }
-  }, 30000);
+  // Redirect to login page
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
+  }
 }

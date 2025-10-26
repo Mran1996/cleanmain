@@ -45,6 +45,15 @@ export function EnhancedChatInterface({
   onDocumentUpload,
   legalCategory,
 }: EnhancedChatInterfaceProps) {
+  const formatContent = (content: string) => {
+    // Simple formatting for bold, italic, and code
+    const formattedContent = content
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
+      .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
+
+    return formattedContent
+  }
   const [inputValue, setInputValue] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -827,13 +836,13 @@ export function EnhancedChatInterface({
   const displaySuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : (suggestedResponses || []).map((s) => s.text)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Chat Messages - Mobile-first with auto-scroll */}
       <div 
-        className="flex-grow overflow-y-auto px-3 py-2 sm:px-4 sm:py-4 space-y-2 sm:space-y-3"
+        className="overflow-y-auto px-3 py-8 sm:px-4 sm:py-8 space-y-4 sm:space-y-4 pb-2"
       >
         {(messages || []).map((message, index) => (
-          <div key={index} className={`flex mt-2 mb-2 sm:mt-3 sm:mb-3 ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={index} className={`flex mt-0 mb-0 sm:mt-0 sm:mb-0 ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] rounded-lg p-3 sm:p-4 text-sm sm:text-base ${
                 message.sender === "user"
@@ -857,7 +866,7 @@ export function EnhancedChatInterface({
                   </div>
                 </div>
               )}
-              <div className="whitespace-pre-wrap">{message.text}</div>
+              <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatContent(message.text) }}></div>
             </div>
           </div>
         ))}
@@ -910,11 +919,11 @@ export function EnhancedChatInterface({
         )}
 
         {/* Invisible element for auto-scrolling */}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-0" />
       </div>
 
       {/* Input Area - Mobile-first with iOS viewport fixes */}
-      <div className="border-t px-3 py-2 sm:p-3 pb-[max(14px,env(safe-area-inset-bottom))]">
+      <div className="border-t px-3 py-4 sm:p-4">
         <form onSubmit={handleSubmit} className="flex items-start space-x-2">
           {/* Hidden file input */}
           <input
@@ -1006,9 +1015,9 @@ export function EnhancedChatInterface({
 
         {/* Rotating Suggested Responses - Mobile-first */}
         {rotatingSuggestions.length > 0 && (
-          <div className="mt-2 sm:mt-3">
-            <p className="text-xs sm:text-sm text-gray-400 mb-1">Suggested responses:</p>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="mt-4 sm:mt-4">
+            <p className="text-xs sm:text-sm text-gray-400 mb-0">Suggested responses:</p>
+            <div className="flex flex-wrap gap-2 sm:gap-2">
               {rotatingSuggestions.map((suggestion, idx) => (
                 <button
                   key={idx}
