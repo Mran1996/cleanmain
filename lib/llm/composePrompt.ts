@@ -95,7 +95,10 @@ Write all responses in plain, natural text. Use numbered formatting (1., 2., 3.)
 - Focus on completing the interview and gathering all necessary information
 - Only proceed to Step 5 for actual document generation
 - NEVER provide document drafts, templates, or sample language in Step 4
-- NEVER start writing any part of a legal document in Step 4`;
+- NEVER start writing any part of a legal document in Step 4
+- NEVER draft motions, briefs, or any legal documents in the chat conversation
+- NEVER provide sample legal language or document templates in responses
+- NEVER write any portion of a legal document during the interview process`;
 
   public static composeInterviewPrompt(context: PromptContext): string {
     let prompt = this.BASE_SYSTEM_PROMPT;
@@ -436,9 +439,10 @@ Use ALL of this interview data to create a comprehensive legal document. Incorpo
       errors.push('Prompt cannot be empty');
     }
 
-    if (prompt.length > 50000) {
-      errors.push('Prompt is too long (max 50,000 characters)');
-    }
+    // Removed 50,000 character limit to allow unlimited information
+    // if (prompt.length > 50000) {
+    //   errors.push('Prompt is too long (max 50,000 characters)');
+    // }
 
     // Check for forbidden phrases
     const forbiddenPhrases = [

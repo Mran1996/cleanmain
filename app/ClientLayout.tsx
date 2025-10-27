@@ -18,6 +18,7 @@ import { ReactNode } from 'react'
 import { LanguageProvider } from '../components/context/language-context'
 import { SupabaseProvider } from '../components/SupabaseProvider'
 import { AuthProvider } from '../components/auth-provider'
+import { LegalAssistantProvider } from '../components/context/legal-assistant-context'
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -28,7 +29,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <SupabaseProvider>
       <AuthProvider>
         <LanguageProvider>
-          {children}
+          <LegalAssistantProvider>
+            {children}
+          </LegalAssistantProvider>
         </LanguageProvider>
       </AuthProvider>
     </SupabaseProvider>

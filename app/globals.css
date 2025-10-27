@@ -237,3 +237,49 @@ section {
   --tw-shadow-colored: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
+
+/* Hide any floating chat bubbles or fixed positioned elements */
+[class*="chat-bubble"],
+[class*="floating-chat"],
+[class*="chat-widget"],
+[class*="chat-icon"],
+[class*="chat-button"],
+[style*="position: fixed"][style*="bottom"],
+[style*="position: fixed"][style*="left"] {
+  display: none !important;
+}
+
+/* Hide any elements with "Ask AI Legal" text that might be floating */
+div:has-text("Ask AI Legal") {
+  display: none !important;
+}
+
+/* Minimal scrollbar styling - subtle like upload buttons */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+  border: none;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #64748b;
+}
+
+/* Firefox scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
