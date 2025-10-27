@@ -19,10 +19,10 @@ export const metadata: Metadata = {
     title: 'Pricing Plans - Ask AI Legal™',
     description: 'Affordable AI-powered legal assistance. Plans starting at $9.99/month.',
     type: 'website',
-    url: 'https://askailegal.com/pricing',
+    url: 'https://www.askailegal.com/pricing',
   },
   alternates: {
-    canonical: 'https://askailegal.com/pricing',
+    canonical: 'https://www.askailegal.com/pricing',
   },
 };
 
@@ -33,7 +33,7 @@ export default function PricingPage() {
     '@type': 'WebPage',
     name: 'Pricing Plans',
     description: 'Affordable AI-powered legal assistance plans',
-    url: 'https://askailegal.com/pricing',
+    url: 'https://www.askailegal.com/pricing',
     mainEntity: {
       '@type': 'PriceSpecification',
       priceCurrency: 'USD',

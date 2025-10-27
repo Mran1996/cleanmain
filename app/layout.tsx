@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 
 // Application metadata for SEO and browser configuration
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://askailegal.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.askailegal.com'),
   title: {
     default: 'Ask AI Legal™ - Where Law Meets Intelligence',
     template: '%s | Ask AI Legal™',
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://askailegal.com',
+    url: 'https://www.askailegal.com',
     siteName: 'Ask AI Legal™',
     title: 'Ask AI Legal™ - Where Law Meets Intelligence',
     description: 'Empowering access to justice with AI. Your AI-powered legal assistant, helping you navigate legal matters with confidence.',
@@ -101,12 +101,11 @@ export const metadata: Metadata = {
   },
   verification: {
     google: 'googlef788c4c7f40dbf2c',
-    // Add your verification codes here:
     yandex: '8e1818f4b7eac228',
-    bing: 'BAD685C6FA7FE31CB8F70E8E5A27F050',
+    // Bing verification: Use /public/BingSiteAuth.xml file instead
   },
   alternates: {
-    canonical: 'https://askailegal.com',
+    canonical: 'https://www.askailegal.com',
   },
   category: 'Legal Technology',
 };
@@ -122,8 +121,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'Ask AI Legal™',
-    url: 'https://askailegal.com',
-    logo: 'https://askailegal.com/logo/logo.png',
+    url: 'https://www.askailegal.com',
+    logo: 'https://www.askailegal.com/logo/logo.png',
     description: 'AI-powered legal assistant helping you navigate legal matters with confidence',
     contactPoint: {
       '@type': 'ContactPoint',
@@ -141,13 +140,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Ask AI Legal™',
-    url: 'https://askailegal.com',
+    url: 'https://www.askailegal.com',
     description: 'Empowering access to justice with AI',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://askailegal.com/search?q={search_term_string}',
+        urlTemplate: 'https://www.askailegal.com/search?q={search_term_string}',
       },
       'query-input': 'required name=search_term_string',
     },

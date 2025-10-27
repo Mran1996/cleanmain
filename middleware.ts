@@ -58,7 +58,7 @@ export function middleware(req: NextRequest) {
   }
   
   // Canonical URL header (helps with SEO)
-  const canonicalUrl = `https://askailegal.com${path}`;
+  const canonicalUrl = `https://www.askailegal.com${path}`;
   response.headers.set('Link', `<${canonicalUrl}>; rel="canonical"`);
   
   return response;

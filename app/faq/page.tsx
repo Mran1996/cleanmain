@@ -19,10 +19,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FAQ - Ask AI Legal™',
     description: 'Common questions about our AI-powered legal assistant',
-    url: 'https://askailegal.com/faq',
+    url: 'https://www.askailegal.com/faq',
   },
   alternates: {
-    canonical: 'https://askailegal.com/faq',
+    canonical: 'https://www.askailegal.com/faq',
   },
 };
 
