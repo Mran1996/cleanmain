@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, MessageSquare, FileText, GripVertical, Sparkles, Bot, FileCheck, Users, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquare, FileText, GripVertical, Bot, FileCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 interface SplitPaneLayoutProps {
@@ -26,16 +26,13 @@ export function SplitPaneLayout({
 }: SplitPaneLayoutProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(isCollapsed);
   const [isMobile, setIsMobile] = useState(false);
-  const [activePane, setActivePane] = useState<'chat' | 'document'>('document'); // Mobile: which pane is active
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [activePane, setActivePane] = useState<'chat' | 'document'>('chat'); // Mobile: default to chat
+  const [leftPanelSize, setLeftPanelSize] = useState(45); // Track panel sizes
   const containerRef = useRef<HTMLDivElement>(null);
   
   const collapsed = onToggleCollapse ? isCollapsed : internalCollapsed;
   const toggleCollapse = onToggleCollapse || (() => {
-    setIsAnimating(true);
     setInternalCollapsed(!internalCollapsed);
-    // Reset animation state after transition
-    setTimeout(() => setIsAnimating(false), 300);
   });
 
   // Detect mobile screen size
@@ -50,74 +47,74 @@ export function SplitPaneLayout({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // ResizablePanelGroup handles all drag interactions automatically
-
   return (
-    <div className={`h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 ease-in-out ${className}`}>
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200/60 bg-white/90 backdrop-blur-sm shadow-sm">
-        <div className="flex items-center space-x-4">
+    <div className={`h-full flex flex-col bg-white transition-all duration-300 ease-in-out ${className}`}>
+      {/* Improved Header - Cleaner and more functional */}
+      <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-gray-200 bg-white z-10">
+        <div className="flex items-center space-x-3">
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-lg md:text-xl font-bold text-gray-900">
               Ask AI Legal™
             </h1>
-            <p className="text-sm text-gray-600">Where Law Meets Intelligence</p>
+            <p className="text-xs text-gray-500 hidden sm:block">Where Law Meets Intelligence</p>
           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          {/* Status Indicators */}
-        <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-              <Bot className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-700">AI Assistant</span>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Status Indicators - Cleaner design */}
+          {!isMobile && (
+            <div className="hidden md:flex items-center space-x-2">
+              <div className="flex items-center space-x-2 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span className="text-xs font-medium text-emerald-700">AI Active</span>
+              </div>
             </div>
-            
-            <div className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-              <FileCheck className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-700">{rightTitle}</span>
-            </div>
-          </div>
+          )}
           
           {/* Mobile: Tab buttons for switching between panes */}
           {isMobile ? (
-            <div className="flex bg-gray-100 rounded-xl p-1 ml-4 shadow-sm">
-              <Button
-                variant={activePane === 'chat' ? 'default' : 'ghost'}
-                size="sm"
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
                 onClick={() => setActivePane('chat')}
-                className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  activePane === 'chat'
+                    ? 'bg-white text-emerald-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Chat
-              </Button>
-              <Button
-                variant={activePane === 'document' ? 'default' : 'ghost'}
-                size="sm"
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat</span>
+              </button>
+              <button
                 onClick={() => setActivePane('document')}
-                className="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  activePane === 'document'
+                    ? 'bg-white text-emerald-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <FileText className="h-4 w-4 mr-2" />
-                Document
-              </Button>
+                <FileText className="h-4 w-4" />
+                <span>Document</span>
+              </button>
             </div>
           ) : (
+            // Desktop: Toggle button with better visibility
             <Button
               variant="outline"
               size="sm"
               onClick={toggleCollapse}
-              className="ml-4 border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-lg px-4 py-2 transition-all duration-200"
+              className="border-gray-300 hover:bg-gray-50 hover:border-emerald-300 rounded-lg px-3 py-1.5 transition-all"
+              title={collapsed ? "Expand chat panel" : "Collapse chat panel"}
             >
               {collapsed ? (
                 <>
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Expand Chat
+                  <ChevronLeft className="h-4 w-4 mr-1.5" />
+                  <span className="text-xs font-medium">Show Chat</span>
                 </>
               ) : (
                 <>
-                  <ChevronRight className="h-4 w-4 mr-2" />
-                  Collapse Chat
+                  <ChevronRight className="h-4 w-4 mr-1.5" />
+                  <span className="text-xs font-medium">Hide Chat</span>
                 </>
               )}
             </Button>
@@ -125,20 +122,20 @@ export function SplitPaneLayout({
         </div>
       </div>
 
-      {/* Enhanced Main Content Area */}
-      <div ref={containerRef} className="flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Enhanced Main Content Area with better visual separation */}
+      <div ref={containerRef} className="flex-1 overflow-hidden bg-gray-50">
         {isMobile ? (
-          /* Mobile: Show only active pane with enhanced styling */
+          /* Mobile: Show only active pane with full screen experience */
           <>
             {activePane === 'chat' && (
-              <div className="w-full h-full bg-gradient-to-br from-white to-gray-50 shadow-lg">
+              <div className="w-full h-full bg-white">
                 <div className="h-full overflow-hidden">
                   {leftContent}
                 </div>
               </div>
             )}
             {activePane === 'document' && (
-              <div className="w-full h-full bg-gradient-to-br from-white to-gray-50 shadow-lg">
+              <div className="w-full h-full bg-white">
                 <div className="h-full overflow-y-auto">
                   {rightContent}
                 </div>
@@ -146,29 +143,50 @@ export function SplitPaneLayout({
             )}
           </>
         ) : (
-          /* Desktop: Enhanced Resizable panels */
-          <ResizablePanelGroup direction="horizontal" className="h-full">
+          /* Desktop: Enhanced Resizable panels with better visual separation */
+          <ResizablePanelGroup 
+            direction="horizontal" 
+            className="h-full"
+            onLayout={(sizes) => {
+              if (sizes.length > 0 && !collapsed) {
+                setLeftPanelSize(sizes[0]);
+              }
+            }}
+          >
             {!collapsed && (
               <>
-                <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
-                  <div className="h-full flex flex-col bg-gradient-to-br from-white to-gray-50 shadow-lg border-r border-gray-200/60">
-                    <div className="h-full overflow-hidden">
+                <ResizablePanel 
+                  defaultSize={45} 
+                  minSize={30} 
+                  maxSize={70}
+                  className="min-w-[320px]"
+                >
+                  <div className="h-full flex flex-col bg-white border-r border-gray-200">
+                    <div className="flex-1 overflow-hidden">
                       {leftContent}
                     </div>
                   </div>
                 </ResizablePanel>
                 
-                <ResizableHandle className="w-1 bg-gradient-to-b from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 transition-all duration-200 group">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <GripVertical className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                {/* Enhanced Resizable Handle - More visible and interactive */}
+                <ResizableHandle className="w-2 bg-gray-100 hover:bg-emerald-100 group transition-colors relative">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-1 h-12 bg-gray-300 group-hover:bg-emerald-400 rounded-full transition-colors"></div>
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="h-5 w-5 text-emerald-600" />
                   </div>
                 </ResizableHandle>
               </>
             )}
             
-            <ResizablePanel defaultSize={collapsed ? 100 : 50} minSize={30} maxSize={70}>
-              <div className="h-full flex flex-col bg-gradient-to-br from-white to-gray-50 shadow-lg">
-                <div className="h-full overflow-y-auto">
+            <ResizablePanel 
+              defaultSize={collapsed ? 100 : 55} 
+              minSize={30} 
+              maxSize={collapsed ? 100 : 70}
+            >
+              <div className="h-full flex flex-col bg-white">
+                <div className="flex-1 overflow-y-auto">
                   {rightContent}
                 </div>
               </div>
@@ -179,4 +197,3 @@ export function SplitPaneLayout({
     </div>
   );
 }
-

@@ -43,9 +43,12 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                   <li>✅ Complete legal document drafting (up to 150 pages)</li>
                   <li>✅ AI + human review for accuracy and formatting</li>
                   <li>✅ State-specific case law research included</li>
+                  <li>✅ Case Success Analysis — legal strategy + projection</li>
                   <li>✅ Up to 3 free revisions within 14 days</li>
+                  <li>✅ Email + Phone Support</li>
                   <li>✅ Email or physical mail delivery</li>
                   <li>✅ 7 business day turnaround</li>
+                  <li>✅ Your own hearing prep script — exactly what to say in court for a winning edge</li>
                   <li>✅ Professional legal document support</li>
                 </ul>
 

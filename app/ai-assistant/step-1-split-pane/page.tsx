@@ -181,11 +181,22 @@ function AIAssistantStep1SplitPaneContent() {
 
 ${categoryPrompt}
 
-${documentInfo}`;
+${documentInfo}
+
+🔍 INTERNET SEARCH CAPABILITIES:
+- You have access to real-time internet search to find current case law and legal information
+- When users ask about specific cases, laws, or legal precedents, use the research tool to find current information
+- You can search for recent court decisions, legal updates, and relevant case law
+- Always provide accurate, up-to-date information when available
+- NEVER say you don't have internet access - you do!
+- When users ask about case law like Strickland v. Washington, ALWAYS search for current information`;
+
+      // Add explicit instruction to ensure one question at a time
+      const finalSystemPrompt = systemPrompt + "\n\nREMINDER: You must ask ONLY ONE question at a time. Do not ask multiple questions or group questions together in a single response.";
 
       // Prepare messages for API
       const messagesForAPI = [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: finalSystemPrompt },
         ...chatHistory.map(msg => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text
@@ -251,6 +262,11 @@ ${documentInfo}`;
           localStorage.setItem('step1_chat_responses', JSON.stringify(newHistory.filter(msg => msg.sender === "user").map(msg => msg.text)));
         }
         
+        // Auto-save to database after every 2 messages (user + assistant)
+        if (newHistory.length >= 2 && newHistory.length % 2 === 0) {
+          setTimeout(() => autoSaveChat(), 1000); // Delay to avoid too frequent saves
+        }
+        
         return newHistory;
       });
 
@@ -302,7 +318,41 @@ ${documentInfo}`;
     setShowClearModal(false);
   };
 
+  // Auto-save current chat conversation
+  const autoSaveChat = async () => {
+    if (chatHistory.length < 2) return; // Don't save empty or single-message chats
+    
+    try {
+      const title = generateChatTitle(chatHistory);
+      const response = await fetch('/api/chat-conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          messages: chatHistory,
+          legal_category: 'criminal' // Default category
+        })
+      });
+      
+      if (response.ok) {
+        console.log('Chat auto-saved successfully');
+      }
+    } catch (error) {
+      console.error('Error auto-saving chat:', error);
+    }
+  };
+
+  // Helper function to generate chat title
+  const generateChatTitle = (messages: any[]) => {
+    const userMessages = messages.filter(msg => msg.sender === 'user');
+    if (userMessages.length === 0) return 'New Chat';
+    
+    const firstMessage = userMessages[0].text;
+    return firstMessage.length > 30 ? firstMessage.substring(0, 30) + '...' : firstMessage;
+  };
+
   const handleGenerateDocument = async () => {
+    console.log("🚀 handleGenerateDocument called in split-pane!");
     if (typeof window === 'undefined') {
       toast.error("Browser environment required");
       return;
@@ -415,17 +465,52 @@ ${documentInfo}`;
           const docData = await docResponse.json();
           const documentContent = docData.content || "Document content not available";
           console.log("📄 Loaded document content:", documentContent.substring(0, 200) + "...");
+          
+          // Check if we're in full page mode (not split pane mode)
+          if (!isSplitPaneMode) {
+            // Navigate to Step 2 for full page mode
+            console.log("🔄 Full page mode - preparing to navigate to Step 2...");
+            toast.success("Document generated successfully! Navigating to Step 2...");
+            setTimeout(() => {
+              console.log("🚀 Navigating to Step 2 now!");
+              router.push("/ai-assistant/step-2");
+            }, 2000);
+          } else {
+            // Enter split pane mode if already in split pane
           enterSplitPaneMode(docId, documentContent);
+          }
         } else {
           // Fallback to the content from the generation response
           const documentContent = data.data.content || "Document content not available";
+          
+          if (!isSplitPaneMode) {
+            // Navigate to Step 2 for full page mode
+            console.log("🔄 Full page mode - preparing to navigate to Step 2...");
+            toast.success("Document generated successfully! Navigating to Step 2...");
+            setTimeout(() => {
+              console.log("🚀 Navigating to Step 2 now!");
+              router.push("/ai-assistant/step-2");
+            }, 2000);
+          } else {
+            // Enter split pane mode if already in split pane
           enterSplitPaneMode(docId, documentContent);
+          }
         }
       } catch (error) {
         console.error("Error loading document content:", error);
         // Fallback to the content from the generation response
         const documentContent = data.data.content || "Document content not available";
+        
+        if (!isSplitPaneMode) {
+          // Navigate to Step 2 for full page mode
+          toast.success("Document generated successfully! Navigating to Step 2...");
+          setTimeout(() => {
+            router.push("/ai-assistant/step-2");
+          }, 2000);
+        } else {
+          // Enter split pane mode if already in split pane
         enterSplitPaneMode(docId, documentContent);
+        }
       }
       
     } catch (error) {
@@ -676,42 +761,9 @@ ${documentInfo}`;
           suggestedResponses={suggestedResponses.map((text) => ({ text }))}
           onDocumentUpload={() => {}}
           legalCategory="criminal"
+          onGenerateDocument={handleGenerateDocument}
         />
 
-        {/* Generate Document Button - Only show if we have chat history */}
-        {chatHistory.length >= 2 && (
-          <div className="mt-6 flex justify-center">
-            <Button
-                onClick={() => {
-                  console.log("🔘 Generate Document button clicked!");
-                  console.log("📊 Chat history length:", chatHistory.length);
-                  console.log("📊 Is processing:", isProcessing);
-                  handleGenerateDocument();
-                }}
-                title={`Generate document from ${chatHistory.length} chat messages`}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white w-full md:w-auto"
-              disabled={isGeneratingDocument}
-            >
-              {isGeneratingDocument ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Document...
-                </>
-              ) : (
-                <>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Generate Document and Case Analysis
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-        
-        {/* Show message if no chat history */}
-        {chatHistory.length < 2 && (
-          <div className="mt-6 text-center text-gray-500">
-          </div>
-        )}
         </div>
       </div>
       

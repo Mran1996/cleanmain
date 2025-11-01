@@ -2,10 +2,12 @@
  * Learn More Page - Full Service Options
  * 
  * This page showcases the comprehensive full service offering that includes:
- * - Fully customized legal documents
- * - Tailored AI case analysis
- * - Hearing scripts and presentation guidance
- * - White-glove treatment and expert support
+ * - Professionally drafted legal documents
+ * - Court-ready formatting
+ * - Case law research
+ * - Case success analysis
+ * - Hearing prep scripts
+ * - Free revisions and support
  * 
  * Designed to convert users from self-service to full service options.
  */
@@ -14,91 +16,71 @@ import { Navigation } from "@/components/navigation"
 import { ServiceBanner } from "@/components/service-banner"
 import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, FileText, Brain, Mic, Shield, Clock, Users, Star, ArrowRight, Quote, Zap, MessageCircle, Award, Gavel, Target, Lock, DollarSign, Upload, Scale, FileCheck, BrainCircuit, MicVocal, Presentation, TrendingUp, ShieldCheck, Crown, Trophy, Sparkles, ArrowUpRight, Mail, RefreshCcw, FolderOpen } from "lucide-react"
+import { FileText, Scale, CheckCircle, Brain, Mic, RefreshCcw, Mail, MessageCircle, Clock, Shield, ArrowRight, FileCheck, TrendingUp, User, Lightbulb, Gavel, DollarSign } from "lucide-react"
 import Link from "next/link"
 
-const CORE_SERVICES = [
+const WHATS_INCLUDED = [
   {
-    icon: Trophy,
-    title: "Winning Legal Documents That Get Results",
-    description: "Court-ready documents that have helped thousands win their cases. Every document is crafted to maximize your chances of success, using proven strategies from 1M+ successful filings."
+    icon: FileText,
+    text: "Court-Ready Drafting — Formatted to your state's official filing standards."
   },
   {
-    icon: Brain,
-    title: "Deep Case Intelligence & Winning Strategy", 
-    description: "Get insider knowledge of your case's true strengths and weaknesses. We reveal exactly how to overcome obstacles and position yourself for victory with data-driven legal strategy."
+    icon: Scale,
+    text: "AI + Human Precision — Reviewed for tone, accuracy, and clarity."
   },
   {
-    icon: Crown,
-    title: "Champion-Level Court Preparation",
-    description: "Master-level scripts and arguments that make you sound like a seasoned attorney. Walk into court with the confidence of someone who's already won."
-  }
-] as const;
-
-const WHITE_GLOVE_BENEFITS = [
-  {
-    icon: Shield,
-    title: "AI Legal Review",
-    description: "Documents reviewed by AI trained on 1M+ real cases — smarter, faster, and bias-free."
+    icon: CheckCircle,
+    text: "Real Case Law Research — Strengthen your case with verified citations."
   },
   {
-    icon: Zap,
-    title: "Priority Case Handling",
-    description: "Get expedited attention and faster document delivery with Full Service priority."
+    icon: TrendingUp,
+    text: "Case Success Analysis — Predictive insight into your legal position."
+  },
+  {
+    icon: Mic,
+    text: "Hearing Prep Script — Know exactly what to say in court."
+  },
+  {
+    icon: RefreshCcw,
+    text: "3 Free Revisions — Perfect your filing before submission."
+  },
+  {
+    icon: Mail,
+    text: "Email or Mail Delivery — Digital packet or printed copy (add $25)."
   },
   {
     icon: MessageCircle,
-    title: "Direct Human Support",
-    description: "Access our legal support team for help, updates, and real-time questions."
-  },
-  {
-    icon: Award,
-    title: "Satisfaction Guarantee",
-    description: "If you're not confident after review, we revise until you are — no extra cost."
+    text: "Ongoing Support — Get updates and answers from our team anytime."
   }
 ] as const;
 
 const HOW_IT_WORKS_STEPS = [
   {
-    icon: Scale,
-    title: "AI + Legal Team Review",
-    description: "Our legal AI (trained on 1 million+ filings and court wins) and support team review your case. We draft your documents, analyze strategy, and prepare your hearing materials."
+    number: "1",
+    title: "Submit Your Info",
+    description: "Provide your name and case details."
   },
   {
-    icon: FileCheck,
-    title: "Receive, Review, and Win",
-    description: "You'll get fully prepared legal documents, judge-ready scripts, and step-by-step instructions — customized for your case, jurisdiction, and deadline."
+    number: "2",
+    title: "AI + Legal Review",
+    description: "We analyze your facts and strategy."
+  },
+  {
+    number: "3",
+    title: "Professional Drafting",
+    description: "We prepare your filing in your state's legal format."
+  },
+  {
+    number: "4",
+    title: "Review & Revisions",
+    description: "Up to 3 free edits within 14 days."
+  },
+  {
+    number: "5",
+    title: "Delivery",
+    description: "Get your final packet in 7 business days or less."
   }
 ] as const;
-
-const WHY_CHOOSE_US = [
-  {
-    icon: Brain,
-    title: "AI That Passed the Bar",
-    description: "Built on technology that outperformed real lawyers on bar exams."
-  },
-  {
-    icon: Clock,
-    title: "No Waiting",
-    description: "Get fast, reliable answers and documents — anytime."
-  },
-  {
-    icon: DollarSign,
-    title: "One Flat Fee",
-    description: "Starting at just $497 — with everything included."
-  },
-  {
-    icon: Target,
-    title: "Smart + Strategic",
-    description: "Understand the strengths and weaknesses of your case with expert-level insight."
-  },
-  {
-    icon: Lock,
-    title: "Privacy First",
-    description: "Your information stays confidential — always."
-  }
-] as const;
-
 
 export default function LearnMorePage() {
   return (
@@ -109,124 +91,157 @@ export default function LearnMorePage() {
       {/* Service Banner */}
       <ServiceBanner />
       
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-800 text-white py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center max-w-5xl mx-auto">
-                <h1 className="text-5xl md:text-6xl font-bold mb-8 leading-tight">
-                  Let us win your case and get the justice that you deserve
-                </h1>
-            <p className="text-xl md:text-2xl text-slate-200 leading-relaxed max-w-4xl mx-auto">
-              Struggling with a legal case? We'll take it from here. Our Full Service Legal Support combines the power of AI that's passed the bar exam with real legal strategy to prepare court documents, analyze your case, and help you get the justice you deserve — fast, affordable, and with white-glove precision.
+      {/* Hero Section with Headline and Subheadline */}
+      <section className="bg-white py-16 md:py-24">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
+          <div className="text-center space-y-6">
+            {/* Main Headline */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+              Win Your Case with a Professionally Drafted Legal Document
+            </h1>
+            
+            {/* Subheadline */}
+            <p className="text-xl md:text-2xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
+              Let Ask AI Legal prepare your motion, response, or court filing — written in your state's official court format, backed by real case law, and delivered within 7 business days — guaranteed.
             </p>
+
+            {/* Price Box */}
+            <div className="mt-8 max-w-2xl mx-auto bg-green-50 border-2 border-green-200 rounded-lg p-6 md:p-8 space-y-4">
+              <div className="flex items-center justify-center gap-2 text-2xl md:text-3xl font-bold text-green-700">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+                <span>$499 Flat Fee — No hidden costs</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-lg md:text-xl text-gray-700">
+                <Clock className="w-6 h-6 text-green-600" />
+                <span>Delivered in 7 business days or less</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-lg md:text-xl text-gray-700">
+                <MessageCircle className="w-6 h-6 text-green-600" />
+                <span>Free revisions & support included</span>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div className="mt-8 space-y-2">
+              <Link href="/pricing">
+                <Button className="text-lg md:text-xl px-8 py-6 bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg">
+                  Start My Legal Document <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+              <p className="text-sm md:text-base text-gray-600 italic">
+                Begin your case today with confidence.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Full-Service Legal Document Preparation Section */}
-      <section className="py-16 bg-neutral-50 dark:bg-neutral-900">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Full-Service Legal Document Preparation
+      {/* What's Included Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+            Everything You Need for a Winning Legal Packet
           </h2>
-          <p className="text-lg text-neutral-600 dark:text-neutral-300 mb-8">
-            Let our professional AI legal team handle everything for you — from analysis to
-            delivery. For <span className="font-semibold text-green-600">$499</span>, you'll receive
-            a court-ready packet tailored to your case within <strong>7 business days</strong>.
-          </p>
-
-          <div className="text-left shadow-lg border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 p-6">
-            <div className="flex items-center gap-2 text-xl font-semibold mb-6">
-              <FolderOpen className="w-6 h-6 text-green-600" />
-              What's Included
-            </div>
-            <div className="space-y-4 text-neutral-700 dark:text-neutral-300">
-              <div className="flex items-start gap-3">
-                <FileText className="w-6 h-6 mt-1 text-green-600" />
-                <p>Drafting of one complete legal filing, motion, or response.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Scale className="w-6 h-6 mt-1 text-green-600" />
-                <p>AI + human review for accuracy, clarity, and proper court formatting.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-6 h-6 mt-1 text-green-600" />
-                <p>Legal research with state-specific case law (if applicable).</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <RefreshCcw className="w-6 h-6 mt-1 text-green-600" />
-                <p>Up to <strong className="text-green-700">3 free revisions</strong> within <strong>14</strong> days of delivery.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <Mail className="w-6 h-6 mt-1 text-green-600" />
-                <p>Delivery by email (standard) or physical mail (<strong>$25</strong> add-on).</p>
-              </div>
-            </div>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            {WHATS_INCLUDED.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 mt-1">
+                      <Icon className="w-6 h-6 text-green-600" />
+                    </div>
+                    <p className="text-gray-700 text-base md:text-lg leading-relaxed">{item.text}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-2 gap-6 mt-10 text-left">
-            <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 p-6">
-              <div className="flex items-center gap-2 text-xl font-semibold mb-4">
-                <Clock className="w-7 h-7 text-green-600" />
-                How It Works
-              </div>
-              <div className="space-y-3 text-neutral-700 dark:text-neutral-300">
-                <p>1️⃣ Submit your form — provide your name and case details. We'll gather everything else.</p>
-                <p>2️⃣ Our legal team conducts comprehensive research and case analysis to build your strongest position.</p>
-                <p>3️⃣ We draft your documents in your state's official format with precision and expertise.</p>
-                <p>4️⃣ You review and request changes (up to <strong className="text-green-700">3 included</strong>).</p>
-                <p>5️⃣ Receive your final packet by email or mail within <strong>7</strong> business days.</p>
-              </div>
-            </div>
-
-            <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 p-6">
-              <div className="flex items-center gap-2 text-xl font-semibold mb-4">
-                <Scale className="w-7 h-7 text-green-600" />
-                Limits & Guarantee
-              </div>
-              <div className="space-y-3 text-neutral-700 dark:text-neutral-300">
-                <ul className="list-disc ml-5 space-y-2">
-                  <li>Maximum document length: <strong>150</strong> pages (including exhibits).</li>
-                  <li>Applies to one active case or legal issue only.</li>
-                  <li>Each additional case or filing: <strong className="text-green-600">$499 per order</strong>.</li>
-                  <li>Extra revisions beyond 3: <strong className="text-green-600">$99 each</strong>.</li>
-                </ul>
-                <div className="mt-6 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
-                  <p className="text-neutral-700">
-                    We're not attorneys — but our AI assistant has passed <strong className="text-green-700">bar-level benchmarks</strong> and
-                    produces documents on par with law firms. You'll receive a professionally formatted,
-                    court-ready document with a plain-language summary and next-step strategy tips.
-                  </p>
+      {/* How It Works Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4 md:px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+            From Intake to Court-Ready — Here's How It Works
+          </h2>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
+            {HOW_IT_WORKS_STEPS.map((step, index) => (
+              <div key={index} className="flex flex-col items-center gap-4 flex-1">
+                <div className="w-24 h-24 rounded-full bg-green-600 text-white text-3xl font-bold flex items-center justify-center shadow-lg">
+                  {step.number}
+                </div>
+                <div className="text-center max-w-[200px]">
+                  <h3 className="font-bold text-lg text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{step.description}</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="mt-16 mb-8">
-            <div className="border-t border-gray-200"></div>
-          </div>
-
-          <div className="text-center">
-            <h3 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-              Take Back Control of Your Case Today
-            </h3>
-            <p className="text-lg text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Don't risk your future on guesswork. Let our legal AI and full service team fight for the best possible outcome — just like we've done for thousands before you.
-            </p>
-            <Link href="/pricing">
-            <Button className="text-lg px-8 py-6 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-300">
-              Get Started for $499
-            </Button>
-            </Link>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* Limits & Guarantee Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-8">
+            Limits & Guarantee
+          </h2>
+          
+          <div className="bg-white rounded-lg shadow-lg p-8 space-y-6">
+            <div className="space-y-4 text-gray-700">
+              <p className="text-lg">
+                Covers one case or legal issue (up to <strong className="text-gray-900">150 pages</strong>, including exhibits).
+              </p>
+              <ul className="list-disc ml-6 space-y-2">
+                <li>Additional cases or filings: <strong className="text-green-600">$499 each</strong>.</li>
+                <li>Revisions beyond 3: <strong className="text-green-600">$99 each</strong>.</li>
+              </ul>
+            </div>
 
+            {/* Confidence Guarantee Box */}
+            <div className="mt-8 p-6 bg-green-50 border-l-4 border-green-500 rounded-r-lg">
+              <div className="flex items-start gap-3 mb-3">
+                <Lightbulb className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                <h3 className="text-xl font-bold text-gray-900">Confidence Guarantee</h3>
+              </div>
+              <p className="text-gray-700 leading-relaxed">
+                Trusted by clients nationwide, our AI has passed bar-level legal benchmarks and produces documents rivaling law firms.
+              </p>
+              <p className="text-gray-700 leading-relaxed mt-3">
+                You'll receive a court-ready, professionally formatted document and a plain-language summary of your next steps.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
+      {/* Bottom CTA Section */}
+      <section className="py-16 bg-gradient-to-br from-green-600 to-green-700 text-white">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 text-center space-y-6">
+          <h2 className="text-3xl md:text-4xl font-bold">
+            Ready to Strengthen Your Case?
+          </h2>
+          <p className="text-xl md:text-2xl text-green-50 max-w-2xl mx-auto">
+            Get a professionally drafted, court-ready document for $499 — delivered in 7 business days or less.
+          </p>
+          <Link href="/pricing">
+            <Button className="text-lg md:text-xl px-8 py-6 bg-white text-green-600 hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 rounded-lg font-bold">
+              Start My Legal Packet <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
+      </section>
 
-
+      {/* Footer Tagline */}
+      <section className="py-8 bg-gray-900 text-white text-center">
+        <p className="text-lg md:text-xl italic text-gray-300 max-w-2xl mx-auto">
+          "When every word matters — let AI help you win your case."
+        </p>
+      </section>
 
       {/* Footer */}
       <Footer />
