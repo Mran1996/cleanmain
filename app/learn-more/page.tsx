@@ -99,7 +99,7 @@ export default function LearnMorePage() {
           <div className="text-center space-y-6">
             {/* Main Headline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Win Your Case with a Strong Legal Response — Written the Way That Gets Results
+              Win Your Case with a Strong Legal Response — Written the Way That Gets Results.
             </h1>
             
             {/* Subheadline */}
