@@ -12,6 +12,8 @@
  * Designed to convert users from self-service to full service options.
  */
 
+"use client"
+
 import { Navigation } from "@/components/navigation"
 import { ServiceBanner } from "@/components/service-banner"
 import Footer from "@/components/footer"
@@ -97,7 +99,7 @@ export default function LearnMorePage() {
           <div className="text-center space-y-6">
             {/* Main Headline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Win Your Case with a Strong Legal Response Written the Way the Court Expects
+              Win Your Case with a Strong Legal Response — Written the Way That Gets Results
             </h1>
             
             {/* Subheadline */}
