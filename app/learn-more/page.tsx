@@ -12,8 +12,6 @@
  * Designed to convert users from self-service to full service options.
  */
 
-"use client"
-
 import { Navigation } from "@/components/navigation"
 import { ServiceBanner } from "@/components/service-banner"
 import Footer from "@/components/footer"
