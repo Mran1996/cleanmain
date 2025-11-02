@@ -97,12 +97,12 @@ export default function LearnMorePage() {
           <div className="text-center space-y-6">
             {/* Main Headline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Win Your Case with a Professionally Drafted Legal Document
+              Win Your Case with a Strong Legal Response Written the Way the Court Expects
             </h1>
             
             {/* Subheadline */}
             <p className="text-xl md:text-2xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-              Let Ask AI Legal prepare your motion, response, or court filing — written in your state's official court format, backed by real case law, and delivered within 7 business days — guaranteed.
+              We prepare your motion, response, appeal, or post-conviction filing in the correct court format, backed by real case law and delivered within 7 business days — so you can fight your case with confidence.
             </p>
 
             {/* Price Box */}
@@ -209,10 +209,10 @@ export default function LearnMorePage() {
                 <h3 className="text-xl font-bold text-gray-900">Confidence Guarantee</h3>
               </div>
               <p className="text-gray-700 leading-relaxed">
-                Trusted by clients nationwide, our AI has passed bar-level legal benchmarks and produces documents rivaling law firms.
+                Our legal-document platform is powered by advanced AI that <strong>scored in the top 10% on the Uniform Bar Exam</strong> — demonstrating professional-level legal reasoning and writing quality.
               </p>
               <p className="text-gray-700 leading-relaxed mt-3">
-                You'll receive a court-ready, professionally formatted document and a plain-language summary of your next steps.
+                You'll receive a court-ready, properly formatted document tailored to your case, along with a plain-language summary of your next steps. <strong>You deserve access to this level of legal strength — not just those who can afford an attorney.</strong>
               </p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function LearnMorePage() {
       <section className="py-16 bg-gradient-to-br from-green-600 to-green-700 text-white">
         <div className="max-w-4xl mx-auto px-4 md:px-6 text-center space-y-6">
           <h2 className="text-3xl md:text-4xl font-bold">
-            Ready to Strengthen Your Case?
+            Ready to Win Your Case?
           </h2>
           <p className="text-xl md:text-2xl text-green-50 max-w-2xl mx-auto">
             Get a professionally drafted, court-ready document for $499 — delivered in 7 business days or less.
