@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://askailegal.com';
+  // Use www subdomain to match Google Search Console property
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.askailegal.com';
   const currentDate = new Date();
 
   return [
@@ -48,46 +49,58 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/sign-in`,
+      url: `${baseUrl}/examples`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
       priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/learn-more`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/sign-in`,
+      lastModified: currentDate,
+      changeFrequency: 'monthly',
+      priority: 0.5,
     },
     {
       url: `${baseUrl}/sign-up`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
-      priority: 0.6,
+      priority: 0.5,
     },
     {
       url: `${baseUrl}/terms`,
       lastModified: currentDate,
       changeFrequency: 'yearly',
-      priority: 0.5,
+      priority: 0.4,
     },
     {
       url: `${baseUrl}/privacy`,
       lastModified: currentDate,
       changeFrequency: 'yearly',
-      priority: 0.5,
+      priority: 0.4,
     },
     {
       url: `${baseUrl}/legal-disclaimer`,
       lastModified: currentDate,
       changeFrequency: 'yearly',
-      priority: 0.5,
+      priority: 0.4,
     },
     {
       url: `${baseUrl}/accessibility`,
       lastModified: currentDate,
       changeFrequency: 'yearly',
-      priority: 0.4,
+      priority: 0.3,
     },
     {
       url: `${baseUrl}/security`,
       lastModified: currentDate,
       changeFrequency: 'monthly',
-      priority: 0.6,
+      priority: 0.5,
     },
   ];
 }

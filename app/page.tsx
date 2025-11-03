@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     title: 'Ask AI Legal™ - AI-Powered Legal Assistant',
     description: 'Get instant legal guidance and professional document generation with AI. Affordable legal help for everyone.',
     type: 'website',
-    url: 'https://askailegal.com',
+    url: 'https://www.askailegal.com',
   },
   twitter: {
     card: 'summary_large_image',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     description: 'Get instant legal guidance and professional document generation with AI.',
   },
   alternates: {
-    canonical: 'https://askailegal.com',
+    canonical: 'https://www.askailegal.com',
   },
 };
 
@@ -64,58 +64,58 @@ export default function Home() {
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': 'https://askailegal.com/#organization',
+        '@id': 'https://www.askailegal.com/#organization',
         name: 'Ask AI Legal™',
-        url: 'https://askailegal.com',
+        url: 'https://www.askailegal.com',
         logo: {
           '@type': 'ImageObject',
-          url: 'https://askailegal.com/logo/logo.png',
+          url: 'https://www.askailegal.com/logo/logo.png',
         },
         description: 'AI-powered legal assistant helping you navigate legal matters with confidence',
         sameAs: [],
       },
       {
         '@type': 'WebSite',
-        '@id': 'https://askailegal.com/#website',
-        url: 'https://askailegal.com',
+        '@id': 'https://www.askailegal.com/#website',
+        url: 'https://www.askailegal.com',
         name: 'Ask AI Legal™',
         description: 'Empowering access to justice with AI',
         publisher: {
-          '@id': 'https://askailegal.com/#organization',
+          '@id': 'https://www.askailegal.com/#organization',
         },
         potentialAction: {
           '@type': 'SearchAction',
           target: {
             '@type': 'EntryPoint',
-            urlTemplate: 'https://askailegal.com/search?q={search_term_string}',
+            urlTemplate: 'https://www.askailegal.com/search?q={search_term_string}',
           },
           'query-input': 'required name=search_term_string',
         },
       },
       {
         '@type': 'WebPage',
-        '@id': 'https://askailegal.com/#webpage',
-        url: 'https://askailegal.com',
+        '@id': 'https://www.askailegal.com/#webpage',
+        url: 'https://www.askailegal.com',
         name: 'Ask AI Legal™ - Where Law Meets Intelligence',
         isPartOf: {
-          '@id': 'https://askailegal.com/#website',
+          '@id': 'https://www.askailegal.com/#website',
         },
         about: {
-          '@id': 'https://askailegal.com/#organization',
+          '@id': 'https://www.askailegal.com/#organization',
         },
         description: 'Get instant legal guidance with AI-powered legal assistance. Upload documents, analyze cases, and generate professional legal paperwork.',
       },
       {
         '@type': 'Service',
-        '@id': 'https://askailegal.com/#service',
+        '@id': 'https://www.askailegal.com/#service',
         serviceType: 'Legal Technology',
         provider: {
-          '@id': 'https://askailegal.com/#organization',
+          '@id': 'https://www.askailegal.com/#organization',
         },
         areaServed: 'US',
         availableChannel: {
           '@type': 'ServiceChannel',
-          serviceUrl: 'https://askailegal.com',
+          serviceUrl: 'https://www.askailegal.com',
         },
       },
     ],

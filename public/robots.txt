@@ -1,5 +1,5 @@
 # Robots.txt for Ask AI Legal™
-# https://askailegal.com/robots.txt
+# https://www.askailegal.com/robots.txt
 
 # Allow all crawlers
 User-agent: *
@@ -31,4 +31,4 @@ Allow: /accessibility
 Allow: /sitemap
 
 # Sitemap location
-Sitemap: https://askailegal.com/sitemap.xml
+Sitemap: https://www.askailegal.com/sitemap.xml

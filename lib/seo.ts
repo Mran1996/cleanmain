@@ -7,7 +7,7 @@
 import { Metadata } from 'next';
 
 const APP_NAME = 'Ask AI Legal™';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://askailegal.com';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.askailegal.com';
 const APP_DESCRIPTION = 'Empowering access to justice with AI. Your AI-powered legal assistant, helping you navigate legal matters with confidence.';
 
 /**

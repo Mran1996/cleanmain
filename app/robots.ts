@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://askailegal.com';
+  // Use www subdomain to match Google Search Console property
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.askailegal.com';
 
   return {
     rules: [
