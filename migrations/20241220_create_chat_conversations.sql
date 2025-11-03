@@ -29,3 +29,5 @@ CREATE POLICY "Users can update their own conversations" ON chat_conversations
 CREATE POLICY "Users can delete their own conversations" ON chat_conversations
   FOR DELETE USING (auth.uid() = user_id);
 
+
+

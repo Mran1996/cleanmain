@@ -97,7 +97,7 @@ export default function LearnMorePage() {
           <div className="text-center space-y-6">
             {/* Main Headline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              We Help You Fight and Win — With a Legal Response That Gets Results
+              Win Your Case with a Strong Legal Response Written the Way the Court Expects
             </h1>
             
             {/* Subheadline */}
@@ -140,7 +140,7 @@ export default function LearnMorePage() {
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 md:px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Everything You Need to Win
+            Everything You Need for a Winning Legal Packet
           </h2>
           
           <div className="grid md:grid-cols-2 gap-6">
@@ -212,7 +212,7 @@ export default function LearnMorePage() {
                 Our legal-document platform is powered by advanced AI that <strong>scored in the top 10% on the Uniform Bar Exam</strong> — demonstrating professional-level legal reasoning and writing quality.
               </p>
               <p className="text-gray-700 leading-relaxed mt-3">
-                You'll receive a court-ready, properly formatted document tailored to your case, along with an AI-Powered Case Success Analysis that gives you clear insight into your legal position. <strong>You deserve access to this level of legal strength — with clarity and confidence at every step.</strong>
+                You'll receive a court-ready, properly formatted document tailored to your case, along with a plain-language summary of your next steps. <strong>You deserve access to this level of legal strength — not just those who can afford an attorney.</strong>
               </p>
             </div>
           </div>
