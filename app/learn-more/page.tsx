@@ -212,7 +212,7 @@ export default function LearnMorePage() {
                 Our legal-document platform is powered by advanced AI that <strong>scored in the top 10% on the Uniform Bar Exam</strong> — demonstrating professional-level legal reasoning and writing quality.
               </p>
               <p className="text-gray-700 leading-relaxed mt-3">
-                You'll receive a court-ready, properly formatted document tailored to your case, along with a plain-language summary of your next steps. <strong>You deserve access to this level of legal strength — not just those who can afford an attorney.</strong>
+                You'll receive a court-ready, properly formatted document tailored to your case, along with an AI-Powered Case Success Analysis that gives you clear insight into your legal position. <strong>You deserve access to this level of legal strength — with clarity and confidence at every step.</strong>
               </p>
             </div>
           </div>
