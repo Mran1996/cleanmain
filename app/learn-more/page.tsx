@@ -140,7 +140,7 @@ export default function LearnMorePage() {
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 md:px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Everything You Need for a Winning Legal Packet
+            Everything You Need to Win
           </h2>
           
           <div className="grid md:grid-cols-2 gap-6">
