@@ -3,7 +3,7 @@ export default function Sitemap() {
     <main className="max-w-4xl mx-auto px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">Sitemap</h1>
       <p className="text-gray-600 mb-10">
-        This sitemap outlines the publicly accessible pages and legal assistance services provided by Ask Khristian. Use
+        This sitemap outlines the publicly accessible pages and legal assistance services provided by Ask AI Legal™. Use
         it to navigate the platform easily.
       </p>
 
@@ -60,12 +60,12 @@ export default function Sitemap() {
           <h2 className="text-lg font-semibold text-gray-800 mb-2">Legal Information</h2>
           <ul className="list-disc list-inside space-y-1">
             <li>
-              <a href="/privacy-policy" className="text-emerald-600 hover:underline">
+              <a href="/privacy" className="text-emerald-600 hover:underline">
                 Privacy Policy
               </a>
             </li>
             <li>
-              <a href="/terms-of-service" className="text-emerald-600 hover:underline">
+              <a href="/terms" className="text-emerald-600 hover:underline">
                 Terms of Service
               </a>
             </li>
