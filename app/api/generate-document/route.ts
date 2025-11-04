@@ -4,7 +4,7 @@ import { getServerUser } from '@/utils/server-auth';
 import { consumeCredit } from '@/lib/usage';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
 import { getRelevantCaseLaw } from '@/lib/perplexity';
 type ChatMessage = { role: 'user' | 'assistant' | string; content?: string };
 
@@ -20,7 +20,7 @@ export const config = {
   maxDuration: 300, // 5 minutes for very large documents
 };
 
-// Initialize OpenAI client (used if Moonshot is not configured)
+// Initialize OpenAI client (used if Moonshot/Kimi is not configured)
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 }) : null;
@@ -102,11 +102,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (totalAvailable === 0) {
-      console.error(' No credits available - blocking generation');
-      return NextResponse.json({
-        success: false,
-        error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
-      }, { status: 402 });
+      // Allow generation in non-production environments for testing
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(' No credits available – allowing generation in non-production for testing');
+      } else {
+        console.error(' No credits available - blocking generation');
+        return NextResponse.json({
+          success: false,
+          error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
+        }, { status: 402 });
+      }
     }
 
     const creditSource = (subActive && monthlyRemaining > 0) ? 'subscription' : 'one_time';
@@ -400,6 +405,11 @@ Generate a complete, professional legal document using ONLY the information prov
     let completion: any;
     const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
     const useOpenAI = !!process.env.OPENAI_API_KEY;
+
+    // Guard against missing provider configuration
+    if (!useKimi && !useOpenAI) {
+      throw new Error('No AI provider configured. Set OPENAI_API_KEY or MOONSHOT_API_KEY/KIMI_API_KEY.');
+    }
     
     if (useKimi) {
       const maxAttempts = 3;
@@ -527,15 +537,15 @@ Generate a complete, professional legal document using ONLY the information prov
     } else if (useOpenAI) {
       if (!openai) throw new Error('OpenAI not configured');
       completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.3,
-        max_tokens: 4096, // Maximum supported by the model
-        // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
-    });
+        // Align with usage elsewhere in the project for compatibility
+        model: 'gpt-4-1106-preview',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 4096
+      });
     }
 
     let documentContent = completion.choices?.[0]?.message?.content || 'Failed to generate document content.';
