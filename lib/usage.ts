@@ -70,7 +70,7 @@ export async function resetMonthly(client: SupabaseClientLike, userId: string, l
   if (error) throw new Error(`Failed to reset monthly credits: ${error.message}`);
 }
 
-export async function consumeCredit(client: SupabaseClientLike, userId: string): Promise<{ ok: boolean; source?: 'subscription' | 'one_time'; remaining?: number; message?: string }> {
+export async function consumeCredit(client: SupabaseClientLike, userId: string, creditSource: string, creditsToUse: any): Promise<{ ok: boolean; source?: 'subscription' | 'one_time'; remaining?: number; message?: string }> {
   await ensureUsageRecord(client, userId);
 
   console.log(`💳 [CONSUME CREDIT] Starting credit consumption for user: ${userId}`);

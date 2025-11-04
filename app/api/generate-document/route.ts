@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/server';
+import { getServerUser } from '@/utils/server-auth';
 import { consumeCredit } from '@/lib/usage';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import { OpenAI } from 'openai';
@@ -26,19 +26,13 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
 }) : null;
 
 export async function POST(req: NextRequest) {
-  console.log('📄 [GENERATE DOC] API called');
-  
-  // 🧪 [TESTING MODE] Quick test response for debugging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🧪 [TESTING MODE] Development environment detected');
-  }
-  
-  // Declare finalUid at function scope
+  console.log(' [GENERATE DOC] API called');
+
   let finalUid: string;
-  
+
   try {
     const body = await req.json();
-    console.log('📄 [GENERATE DOC] Request body received:', {
+    console.log(' [GENERATE DOC] Request body received:', {
       hasUserId: !!body.userId,
       hasChatHistory: !!body.chatHistory,
       chatHistoryLength: body.chatHistory?.length || 0,
@@ -58,7 +52,6 @@ export async function POST(req: NextRequest) {
     } = body;
     const chatHistory: ChatMessage[] = Array.isArray(body.chatHistory) ? (body.chatHistory as ChatMessage[]) : [];
 
-    // Check if we have real data - if not, return error
     if (!chatHistory || chatHistory.length === 0) {
       return NextResponse.json({
         success: false,
@@ -66,89 +59,66 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // ⭐ STEP 1: Check authentication first
-    try {
-      finalUid = userId;
-      
-      // 🧪 [TESTING MODE] Allow testing without authentication
-      if (!finalUid && process.env.NODE_ENV === 'development') {
-        console.log('🧪 [TESTING MODE] Bypassing authentication for development');
-        finalUid = 'test-user-' + Date.now();
-        console.log('🧪 [TESTING MODE] Using test user ID:', finalUid);
-      } else if (!finalUid) {
-        // Try to get authenticated user (use admin client to avoid auth issues)
-        const supabase = await createAdminClient();
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        finalUid = authUser?.id;
-        
-        if (!finalUid) {
-          console.error('❌ No user ID - authentication required');
-          return NextResponse.json({ 
-            success: false, 
-            error: 'User authentication required. Please log in to generate documents.' 
-          }, { status: 401 });
-        }
-      }
-      
-      // ⭐ STEP 2: Check subscription status and credit availability
-      console.log('💳 Checking credit availability for user:', finalUid);
-      
-      // Use admin client for database operations (bypasses authentication)
-      const supabase = await createAdminClient();
-      const { data: subRows } = await supabase
-        .from('subscriptions')
-        .select('status')
-        .eq('user_id', finalUid)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-      
-      const subActive = Array.isArray(subRows) && subRows[0] && ['active','trialing'].includes(subRows[0].status);
-
-      const { data: usage } = await supabase
-        .from('document_usage')
-        .select('monthly_remaining, one_time_remaining')
-        .eq('user_id', finalUid)
-        .single();
-
-      const monthlyRemaining = usage?.monthly_remaining || 0;
-      const oneTimeRemaining = usage?.one_time_remaining || 0;
-      const totalAvailable = monthlyRemaining + oneTimeRemaining;
-      
-      console.log('📊 Credit status:', {
-        subscriptionActive: subActive,
-        monthlyRemaining,
-        oneTimeRemaining,
-        totalAvailable
-      });
-
-      // ⭐ STEP 3: Block generation if no credits available (TEMPORARILY DISABLED FOR TESTING)
-      if (false && totalAvailable === 0) {
-        console.error('❌ No credits available - blocking generation');
-        return NextResponse.json({
-          success: false,
-          error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
-        }, { status: 402 });
-      }
-      
-      console.log('🧪 [TESTING MODE] Credit check bypassed for testing purposes');
-      
-      // ⭐ STEP 4: Inform which credits will be used
-      const creditSource = (subActive && monthlyRemaining > 0) ? 'subscription' : 'one_time';
-      const creditsToUse = creditSource === 'subscription' ? monthlyRemaining : oneTimeRemaining;
-      
-      console.log(`✅ Credits available: Will use ${creditSource} credits (${creditsToUse} available)`);
-      
-    } catch (gateErr) {
-      console.error('❌ Credit check failed:', gateErr);
+    // Authenticate user using getServerUser
+    const { user, isAuthenticated, error: authError } = await getServerUser();
+    if (!isAuthenticated || !user) {
+      console.error(' No user authenticated');
       return NextResponse.json({
         success: false,
-        error: 'Failed to verify credit balance. Please try again.',
-        details: gateErr instanceof Error ? gateErr.message : String(gateErr)
-      }, { status: 500 });
+        error: 'User authentication required. Please log in to generate documents.',
+        details: authError
+      }, { status: 401 });
+    }
+    finalUid = user.id;
+
+    // Check subscription status and credit availability
+    console.log(' Checking credit availability for user:', finalUid);
+    const supabase = await createAdminClient();
+
+    const { data: subRows } = await supabase
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', finalUid)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    const subActive = Array.isArray(subRows) && subRows[0] && ['active','trialing'].includes(subRows[0].status);
+
+    const { data: usage } = await supabase
+      .from('document_usage')
+      .select('monthly_remaining, one_time_remaining')
+      .eq('user_id', finalUid)
+      .single();
+
+    const monthlyRemaining = usage?.monthly_remaining || 0;
+    const oneTimeRemaining = usage?.one_time_remaining || 0;
+    const totalAvailable = monthlyRemaining + oneTimeRemaining;
+
+    console.log(' Credit status:', {
+      subscriptionActive: subActive,
+      monthlyRemaining,
+      oneTimeRemaining,
+      totalAvailable
+    });
+
+    if (totalAvailable === 0) {
+      console.error(' No credits available - blocking generation');
+      return NextResponse.json({
+        success: false,
+        error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
+      }, { status: 402 });
     }
 
+    const creditSource = (subActive && monthlyRemaining > 0) ? 'subscription' : 'one_time';
+    const creditsToUse = creditSource === 'subscription' ? monthlyRemaining : oneTimeRemaining;
+
+    console.log(` Credits available: Will use ${creditSource} credits (${creditsToUse} available)`);
+
+    // Declare finalUid at function scope
+    // ... (rest of the original logic remains unchanged)
+
     // Debug logging to track what data we're receiving
-    console.log('📊 Document Generation Debug:', {
+    console.log(' Document Generation Debug:', {
       chatHistoryLength: chatHistory.length,
       state: state,
       county: county,
@@ -160,7 +130,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Log the actual conversation content for debugging
-    console.log('📝 Conversation History Content:', chatHistory.map((msg: ChatMessage, index: number) => ({
+    console.log(' Conversation History Content:', chatHistory.map((msg: ChatMessage, index: number) => ({
       index: index + 1,
       role: msg.role,
       contentLength: msg.content?.length || 0,
@@ -168,7 +138,7 @@ export async function POST(req: NextRequest) {
     })));
 
     // Log specific details that should be used
-    console.log('🔍 Key Details to Extract:', {
+    console.log(' Key Details to Extract:', {
       hasSpecificNames: chatHistory.some((msg: ChatMessage) => msg.content?.includes('name') || msg.content?.includes('Name')),
       hasSpecificDates: chatHistory.some((msg: ChatMessage) => msg.content?.includes('date') || msg.content?.includes('Date')),
       hasSpecificLocations: chatHistory.some((msg: ChatMessage) => msg.content?.includes('address') || msg.content?.includes('location')),
@@ -183,12 +153,12 @@ export async function POST(req: NextRequest) {
     let caseLawResearch = '';
     if (includeCaseLaw && state) {
       try {
-        console.log('🔍 [PERPLEXITY] Researching case law for:', { state, county, caseNumber });
+        console.log(' [PERPLEXITY] Researching case law for:', { state, county, caseNumber });
         const legalIssue = chatHistory.find((msg: ChatMessage) => msg.role === 'user')?.content?.substring(0, 100) || 'legal matter';
         caseLawResearch = await getRelevantCaseLaw(legalIssue, 'general', state);
-        console.log('📚 [PERPLEXITY] Case law research completed:', caseLawResearch.substring(0, 200) + '...');
+        console.log(' [PERPLEXITY] Case law research completed:', caseLawResearch.substring(0, 200) + '...');
       } catch (error) {
-        console.error('❌ [PERPLEXITY] Error researching case law:', error);
+        console.error(' [PERPLEXITY] Error researching case law:', error);
         caseLawResearch = 'Case law research unavailable.';
       }
     }
@@ -196,7 +166,7 @@ export async function POST(req: NextRequest) {
     // Create a comprehensive prompt for OpenAI using only real data
     const systemPrompt = `You are Khristian, a senior partner at a top 1% law firm with 25+ years of litigation experience. You have successfully argued before the Supreme Court and have a track record of winning complex, high-stakes cases. Every document you generate must be written with the strategic sophistication and persuasive power of an elite trial attorney.
 
-🚨 CRITICAL: YOU MUST ANALYZE THE CONVERSATION HISTORY AND UPLOADED DOCUMENTS THOROUGHLY
+ CRITICAL: YOU MUST ANALYZE THE CONVERSATION HISTORY AND UPLOADED DOCUMENTS THOROUGHLY
 - The client has provided detailed information in their conversation
 - You MUST extract and use ALL specific details from their conversation
 - You MUST reference and analyze any uploaded documents mentioned
@@ -205,7 +175,7 @@ export async function POST(req: NextRequest) {
 - YOU MUST GENERATE AT LEAST 3000 WORDS - NO EXCEPTIONS
 - ABSOLUTELY NO STARS, ASTERISKS, OR SPECIAL FORMATTING ANYWHERE
 - Write in plain text only - no ** or * or # or --- anywhere
-- Expand every section with comprehensive analysis and detailed reasoning
+- Each paragraph must be substantial with detailed legal analysis
 
 CRITICAL DOCUMENT SIZE AWARENESS:
 - If the case involves large documents (10+ pages), your generated legal document must reflect the full scope and complexity
@@ -231,7 +201,7 @@ ELITE ATTORNEY REQUIREMENTS:
 15. LEGAL PRECISION - Use precise legal language while maintaining accessibility
 16. STRATEGIC IMPACT - Create a document that influences judicial decision-making
 
-🚨 ABSOLUTELY FORBIDDEN - VIOLATION WILL RESULT IN POOR DOCUMENT QUALITY:
+ ABSOLUTELY FORBIDDEN - VIOLATION WILL RESULT IN POOR DOCUMENT QUALITY:
 - NEVER use placeholders like [DEFENDANT'S NAME], [CASE NUMBER], [Date], [Property Address]
 - NEVER use generic information when specific details are available
 - NEVER create template documents - every document must be specific to the client's case
@@ -409,7 +379,7 @@ PAGE LENGTH REQUIREMENTS (ADJUSTED FOR CASE COMPLEXITY):
 
 Generate a complete, professional legal document using ONLY the information provided above.
 
-🚨 FINAL REMINDER:
+ FINAL REMINDER:
 - This document must be SPECIFIC to this client's situation
 - Use ONLY the real information from the conversation above
 - Do NOT use any placeholders or generic information
@@ -431,112 +401,128 @@ Generate a complete, professional legal document using ONLY the information prov
     const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
     const useOpenAI = !!process.env.OPENAI_API_KEY;
     
-    // 🧪 [TESTING MODE] If no API keys available, generate a test document
-    if (!useKimi && !useOpenAI) {
-      console.log('🧪 [TESTING MODE] No API keys found, generating test document');
-      const testDocument = `IN THE SUPERIOR COURT OF THE STATE OF WASHINGTON
-IN AND FOR KING COUNTY
-
-PEOPLE OF THE STATE OF WASHINGTON,
-Plaintiff,
-
-vs.
-
-JOHN DOE,
-Defendant.
-
-Case No. 24-12345
-
-MOTION FOR SENTENCE REDUCTION
-
-COMES NOW the Defendant, John Doe, by and through his attorney, and respectfully moves this Court for a reduction of sentence pursuant to RCW 9.94A.540. In support of this motion, Defendant states as follows:
-
-STATEMENT OF FACTS
-
-1. Defendant was convicted of [CRIME] on [DATE] and sentenced to [SENTENCE] years in prison.
-
-2. Since his incarceration, Defendant has demonstrated exemplary behavior and rehabilitation efforts.
-
-3. Defendant has completed multiple educational and vocational programs while incarcerated.
-
-4. Defendant has maintained a clean disciplinary record throughout his incarceration.
-
-5. Defendant has shown genuine remorse for his actions and has taken steps to address the underlying issues that led to his criminal behavior.
-
-LEGAL ARGUMENT
-
-The Court has the authority to reduce a sentence when the defendant has demonstrated rehabilitation and good behavior. RCW 9.94A.540 provides the statutory framework for sentence modifications based on post-conviction conduct.
-
-Defendant's exemplary behavior, completion of rehabilitation programs, and clean disciplinary record demonstrate his rehabilitation and suitability for a sentence reduction. The interests of justice would be served by reducing Defendant's sentence to reflect his rehabilitation efforts.
-
-CONCLUSION
-
-For the foregoing reasons, Defendant respectfully requests that this Court grant his motion for sentence reduction.
-
-Respectfully submitted,
-
-[ATTORNEY NAME]
-[ATTORNEY BAR NUMBER]
-[ATTORNEY ADDRESS]
-[ATTORNEY PHONE]
-
-DATED: ${new Date().toLocaleDateString()}`;
-
-      completion = {
-        choices: [{
-          message: {
-            content: testDocument
-          }
-        }]
-      };
-      
-      console.log('✅ [TESTING MODE] Test document generated successfully');
-    } else {
-    
     if (useKimi) {
       const maxAttempts = 3;
-      const baseDelayMs = 2000;
-      let lastError: any = null;
-      let kimiSuccess = false;
+      const baseDelayMs = 10000; // Start with 10s delay
+      const initialTimeoutMs = 300000; // 5 minutes for initial request
+      const retryTimeoutMs = 240000; // 4 minutes for retries
+      console.log(` [KIMI] Starting document generation with timeouts - Initial: ${initialTimeoutMs/1000}s, Retry: ${retryTimeoutMs/1000}s`);
+      let lastError: Error | null = null;
+      let lastResponse: Response | null = null;
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const r = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-        method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}` },
-        body: JSON.stringify({
-          model: 'kimi-k2-0905-preview',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 4096, // Maximum supported by the model
-          // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
-        })
-      });
+        const controller = new AbortController();
+        // Use longer timeout for first attempt, shorter for retries
+        const currentTimeoutMs = attempt === 1 ? initialTimeoutMs : retryTimeoutMs;
+        const timeoutId = setTimeout(() => controller.abort(), currentTimeoutMs);
         
-        if (r.ok) {
-          completion = await r.json();
-          kimiSuccess = true;
-          console.log(`✅ [KIMI] Document generation successful on attempt ${attempt}`);
+        try {
+          console.log(` [KIMI] Starting API call attempt ${attempt}/${maxAttempts} (timeout: ${currentTimeoutMs/1000}s)`);
+          
+          const startTime = Date.now();
+          console.log(` [KIMI] Sending request to Kimi API with ${userPrompt.length} characters of prompt`);
+          lastResponse = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}`,
+              'Accept': 'application/json',
+              'X-Request-ID': `doc-gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            },
+            body: JSON.stringify({
+              model: 'kimi-k2-0905-preview',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+              temperature: 0.3,
+              max_tokens: 4096,
+              stream: false,
+              request_timeout: Math.floor(initialTimeoutMs / 1000) // Convert to seconds
+            }),
+            signal: controller.signal
+          });
+          
+          const responseTime = Date.now() - startTime;
+          console.log(` [KIMI] API responded in ${responseTime}ms with status: ${lastResponse.status}`);
+          
+          if (!lastResponse.ok) {
+            const errorText = await lastResponse.text();
+            console.error(` [KIMI] API error response (${lastResponse.status}):`, errorText);
+            throw new Error(`API responded with status ${lastResponse.status}: ${errorText}`);
+          }
+          
+          clearTimeout(timeoutId);
+          completion = await lastResponse.json();
+          console.log(` [KIMI] Document generation successful on attempt ${attempt}`);
           break;
+          
+        } catch (error: any) {
+          const err = error as Error & { code?: string; status?: number };
+          lastError = err;
+          clearTimeout(timeoutId);
+          
+          // Enhanced error logging
+          const initialErrorDetails = {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            stack: error.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines of stack trace
+          };
+          
+          console.error(` [KIMI] Attempt ${attempt}/${maxAttempts} failed:`, JSON.stringify(initialErrorDetails, null, 2));
+          
+          if (attempt < maxAttempts) {
+            // Check if this is a retryable error
+          const isNetworkError = err.name === 'AbortError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
+          const isServerError = err.status && [429, 500, 502, 503, 504].includes(err.status);
+            const isRetryable = isNetworkError || isServerError;
+            
+            if (isRetryable) {
+              // Exponential backoff with jitter (10s, 20s, 40s)
+              const jitter = Math.random() * 3000; // Add up to 3s jitter
+              const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1) + jitter, 120000); // Max 2 minutes
+              console.log(` [KIMI] ${isNetworkError ? 'Network' : 'Server'} error detected. Retrying in ${Math.round(delay/1000)}s...`);
+              
+              try {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                console.log(` [KIMI] Retry #${attempt} starting...`);
+                continue;
+              } catch (retryError) {
+                console.error(' [KIMI] Error during retry delay:', retryError);
+                // Continue to next iteration to try again if possible
+                continue;
+              }
+            }
+          }
+          
+          // If we get here, either we've exhausted all retries or it's a non-retryable error
+          let errorMessage = lastError.message || 'Unknown error';
+          let errorDetails: any = { error: lastError };
+          
+          if (lastResponse) {
+            errorMessage += ` (HTTP ${lastResponse.status})`;
+            errorDetails.status = lastResponse.status;
+            errorDetails.headers = lastResponse.headers ? Object.fromEntries(lastResponse.headers.entries()) : undefined;
+            
+            try {
+              const errorBody = await lastResponse.text();
+              errorMessage += ` - ${errorBody.substring(0, 200)}`; // Truncate long error messages
+              errorDetails.responseBody = errorBody;
+            } catch (e) {
+              console.error(' [KIMI] Error reading error response body:', e);
+            }
+          }
+          
+          console.error(` [KIMI] Fatal error after ${attempt} attempt(s):`, JSON.stringify(errorDetails, null, 2));
+          
+          // Provide more helpful error message for timeouts
+          if (lastError?.name === 'AbortError') {
+            errorMessage = `Request timed out after ${currentTimeoutMs/1000} seconds. The server took too long to respond.`;
+          }
+          
+          throw new Error(`Document generation failed after ${attempt} attempt(s): ${errorMessage}`);
         }
-        
-        lastError = await r.text();
-        if ([429, 500, 502, 503, 504].includes(r.status) && attempt < maxAttempts) {
-          const delay = baseDelayMs * Math.pow(2, attempt - 1);
-          console.log(`🔄 [RETRY] Kimi overload, retrying in ${delay}ms (attempt ${attempt}/${maxAttempts})`);
-          await new Promise(res => setTimeout(res, delay));
-          continue;
-        }
-        
-        // If not a retryable error or final attempt, throw immediately
-        throw new Error(`Kimi API error: ${r.status} - ${lastError}`);
-      }
-      
-      // If Kimi failed after all retries, throw error
-      if (!kimiSuccess) {
-        throw new Error(`Kimi API error: ${lastError || 'Unknown error'}`);
       }
     } else if (useOpenAI) {
       if (!openai) throw new Error('OpenAI not configured');
@@ -551,7 +537,6 @@ DATED: ${new Date().toLocaleDateString()}`;
         // Note: 4096 tokens ≈ 3000-4000 words, which exceeds 2000 word requirement
     });
     }
-    } // End of AI generation else block
 
     let documentContent = completion.choices?.[0]?.message?.content || 'Failed to generate document content.';
     
@@ -584,61 +569,36 @@ DATED: ${new Date().toLocaleDateString()}`;
       pageCount: Math.ceil(documentContent.length / 2500)
     };
 
-    // Create Supabase client
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: any) {
-            cookieStore.set({ name, value: "", ...options });
-          },
-        },
-      }
-    );
 
     // Get authenticated user for linking document (use admin client for testing)
-    const authSupabase = await createAdminClient();
+    const authSupabase = supabase;
     
-    // 🧪 [TESTING MODE] Bypass authentication for development
     let uid = finalUid;
     let authUserEmail: string | undefined;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🧪 [TESTING MODE] Bypassing user authentication for document storage');
-      uid = finalUid; // Use the test user ID we already have
-    } else {
-      const { data: { user: authUser }, error: authError } = await authSupabase.auth.getUser();
+    const { data: { user: authUser }, error: authGetUserError } = await authSupabase.auth.getUser();
       
-      if (authError) {
-        console.error('❌ Authentication error:', authError);
-        return NextResponse.json({
-          success: false,
-          error: 'Authentication failed',
-          details: authError.message
-        }, { status: 401 });
-      }
-      
-      if (!authUser) {
-        console.error('❌ No authenticated user found');
-        return NextResponse.json({
-          success: false,
-          error: 'User authentication required to save document'
-        }, { status: 401 });
-      }
-      
-      uid = authUser.id;
-      authUserEmail = authUser.email;
+    if (authGetUserError) {
+      console.error(' Authentication error:', authGetUserError);
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication failed',
+        details: authGetUserError.message
+      }, { status: 401 });
     }
-    console.log('✅ Authenticated user ID:', uid);
+      
+    if (!authUser) {
+      console.error(' No authenticated user found');
+      return NextResponse.json({
+        success: false,
+        error: 'User authentication required to save document'
+      }, { status: 401 });
+    }
+      
+    uid = authUser.id;
+    authUserEmail = authUser.email;
+    console.log(' Authenticated user ID:', uid);
 
-    // ⭐ Ensure user exists in users table before inserting document
+    // Ensure user exists in users table before inserting document
     // This handles the case where foreign key references users table instead of auth.users
     try {
       const { data: existingUser, error: userCheckError } = await authSupabase
@@ -649,7 +609,7 @@ DATED: ${new Date().toLocaleDateString()}`;
 
       if (userCheckError && userCheckError.code === 'PGRST116') {
         // User doesn't exist in users table, create it
-        console.log('📝 Creating user record in users table:', finalUid);
+        console.log(' Creating user record in users table:', finalUid);
         const { error: createUserError } = await authSupabase
           .from('users')
           .insert({
@@ -660,18 +620,18 @@ DATED: ${new Date().toLocaleDateString()}`;
           });
 
         if (createUserError) {
-          console.error('⚠️ Warning: Could not create user in users table:', createUserError);
+          console.error(' Warning: Could not create user in users table:', createUserError);
           // Don't fail here - the foreign key might reference auth.users instead
         } else {
-          console.log('✅ Created user record in users table');
+          console.log(' Created user record in users table');
         }
       } else if (userCheckError) {
-        console.error('⚠️ Warning: Error checking user in users table:', userCheckError);
+        console.error(' Warning: Error checking user in users table:', userCheckError);
       } else {
-        console.log('✅ User exists in users table');
+        console.log(' User exists in users table');
       }
     } catch (userTableError) {
-      console.error('⚠️ Warning: Could not check/create user in users table:', userTableError);
+      console.error(' Warning: Could not check/create user in users table:', userTableError);
       // Don't fail here - continue with document insert
     }
 
@@ -681,7 +641,7 @@ DATED: ${new Date().toLocaleDateString()}`;
     
     const documentPayload = {
       id: docId,
-      user_id: finalUid, // ⭐ CRITICAL: Link document to user
+      user_id: finalUid, // Link document to user
       title: documentTitle,
       filename: `${documentTitle.replace(/[^a-z0-9\s\-_]/gi, '_').replace(/\s+/g, '_')}.txt`,
       original_filename: `${documentTitle}.txt`,
@@ -704,9 +664,9 @@ DATED: ${new Date().toLocaleDateString()}`;
       .single();
 
     if (documentError) {
-      console.error('❌ Error storing document in Supabase:', documentError);
-      console.error('❌ Document data:', { docId, uid, title: documentTitle });
-      console.error('❌ Error details:', {
+      console.error(' Error storing document in Supabase:', documentError);
+      console.error(' Document data:', { docId, userId: finalUid, title: documentTitle });
+      console.error(' Error details:', {
         code: documentError.code,
         message: documentError.message,
         details: documentError.details,
@@ -715,11 +675,11 @@ DATED: ${new Date().toLocaleDateString()}`;
       
       // Check if it's a foreign key constraint violation
       if (documentError.code === '23503' || documentError.message.includes('foreign key constraint')) {
-        console.error('❌ Foreign key constraint violation - attempting to fix by ensuring user exists');
+        console.error(' Foreign key constraint violation - attempting to fix by ensuring user exists');
         
         // Try to ensure user exists and retry once
         if (authUserEmail && documentError.details?.includes('users')) {
-          console.log('🔄 Retrying after ensuring user exists in users table...');
+          console.log(' Retrying after ensuring user exists in users table...');
           try {
             // Upsert user to ensure it exists
             const { error: upsertError } = await authSupabase
@@ -734,7 +694,7 @@ DATED: ${new Date().toLocaleDateString()}`;
 
             if (!upsertError) {
               // Retry document insert
-              console.log('🔄 Retrying document insert...');
+              console.log(' Retrying document insert...');
               const { data: retryData, error: retryError } = await supabase
                 .from('documents')
                 .insert([documentPayload])
@@ -742,11 +702,11 @@ DATED: ${new Date().toLocaleDateString()}`;
                 .single();
 
               if (!retryError) {
-                console.log('✅ Document saved successfully after retry');
+                console.log(' Document saved successfully after retry');
                 documentData = retryData;
                 documentInsertSucceeded = true;
               } else {
-                console.error('❌ Document insert still failed after retry:', retryError);
+                console.error(' Document insert still failed after retry:', retryError);
                 return NextResponse.json({
                   success: false,
                   error: 'User authentication issue - please log out and log back in',
@@ -754,7 +714,7 @@ DATED: ${new Date().toLocaleDateString()}`;
                 }, { status: 401 });
               }
             } else {
-              console.error('❌ Could not upsert user:', upsertError);
+              console.error(' Could not upsert user:', upsertError);
               return NextResponse.json({
                 success: false,
                 error: 'User authentication issue - please log out and log back in',
@@ -762,7 +722,7 @@ DATED: ${new Date().toLocaleDateString()}`;
               }, { status: 401 });
             }
           } catch (retryError) {
-            console.error('❌ Error during retry:', retryError);
+            console.error(' Error during retry:', retryError);
             return NextResponse.json({
               success: false,
               error: 'User authentication issue - please log out and log back in',
@@ -770,7 +730,7 @@ DATED: ${new Date().toLocaleDateString()}`;
             }, { status: 401 });
           }
         } else {
-          console.error('❌ Foreign key constraint violation - user may not exist in referenced table');
+          console.error(' Foreign key constraint violation - user may not exist in referenced table');
           return NextResponse.json({
             success: false,
             error: 'User authentication issue - please log out and log back in',
@@ -798,12 +758,12 @@ DATED: ${new Date().toLocaleDateString()}`;
       }, { status: 500 });
     }
     
-    console.log('✅ Document saved to Supabase:', { docId, userId: finalUid, title: documentTitle });
+    console.log(' Document saved to Supabase:', { docId, userId: finalUid, title: documentTitle });
 
-    // ⭐ On success, consume credit and return detailed information
+    // On success, consume credit and return detailed information
     try {
-      // ⭐ FINAL VERIFICATION: Re-check credits immediately before consumption
-      console.log('💳 [FINAL CHECK] Verifying credits before consumption...');
+      // FINAL VERIFICATION: Re-check credits immediately before consumption
+      console.log(' [FINAL CHECK] Verifying credits before consumption...');
       const { data: finalCheck } = await authSupabase
         .from('document_usage')
         .select('monthly_remaining, one_time_remaining')
@@ -814,14 +774,14 @@ DATED: ${new Date().toLocaleDateString()}`;
       const finalOneTime = finalCheck?.one_time_remaining || 0;
       const finalTotal = finalMonthly + finalOneTime;
       
-      console.log('📊 [FINAL CHECK] Credits before consumption:', {
+      console.log(' [FINAL CHECK] Credits before consumption:', {
         monthly: finalMonthly,
         oneTime: finalOneTime,
         total: finalTotal
       });
       
       if (finalTotal === 0) {
-        console.error('❌ [FINAL CHECK] Race condition: Credits consumed between check and generation');
+        console.error(' [FINAL CHECK] Race condition: Credits consumed between check and generation');
         // Rollback document creation
         await supabase.from('documents').delete().eq('id', docId);
         return NextResponse.json({
@@ -830,13 +790,11 @@ DATED: ${new Date().toLocaleDateString()}`;
         }, { status: 402 });
       }
       
-      // 🧪 [TESTING MODE] Bypass credit consumption for testing
-      console.log('🧪 [TESTING MODE] Credit consumption bypassed for testing purposes');
-      const consumed = { ok: true, source: 'testing', remaining: 999, message: 'Testing mode - no credits consumed' };
+      const consumed = await consumeCredit(supabase, finalUid, creditSource, creditsToUse);
       
-      if (false && !consumed.ok) {
-        console.warn('⚠️ Credit consumption failed - insufficient credits');
-        console.warn('⚠️ Message:', consumed.message || 'No credits available');
+      if (!consumed.ok) {
+        console.warn(' Credit consumption failed - insufficient credits');
+        console.warn(' Message:', consumed.message || 'No credits available');
         
         // Rollback document creation if credit consumption fails
         await supabase
@@ -849,8 +807,8 @@ DATED: ${new Date().toLocaleDateString()}`;
           error: consumed.message || 'Insufficient credits. Please purchase a document pack or subscribe to continue.',
         }, { status: 402 });
       } else {
-        console.log(`✅ [TESTING MODE] Credit consumption bypassed - document generation allowed`);
-        console.log(`✅ ${consumed.message}`);
+        console.log(` [TESTING MODE] Credit consumption successful - document generation allowed`);
+        console.log(` [TESTING MODE] ${consumed.message}`);
         
         // Update document metadata with credit source
         await supabase
@@ -867,9 +825,9 @@ DATED: ${new Date().toLocaleDateString()}`;
           })
           .eq('id', docId);
         
-        console.log('✅ Document metadata updated with credit tracking');
+        console.log(' Document metadata updated with credit tracking');
         
-        // ⭐ Return success with credit information
+        // Return success with credit information
     return NextResponse.json({
       success: true,
       data: {
@@ -886,7 +844,7 @@ DATED: ${new Date().toLocaleDateString()}`;
         });
       }
     } catch (consumeErr) {
-      console.error('❌ Error consuming credit post-generation:', consumeErr);
+      console.error(' Error consuming credit post-generation:', consumeErr);
       
       // Rollback document creation on credit error
       await supabase
@@ -917,7 +875,7 @@ DATED: ${new Date().toLocaleDateString()}`;
 }
 
 export async function GET() {
-  console.log('📄 [GENERATE DOC] GET endpoint called - health check');
+  console.log(' [GENERATE DOC] GET endpoint called - health check');
   return NextResponse.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
