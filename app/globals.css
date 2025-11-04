@@ -283,3 +283,19 @@ div:has-text("Ask AI Legal") {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }
+
+/* Ensure text inputs are always visible */
+input[type="text"], 
+textarea, 
+input[type="email"], 
+input[type="password"], 
+input[type="search"] {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure placeholder text is visible */
+input::placeholder, 
+textarea::placeholder {
+  color: #6b7280 !important;
+}

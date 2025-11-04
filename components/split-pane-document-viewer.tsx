@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, Download, Print, FileText, Loader2, Check, X } from 'lucide-react';
+import { Save, Download, Print, FileText, Loader2, Check, X, Eye, Edit3, Share2, Clock, FileCheck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SplitPaneDocumentViewerProps {
@@ -32,6 +32,7 @@ export function SplitPaneDocumentViewer({
   const [localContent, setLocalContent] = useState(documentContent);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Update local content when documentContent prop changes
@@ -115,112 +116,147 @@ export function SplitPaneDocumentViewer({
     return pages;
   };
 
+  const getDocumentStatus = () => {
+    if (isAutoSaving) return { text: "Auto-saving...", color: "text-blue-600", icon: Loader2 };
+    if (hasUnsavedChanges) return { text: "Unsaved changes", color: "text-orange-600", icon: AlertCircle };
+    return { text: "Saved", color: "text-green-600", icon: Check };
+  };
+
+  const status = getDocumentStatus();
+
   return (
-    <div className={`h-full flex flex-col bg-white ${className}`}>
-      {/* Document Header */}
-      <div className="px-6 py-4 border-b border-gray-300 bg-white">
+    <div className={`h-full flex flex-col bg-gradient-to-br from-white to-gray-50 ${className}`}>
+      {/* Enhanced Document Header */}
+      <div className="px-6 py-5 border-b border-gray-200/60 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <FileText className="h-4 w-4 text-white" />
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <FileText className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">Document</h1>
-              <div className="flex items-center space-x-4 text-xs text-gray-500">
-                <span>{formatWordCount(localContent)} words</span>
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                Legal Document
+                <FileCheck className="h-4 w-4 text-blue-500" />
+              </h2>
+              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {formatWordCount(localContent)} words
+                </span>
+                <span>•</span>
                 <span>{formatPageCount(localContent)} pages</span>
-                {hasUnsavedChanges && (
-                  <span className="text-orange-600 flex items-center">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full mr-1"></div>
-                    Unsaved changes
-                  </span>
-                )}
-                {isAutoSaving && (
-                  <span className="text-blue-600 flex items-center">
-                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                    Auto-saving...
-                  </span>
-                )}
+                <span>•</span>
+                <span className={`flex items-center gap-1 ${status.color}`}>
+                  <status.icon className="h-3 w-3" />
+                  {status.text}
+                </span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center space-x-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(!isEditing)}
+              className="h-9 px-3 border-gray-200 hover:bg-gray-50"
+            >
+              {isEditing ? <Eye className="h-4 w-4 mr-2" /> : <Edit3 className="h-4 w-4 mr-2" />}
+              {isEditing ? "Preview" : "Edit"}
+            </Button>
+            
+            <Button
               size="sm"
               onClick={handleSave}
               disabled={isSaving || !hasUnsavedChanges}
-              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center space-x-1"
+              className="h-9 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm"
             >
               {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <Save className="h-4 w-4" />
+                <Save className="h-4 w-4 mr-2" />
               )}
-              <span>Save</span>
+              Save
             </Button>
             
             <Button
               size="sm"
               onClick={handleDownload}
               disabled={isDownloading}
-              className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center space-x-1"
+              className="h-9 px-4 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm"
             >
               {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4 mr-2" />
               )}
-              <span>Download</span>
+              Download
             </Button>
             
             <Button
               size="sm"
               onClick={handlePrint}
-              className="bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center space-x-1"
+              className="h-9 px-4 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white rounded-lg shadow-sm"
             >
-              <Print className="h-4 w-4" />
-              <span>Print</span>
+              <Print className="h-4 w-4 mr-2" />
+              Print
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Document Content */}
+      {/* Enhanced Document Content */}
       <div className="flex-1 px-6 py-4 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-gray-50 border border-gray-300 rounded-lg shadow-sm">
-            <Textarea
-              ref={textareaRef}
-              value={localContent}
-              onChange={(e) => handleContentChange(e.target.value)}
-              className="min-h-[calc(100vh-200px)] resize-none border-0 focus:ring-0 p-6 text-sm leading-relaxed font-mono bg-transparent"
-              placeholder="Your legal document will appear here..."
-              style={{ 
-                fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                lineHeight: '1.6'
-              }}
-            />
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {isEditing ? (
+              <Textarea
+                ref={textareaRef}
+                value={localContent}
+                onChange={(e) => handleContentChange(e.target.value)}
+                className="h-[calc(100vh-50px)] resize-none border-0 focus:ring-0 p-8 text-sm leading-relaxed font-mono bg-transparent"
+                placeholder="Your legal document will appear here..."
+                style={{ 
+                  fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                  lineHeight: '1.6'
+                }}
+              />
+            ) : (
+              <div className="p-8 text-sm leading-relaxed font-serif h-[calc(100vh-50px)] overflow-y-auto">
+                <div className="whitespace-pre-wrap text-gray-800" style={{ lineHeight: '1.8' }}>
+                  {localContent || "Your generated legal document will appear here..."}
+                </div>
+              </div>
+            )}
           </div>
           
-          {/* Document Statistics */}
-          <div className="mt-4 p-4 bg-white border border-gray-300 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center space-x-4">
-                <span className="font-medium">Document ID: {documentId || 'Not available'}</span>
-                <span>Characters: {localContent.length.toLocaleString()}</span>
-                <span>Words: {formatWordCount(localContent).toLocaleString()}</span>
-                <span>Pages: {formatPageCount(localContent)}</span>
+          {/* Enhanced Document Statistics */}
+          <div className="mt-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6 text-sm text-gray-600">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4 text-blue-500" />
+                  <span className="font-medium">ID: {documentId || 'Generating...'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">{localContent.length.toLocaleString()} characters</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">{formatWordCount(localContent).toLocaleString()} words</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">{formatPageCount(localContent)} pages</span>
+                </div>
               </div>
               <div className="flex items-center space-x-2">
                 {hasUnsavedChanges ? (
-                  <span className="text-orange-600 flex items-center font-medium">
-                    <X className="w-3 h-3 mr-1" />
+                  <span className="text-orange-600 flex items-center font-medium bg-orange-50 px-3 py-1 rounded-full text-sm">
+                    <AlertCircle className="w-4 h-4 mr-2" />
                     Unsaved
                   </span>
                 ) : (
-                  <span className="text-green-600 flex items-center font-medium">
-                    <Check className="w-3 h-3 mr-1" />
+                  <span className="text-green-600 flex items-center font-medium bg-green-50 px-3 py-1 rounded-full text-sm">
+                    <Check className="w-4 h-4 mr-2" />
                     Saved
                   </span>
                 )}

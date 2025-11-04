@@ -33,6 +33,7 @@ interface EnhancedChatInterfaceProps {
   suggestedResponses?: SuggestedResponse[]
   onDocumentUpload?: (documentText: string, filename: string) => void
   legalCategory?: string
+  onGenerateDocument?: () => void
 }
 
 export function EnhancedChatInterface({
@@ -44,9 +45,18 @@ export function EnhancedChatInterface({
   suggestedResponses = [],
   onDocumentUpload,
   legalCategory,
+  onGenerateDocument,
 }: EnhancedChatInterfaceProps) {
+  const formatContent = (content: string) => {
+    // Simple formatting for bold, italic, and code
+    const formattedContent = content
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
+      .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
+
+    return formattedContent
+  }
   const [inputValue, setInputValue] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
@@ -267,10 +277,7 @@ export function EnhancedChatInterface({
     }
   }, [])
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  // No auto-scroll - show full messages without scrolling
 
   // Update suggestions when messages change
   useEffect(() => {
@@ -328,14 +335,17 @@ export function EnhancedChatInterface({
   }, [inputValue]);
 
   const handleSendMessage = (message: string) => {
+    console.log("💬 handleSendMessage called with:", message);
+    console.log("📊 onSendMessage function:", typeof onSendMessage);
+    
     // HARD-CODED SAFEGUARDS TO PREVENT DUPLICATE SUBMISSIONS
     if (!message || !message.trim()) {
-      console.log("Empty message, not sending");
+      console.log("❌ Empty message, not sending");
       return;
     }
     
     if (isWaitingForResponse) {
-      console.log("Already waiting for response, not sending");
+      console.log("❌ Already waiting for response, not sending");
       return;
     }
     
@@ -343,7 +353,7 @@ export function EnhancedChatInterface({
     if (messages && messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage && lastMessage.sender === "user" && lastMessage.text === message) {
-        console.log("Duplicate message detected, not sending")
+        console.log("❌ Duplicate message detected, not sending");
         return
       }
     }
@@ -351,12 +361,12 @@ export function EnhancedChatInterface({
     // Prevent rapid-fire submissions
     const now = Date.now();
     if (window.lastMessageTime && now - window.lastMessageTime < 1000) {
-      console.log("Rapid-fire submission blocked");
+      console.log("❌ Rapid-fire submission blocked");
       return;
     }
     window.lastMessageTime = now;
 
-    console.log("✅ Sending message:", message.substring(0, 50) + "...");
+    console.log("✅ Calling onSendMessage with:", message);
     onSendMessage(message)
   }
 
@@ -365,23 +375,19 @@ export function EnhancedChatInterface({
     
     // HARD-CODED SAFEGUARDS
     if (!inputValue.trim()) {
-      console.log("Empty input, not submitting");
       return;
     }
     
     if (isWaitingForResponse) {
-      console.log("Already waiting for response, not submitting");
       return;
     }
     
     // Prevent rapid-fire submissions
     const now = Date.now();
     if (window.lastMessageTime && now - window.lastMessageTime < 1000) {
-      console.log("Rapid-fire submission blocked in handleSubmit");
       return;
     }
     
-    console.log("✅ Form submission:", inputValue.substring(0, 50) + "...");
     handleSendMessage(inputValue.trim())
     setInputValue("")
   }
@@ -547,11 +553,17 @@ export function EnhancedChatInterface({
     setInterimTranscript("")
   }
 
-  // Updated to populate the input field instead of sending immediately
+  // Updated to send the message immediately when suggested response is clicked
   const handleSuggestedResponse = (text: string) => {
-    setInputValue(text)
-    // Focus the input field after setting the value
-    inputRef.current?.focus()
+    console.log("💬 handleSuggestedResponse called with:", text);
+    console.log("📊 onSendMessage function:", typeof onSendMessage);
+    
+    if (onSendMessage && text.trim()) {
+      console.log("✅ Sending suggested response:", text);
+      onSendMessage(text.trim());
+    } else {
+      console.log("❌ onSendMessage not available or empty text");
+    }
   }
 
   // Handle file input change (support multiple files)
@@ -828,12 +840,11 @@ export function EnhancedChatInterface({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Chat Messages - Mobile-first with auto-scroll */}
-      <div 
-        className="flex-grow overflow-y-auto px-3 py-2 sm:px-4 sm:py-4 space-y-2 sm:space-y-3"
-      >
+      {/* Chat Messages container - background removed since parent provides it */}
+      <div className="flex-1">
+        <div className="space-y-4">
         {(messages || []).map((message, index) => (
-          <div key={index} className={`flex mt-2 mb-2 sm:mt-3 sm:mb-3 ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[80%] rounded-lg p-3 sm:p-4 text-sm sm:text-base ${
                 message.sender === "user"
@@ -857,7 +868,7 @@ export function EnhancedChatInterface({
                   </div>
                 </div>
               )}
-              <div className="whitespace-pre-wrap">{message.text}</div>
+              <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: formatContent(message.text) }}></div>
             </div>
           </div>
         ))}
@@ -909,120 +920,169 @@ export function EnhancedChatInterface({
           </div>
         )}
 
-        {/* Invisible element for auto-scrolling */}
-        <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input Area - Mobile-first with iOS viewport fixes */}
-      <div className="border-t px-3 py-2 sm:p-3 pb-[max(14px,env(safe-area-inset-bottom))]">
-        <form onSubmit={handleSubmit} className="flex items-start space-x-2">
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.docx,.txt,.doc,.rtf,.odt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar,.7z,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*,video/*,audio/*"
-            onChange={handleFileInputChange}
-            style={{ display: 'none' }}
-            multiple
-          />
-          
-          {/* Upload button */}
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleUploadClick}
-            onDoubleClick={handleUploadReset}
-            className="rounded-full shadow-md h-9 w-9 sm:h-10 sm:w-10 bg-emerald-500 hover:bg-emerald-600 text-white"
-            disabled={false}
-            title={isUploading ? "Double-click to reset if stuck" : "Upload document"}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          
-          <textarea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder={currentQuestion ? "Type your answer..." : "Type a message..."}
-            className="flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none overflow-hidden"
-            disabled={isWaitingForResponse || isUploading}
-            rows={1}
-            style={{
-              maxHeight: '50rem', // increased to allow much longer messages
-              minHeight: '2.5rem', // initial height
-            }}
-          />
-          {/* Live interim transcript overlay (read-only) */}
-          {isListening && interimTranscript && (
-            <div className="absolute bottom-20 left-4 right-4 pointer-events-none select-none text-gray-400 text-sm">
-              {interimTranscript}
-            </div>
-          )}
-          {speechSupported ? (
+      <div className="mt-6">
+          <form onSubmit={handleSubmit} className="flex items-start space-x-2">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.doc,.rtf,.odt,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp,.mp4,.avi,.mov,.wmv,.flv,.mkv,.mp3,.wav,.m4a,.aac,.ogg,.csv,.xlsx,.xls,.ppt,.pptx,.zip,.rar,.7z,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/*,video/*,audio/*"
+              onChange={handleFileInputChange}
+              style={{ display: 'none' }}
+              multiple
+            />
+            
+            {/* Upload button */}
             <Button
               type="button"
               size="icon"
-              onClick={toggleSpeechRecognition}
-              className={`rounded-full h-9 w-9 sm:h-10 sm:w-10 ${
-                isListening ? "bg-red-500 hover:bg-red-600" : 
-                !speechServiceAvailable ? "bg-orange-500 hover:bg-orange-600" :
-                "bg-emerald-500 hover:bg-emerald-600 text-white"
-              }`}
+              onClick={handleUploadClick}
+              onDoubleClick={handleUploadReset}
+              className="rounded-full shadow-md h-9 w-9 sm:h-10 sm:w-10 bg-emerald-500 hover:bg-emerald-600 text-white"
+              disabled={false}
+              title={isUploading ? "Double-click to reset if stuck" : "Upload document"}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder={currentQuestion ? "Type your answer..." : "Type a message..."}
+              className="flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none overflow-hidden placeholder:text-gray-500"
               disabled={isWaitingForResponse || isUploading}
-              title={
-                isListening ? "Stop recording" : 
-                !speechServiceAvailable ? "Voice service unavailable - try typing instead" :
-                "Start voice input"
-              }
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-          ) : (
+              rows={1}
+              style={{
+                color: '#111827 !important',
+                backgroundColor: '#ffffff !important',
+                maxHeight: '50rem', // increased to allow much longer messages
+                minHeight: '2.5rem', // initial height
+              }}
+            />
+            {/* Live interim transcript overlay (read-only) */}
+            {isListening && interimTranscript && (
+              <div className="absolute bottom-20 left-4 right-4 pointer-events-none select-none text-gray-400 text-sm">
+                {interimTranscript}
+              </div>
+            )}
+            {speechSupported ? (
+              <Button
+                type="button"
+                size="icon"
+                onClick={toggleSpeechRecognition}
+                className={`rounded-full h-9 w-9 sm:h-10 sm:w-10 ${
+                  isListening ? "bg-red-500 hover:bg-red-600" : 
+                  !speechServiceAvailable ? "bg-orange-500 hover:bg-orange-600" :
+                  "bg-emerald-500 hover:bg-emerald-600 text-white"
+                }`}
+                disabled={isWaitingForResponse || isUploading}
+                title={
+                  isListening ? "Stop recording" : 
+                  !speechServiceAvailable ? "Voice service unavailable - try typing instead" :
+                  "Start voice input"
+                }
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="icon"
+                className="rounded-full h-9 w-9 sm:h-10 sm:w-10 bg-gray-400 cursor-not-allowed"
+                disabled
+                title="Voice input not supported in this browser"
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               type="button"
               size="icon"
-              className="rounded-full h-9 w-9 sm:h-10 sm:w-10 bg-gray-400 cursor-not-allowed"
-              disabled
-              title="Voice input not supported in this browser"
+              className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white h-9 w-9 sm:h-10 sm:w-10"
+              disabled={isWaitingForResponse || !inputValue.trim() || isUploading}
+              onClick={() => {
+                console.log("🔘 Send button clicked!");
+                console.log("📊 inputValue:", inputValue);
+                console.log("📊 isWaitingForResponse:", isWaitingForResponse);
+                console.log("📊 isUploading:", isUploading);
+                console.log("📊 onSendMessage:", typeof onSendMessage);
+                
+                if (!isWaitingForResponse && inputValue.trim() && !isUploading) {
+                  console.log("✅ Sending message:", inputValue.trim());
+                  handleSendMessage(inputValue.trim());
+                  setInputValue("");
+                } else {
+                  console.log("❌ Message blocked by conditions");
+                }
+              }}
             >
-              <Mic className="h-4 w-4" />
+              <Send className="h-4 w-4" />
             </Button>
-          )}
-          <Button
-            type="submit"
-            size="icon"
-            className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white h-9 w-9 sm:h-10 sm:w-10"
-            disabled={isWaitingForResponse || !inputValue.trim() || isUploading}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
+          </form>
 
-        {/* Rotating Suggested Responses - Mobile-first */}
-        {rotatingSuggestions.length > 0 && (
-          <div className="mt-2 sm:mt-3">
-            <p className="text-xs sm:text-sm text-gray-400 mb-1">Suggested responses:</p>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {rotatingSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSuggestedResponse(suggestion)}
-                  className="px-3 py-1 sm:px-4 sm:py-1.5 bg-emerald-100 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:bg-emerald-200 transition flex items-center gap-1"
-                >
-                  <span>{suggestionEmojiMap[suggestion] || null}</span>
-                  {suggestion}
-                </button>
-              ))}
+          {/* Internet Search Capability Indicator */}
+          <div className="mt-4 flex items-center justify-center">
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span>AI can search the internet for current case law and legal information</span>
             </div>
           </div>
-        )}
+
+          {/* Rotating Suggested Responses - Mobile-first */}
+          {rotatingSuggestions.length > 0 && (
+            <div className="mt-4 sm:mt-4">
+              <p className="text-xs sm:text-sm text-gray-400 mb-4 mt-4">Suggested responses:</p>
+              <div className="flex flex-wrap gap-3 sm:gap-3">
+                {rotatingSuggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      console.log("🔘 Suggested response clicked:", suggestion);
+                      handleSuggestedResponse(suggestion);
+                    }}
+                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-emerald-100 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:bg-emerald-200 transition flex items-center gap-1"
+                  >
+                    <span>{suggestionEmojiMap[suggestion] || null}</span>
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Generate Document Button - Only show if we have enough messages */}
+          {messages && messages.length >= 2 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onGenerateDocument) {
+                    onGenerateDocument();
+                  }
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Generate Document and Case Analysis
+              </button>
+        </div>
+          )}
 
       </div>
     </div>

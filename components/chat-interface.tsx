@@ -225,7 +225,11 @@ export function ChatInterface() {
             }
           }}
           placeholder="Describe your legal issue here..."
-          className="w-full border rounded-full px-4 py-3 pr-24 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full border rounded-full px-4 py-3 pr-24 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-500"
+          style={{
+            color: '#111827 !important',
+            backgroundColor: '#ffffff !important'
+          }}
         />
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-2">
           <button
@@ -259,7 +263,7 @@ function ChatBubble({ sender, text, time }: { sender: "khristian" | "user"; text
           </div>
         )}
         <div>
-          <div className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`}>{text}</div>
+          <div className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`} dangerouslySetInnerHTML={{ __html: text }}></div>
           <div className="text-[10px] text-gray-400 mt-1 text-right">{time}</div>
         </div>
         {isUser && (

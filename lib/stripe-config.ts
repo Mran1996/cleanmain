@@ -31,9 +31,12 @@ export const PRODUCT_DETAILS = {
       "Complete legal document drafting (up to 150 pages)",
       "AI + human review",
       "State-specific case law research",
+      "Case Success Analysis — legal strategy + projection",
       "Up to 3 revisions within 14 days",
+      "Email + Phone Support",
       "Email or physical mail delivery",
-      "7 business day turnaround"
+      "7 business day turnaround",
+      "Your own hearing prep script — exactly what to say in court for a winning edge"
     ]
   }
 };

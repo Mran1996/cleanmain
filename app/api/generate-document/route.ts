@@ -609,6 +609,7 @@ DATED: ${new Date().toLocaleDateString()}`;
     
     // 🧪 [TESTING MODE] Bypass authentication for development
     let uid = finalUid;
+    let authUserEmail: string | undefined;
     if (process.env.NODE_ENV === 'development') {
       console.log('🧪 [TESTING MODE] Bypassing user authentication for document storage');
       uid = finalUid; // Use the test user ID we already have
@@ -633,29 +634,72 @@ DATED: ${new Date().toLocaleDateString()}`;
       }
       
       uid = authUser.id;
+      authUserEmail = authUser.email;
     }
     console.log('✅ Authenticated user ID:', uid);
 
+    // ⭐ Ensure user exists in users table before inserting document
+    // This handles the case where foreign key references users table instead of auth.users
+    try {
+      const { data: existingUser, error: userCheckError } = await authSupabase
+        .from('users')
+        .select('id')
+        .eq('id', finalUid)
+        .single();
+
+      if (userCheckError && userCheckError.code === 'PGRST116') {
+        // User doesn't exist in users table, create it
+        console.log('📝 Creating user record in users table:', finalUid);
+        const { error: createUserError } = await authSupabase
+          .from('users')
+          .insert({
+            id: finalUid,
+            email: authUserEmail || 'unknown@example.com',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (createUserError) {
+          console.error('⚠️ Warning: Could not create user in users table:', createUserError);
+          // Don't fail here - the foreign key might reference auth.users instead
+        } else {
+          console.log('✅ Created user record in users table');
+        }
+      } else if (userCheckError) {
+        console.error('⚠️ Warning: Error checking user in users table:', userCheckError);
+      } else {
+        console.log('✅ User exists in users table');
+      }
+    } catch (userTableError) {
+      console.error('⚠️ Warning: Could not check/create user in users table:', userTableError);
+      // Don't fail here - continue with document insert
+    }
+
     // Store document in Supabase with user_id for proper linking
-    const { data: documentData, error: documentError } = await supabase
+    let documentData;
+    let documentInsertSucceeded = false;
+    
+    const documentPayload = {
+      id: docId,
+      user_id: finalUid, // ⭐ CRITICAL: Link document to user
+      title: documentTitle,
+      filename: `${documentTitle.replace(/[^a-z0-9\s\-_]/gi, '_').replace(/\s+/g, '_')}.txt`,
+      original_filename: `${documentTitle}.txt`,
+      file_size: Buffer.byteLength(documentContent, 'utf8'),
+      file_type: 'text/plain',
+      content: documentContent,
+      metadata: {
+        ...metadata,
+        generated_by_api: true,
+        credit_source: 'pending', // Will be updated after credit consumption
+        generation_timestamp: new Date().toISOString()
+      },
+      created_at: new Date().toISOString()
+    };
+
+    const { data: initialDocumentData, error: documentError } = await supabase
       .from('documents')
-      .insert([{
-        id: docId,
-        user_id: finalUid, // ⭐ CRITICAL: Link document to user
-        title: documentTitle,
-        filename: `${documentTitle.replace(/[^a-z0-9\s\-_]/gi, '_').replace(/\s+/g, '_')}.txt`,
-        original_filename: `${documentTitle}.txt`,
-        file_size: Buffer.byteLength(documentContent, 'utf8'),
-        file_type: 'text/plain',
-        content: documentContent,
-        metadata: {
-          ...metadata,
-          generated_by_api: true,
-          credit_source: 'pending', // Will be updated after credit consumption
-          generation_timestamp: new Date().toISOString()
-        },
-        created_at: new Date().toISOString()
-      }])
+      .insert([documentPayload])
       .select()
       .single();
 
@@ -671,19 +715,86 @@ DATED: ${new Date().toLocaleDateString()}`;
       
       // Check if it's a foreign key constraint violation
       if (documentError.code === '23503' || documentError.message.includes('foreign key constraint')) {
-        console.error('❌ Foreign key constraint violation - user may not exist in auth.users');
+        console.error('❌ Foreign key constraint violation - attempting to fix by ensuring user exists');
+        
+        // Try to ensure user exists and retry once
+        if (authUserEmail && documentError.details?.includes('users')) {
+          console.log('🔄 Retrying after ensuring user exists in users table...');
+          try {
+            // Upsert user to ensure it exists
+            const { error: upsertError } = await authSupabase
+              .from('users')
+              .upsert({
+                id: finalUid,
+                email: authUserEmail,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'id'
+              });
+
+            if (!upsertError) {
+              // Retry document insert
+              console.log('🔄 Retrying document insert...');
+              const { data: retryData, error: retryError } = await supabase
+                .from('documents')
+                .insert([documentPayload])
+                .select()
+                .single();
+
+              if (!retryError) {
+                console.log('✅ Document saved successfully after retry');
+                documentData = retryData;
+                documentInsertSucceeded = true;
+              } else {
+                console.error('❌ Document insert still failed after retry:', retryError);
+                return NextResponse.json({
+                  success: false,
+                  error: 'User authentication issue - please log out and log back in',
+                  details: 'The user account may not be properly set up in the database'
+                }, { status: 401 });
+              }
+            } else {
+              console.error('❌ Could not upsert user:', upsertError);
+              return NextResponse.json({
+                success: false,
+                error: 'User authentication issue - please log out and log back in',
+                details: 'The user account may not be properly set up in the database'
+              }, { status: 401 });
+            }
+          } catch (retryError) {
+            console.error('❌ Error during retry:', retryError);
+            return NextResponse.json({
+              success: false,
+              error: 'User authentication issue - please log out and log back in',
+              details: 'The user account may not be properly set up in the database'
+            }, { status: 401 });
+          }
+        } else {
+          console.error('❌ Foreign key constraint violation - user may not exist in referenced table');
+          return NextResponse.json({
+            success: false,
+            error: 'User authentication issue - please log out and log back in',
+            details: 'The user account may not be properly set up in the database'
+          }, { status: 401 });
+        }
+      } else {
+        // Don't continue if document save fails - user paid for this!
         return NextResponse.json({
           success: false,
-          error: 'User authentication issue - please log out and log back in',
-          details: 'The user account may not be properly set up in the database'
-        }, { status: 401 });
+          error: 'Failed to save document to database',
+          details: documentError.message
+        }, { status: 500 });
       }
-      
-      // Don't continue if document save fails - user paid for this!
+    } else {
+      documentData = initialDocumentData;
+      documentInsertSucceeded = true;
+    }
+    
+    if (!documentInsertSucceeded || !documentData) {
       return NextResponse.json({
         success: false,
         error: 'Failed to save document to database',
-        details: documentError.message
+        details: 'Document insertion did not complete successfully'
       }, { status: 500 });
     }
     
