@@ -1,3 +1,28 @@
+import type { Metadata } from 'next';
+
+// SEO metadata for accessibility page
+export const metadata: Metadata = {
+  title: 'Accessibility Statement - Inclusive Legal Services | Ask AI Legal™',
+  description: 'Ask AI Legal is committed to making our legal services accessible to everyone. Learn about our WCAG 2.1 Level AA compliance, accessibility features, and how we support users with disabilities.',
+  keywords: [
+    'accessibility statement',
+    'WCAG compliance',
+    'accessible legal services',
+    'disability support',
+    'inclusive design',
+    'screen reader compatible',
+  ],
+  openGraph: {
+    title: 'Accessibility Statement - Ask AI Legal™',
+    description: 'Our commitment to accessible legal services for everyone.',
+    type: 'website',
+    url: 'https://www.askailegal.com/accessibility',
+  },
+  alternates: {
+    canonical: 'https://www.askailegal.com/accessibility',
+  },
+};
+
 export default function AccessibilityPage() {
   return (
     <main className="max-w-4xl mx-auto px-6 py-16">

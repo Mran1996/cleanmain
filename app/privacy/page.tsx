@@ -1,5 +1,33 @@
 import { Navigation } from "@/components/navigation"
 import Footer from "@/components/footer"
+import type { Metadata } from 'next';
+
+// SEO metadata for privacy page
+export const metadata: Metadata = {
+  title: 'Privacy Policy - Data Protection & Security | Ask AI Legal™',
+  description: 'Learn how Ask AI Legal protects your personal information. We use encryption, secure storage, and never sell your data. Understand our data collection, usage, retention, and your privacy rights.',
+  keywords: [
+    'privacy policy',
+    'data protection',
+    'user privacy',
+    'data security',
+    'GDPR compliance',
+    'personal information',
+  ],
+  openGraph: {
+    title: 'Privacy Policy - Ask AI Legal™',
+    description: 'Our commitment to protecting your personal information and privacy.',
+    type: 'website',
+    url: 'https://www.askailegal.com/privacy',
+  },
+  alternates: {
+    canonical: 'https://www.askailegal.com/privacy',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
 
 export default function PrivacyPolicyPage() {
   return (

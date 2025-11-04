@@ -16,6 +16,37 @@ import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, FileText, Brain, Mic, Shield, Clock, Users, Star, ArrowRight, Quote, Zap, MessageCircle, Award, Gavel, Target, Lock, DollarSign, Upload, Scale, FileCheck, BrainCircuit, MicVocal, Presentation, TrendingUp, ShieldCheck, Crown, Trophy, Sparkles, ArrowUpRight, Mail, RefreshCcw, FolderOpen } from "lucide-react"
 import Link from "next/link"
+import type { Metadata } from 'next';
+
+// SEO metadata for learn more page
+export const metadata: Metadata = {
+  title: 'Full Service Legal Support - AI + Human Expert Legal Team | Ask AI Legal™',
+  description: 'Get comprehensive legal support with our Full Service package ($499): AI-powered analysis, court-ready documents, hearing scripts, expert review, and 3 free revisions. Bar-certified AI + human legal expertise.',
+  keywords: [
+    'full service legal',
+    'complete legal support',
+    'legal document preparation',
+    'court hearing preparation',
+    'AI legal team',
+    'white glove legal service',
+    'legal case analysis',
+    'hearing scripts',
+  ],
+  openGraph: {
+    title: 'Full Service Legal Support - Ask AI Legal™',
+    description: 'Complete legal support: AI analysis + expert review + court preparation. Starting at $499.',
+    type: 'website',
+    url: 'https://www.askailegal.com/learn-more',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Full Service Legal Support - Ask AI Legal™',
+    description: 'AI + human legal team for complete case preparation.',
+  },
+  alternates: {
+    canonical: 'https://www.askailegal.com/learn-more',
+  },
+};
 
 const CORE_SERVICES = [
   {

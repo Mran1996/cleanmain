@@ -6,6 +6,9 @@ import { toast } from '@/components/ui/use-toast';
 import { useSupabase } from '@/components/SupabaseProvider';
 import { Logo } from '@/components/Logo';
 
+// NOTE: This is a client component, so metadata must be handled in a parent layout
+// SEO metadata is defined in app/layout.tsx for all auth-related pages
+
 export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);

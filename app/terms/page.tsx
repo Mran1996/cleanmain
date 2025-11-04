@@ -1,5 +1,33 @@
 import { Navigation } from "@/components/navigation"
 import Footer from "@/components/footer"
+import type { Metadata } from 'next';
+
+// SEO metadata for terms page
+export const metadata: Metadata = {
+  title: 'Terms of Service - Legal Agreement | Ask AI Legal™',
+  description: 'Read the Terms of Service for Ask AI Legal. Understand your rights, responsibilities, refund policy, dispute resolution, and our commitment to providing AI-powered legal assistance.',
+  keywords: [
+    'terms of service',
+    'legal agreement',
+    'user agreement',
+    'service terms',
+    'refund policy',
+    'dispute resolution',
+  ],
+  openGraph: {
+    title: 'Terms of Service - Ask AI Legal™',
+    description: 'Terms of Service and user agreement for Ask AI Legal services.',
+    type: 'website',
+    url: 'https://www.askailegal.com/terms',
+  },
+  alternates: {
+    canonical: 'https://www.askailegal.com/terms',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
 
 export default function TermsOfServicePage() {
   return (
