@@ -100,7 +100,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'googlef788c4c7f40dbf2c',
+    google: 'google9718b1219de35b80',
     yandex: '8e1818f4b7eac228',
     // Bing verification: Use /public/BingSiteAuth.xml file instead
   },
