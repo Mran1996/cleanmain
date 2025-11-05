@@ -167,6 +167,7 @@ function AIAssistantStep1Content() {
     }
   };
 
+  
   const getCategoryPrompt = (category: string) => {
   switch(category.toLowerCase()) {
     case 'criminal':
