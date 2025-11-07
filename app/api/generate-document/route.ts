@@ -21,8 +21,9 @@ export const config = {
 };
 
 // Initialize OpenAI client (used if Moonshot/Kimi is not configured)
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
+const kimiClient = (process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY) ? new OpenAI({
+  apiKey: (process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY)!,
+  baseURL: 'https://api.moonshot.ai/v1',
 }) : null;
 
 export async function POST(req: NextRequest) {
@@ -403,149 +404,118 @@ Generate a complete, professional legal document using ONLY the information prov
 
     // Call AI provider to generate the document with retry logic and fallback
     let completion: any;
-    const useKimi = !!(process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY);
-    const useOpenAI = !!process.env.OPENAI_API_KEY;
+    const useKimi = !!kimiClient;
+    const useOpenAI = false; // Disable OpenAI fallback; use only Kimi
 
     // Guard against missing provider configuration
-    if (!useKimi && !useOpenAI) {
-      throw new Error('No AI provider configured. Set OPENAI_API_KEY or MOONSHOT_API_KEY/KIMI_API_KEY.');
+    if (!useKimi) {
+      throw new Error('No AI provider configured. Set MOONSHOT_API_KEY or KIMI_API_KEY.');
     }
     
     if (useKimi) {
-      const maxAttempts = 3;
-      const baseDelayMs = 10000; // Start with 10s delay
-      const initialTimeoutMs = 300000; // 5 minutes for initial request
-      const retryTimeoutMs = 240000; // 4 minutes for retries
-      console.log(` [KIMI] Starting document generation with timeouts - Initial: ${initialTimeoutMs/1000}s, Retry: ${retryTimeoutMs/1000}s`);
-      let lastError: Error | null = null;
-      let lastResponse: Response | null = null;
-      
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const controller = new AbortController();
-        // Use longer timeout for first attempt, shorter for retries
-        const currentTimeoutMs = attempt === 1 ? initialTimeoutMs : retryTimeoutMs;
-        const timeoutId = setTimeout(() => controller.abort(), currentTimeoutMs);
-        
-        try {
-          console.log(` [KIMI] Starting API call attempt ${attempt}/${maxAttempts} (timeout: ${currentTimeoutMs/1000}s)`);
-          
-          const startTime = Date.now();
-          console.log(` [KIMI] Sending request to Kimi API with ${userPrompt.length} characters of prompt`);
-          lastResponse = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${process.env.MOONSHOT_API_KEY || process.env.KIMI_API_KEY}`,
-              'Accept': 'application/json',
-              'X-Request-ID': `doc-gen-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-            },
-            body: JSON.stringify({
-              model: 'kimi-k2-0905-preview',
+      try {
+        const maxAttempts = 3;
+        const baseDelayMs = 10000; // Start with 10s delay
+        const initialTimeoutMs = 300000; // 5 minutes for initial request
+        const retryTimeoutMs = 240000; // 4 minutes for retries
+        console.log(` [KIMI] Starting document generation with timeouts - Initial: ${initialTimeoutMs/1000}s, Retry: ${retryTimeoutMs/1000}s`);
+        let lastError: Error | null = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          const controller = new AbortController();
+          // Use longer timeout for first attempt, shorter for retries
+          const currentTimeoutMs = attempt === 1 ? initialTimeoutMs : retryTimeoutMs;
+          const timeoutId = setTimeout(() => controller.abort(), currentTimeoutMs);
+
+          try {
+            console.log(` [KIMI] Starting API call attempt ${attempt}/${maxAttempts} (timeout: ${currentTimeoutMs/1000}s)`);
+
+            const startTime = Date.now();
+            console.log(` [KIMI] Sending request via SDK with ${userPrompt.length} characters of prompt`);
+            completion = await kimiClient!.chat.completions.create({
+              model: 'kimi-k2-thinking-turbo',
               messages: [
                 { role: 'system', content: systemPrompt },
+                ...chatHistory.map((msg: ChatMessage) => ({
+                  role: msg.role as 'user' | 'assistant' | 'system',
+                  content: msg.content || ''
+                })),
                 { role: 'user', content: userPrompt }
               ],
-              temperature: 0.3,
-              max_tokens: 4096,
-              stream: false,
-              request_timeout: Math.floor(initialTimeoutMs / 1000) // Convert to seconds
-            }),
-            signal: controller.signal
-          });
-          
-          const responseTime = Date.now() - startTime;
-          console.log(` [KIMI] API responded in ${responseTime}ms with status: ${lastResponse.status}`);
-          
-          if (!lastResponse.ok) {
-            const errorText = await lastResponse.text();
-            console.error(` [KIMI] API error response (${lastResponse.status}):`, errorText);
-            throw new Error(`API responded with status ${lastResponse.status}: ${errorText}`);
-          }
-          
-          clearTimeout(timeoutId);
-          completion = await lastResponse.json();
-          console.log(` [KIMI] Document generation successful on attempt ${attempt}`);
-          break;
-          
-        } catch (error: any) {
-          const err = error as Error & { code?: string; status?: number };
-          lastError = err;
-          clearTimeout(timeoutId);
-          
-          // Enhanced error logging
-          const initialErrorDetails = {
-            name: error.name,
-            message: error.message,
-            code: error.code,
-            stack: error.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines of stack trace
-          };
-          
-          console.error(` [KIMI] Attempt ${attempt}/${maxAttempts} failed:`, JSON.stringify(initialErrorDetails, null, 2));
-          
-          if (attempt < maxAttempts) {
-            // Check if this is a retryable error
-          const isNetworkError = err.name === 'AbortError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
-          const isServerError = err.status && [429, 500, 502, 503, 504].includes(err.status);
-            const isRetryable = isNetworkError || isServerError;
-            
-            if (isRetryable) {
-              // Exponential backoff with jitter (10s, 20s, 40s)
-              const jitter = Math.random() * 3000; // Add up to 3s jitter
-              const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1) + jitter, 120000); // Max 2 minutes
-              console.log(` [KIMI] ${isNetworkError ? 'Network' : 'Server'} error detected. Retrying in ${Math.round(delay/1000)}s...`);
-              
-              try {
-                await new Promise(resolve => setTimeout(resolve, delay));
-                console.log(` [KIMI] Retry #${attempt} starting...`);
-                continue;
-              } catch (retryError) {
-                console.error(' [KIMI] Error during retry delay:', retryError);
-                // Continue to next iteration to try again if possible
-                continue;
+              temperature: 0.6,
+              max_tokens: 32768,
+              top_p: 1,
+              stream: false
+            });
+        
+
+            const responseTime = Date.now() - startTime;
+            console.log(` [KIMI] SDK responded in ${responseTime}ms`);
+
+            clearTimeout(timeoutId);
+            console.log(` [KIMI] Document generation successful on attempt ${attempt}`);
+            break;
+
+          } catch (error: any) {
+            const err = error as Error & { code?: string; status?: number };
+            lastError = err;
+            clearTimeout(timeoutId);
+
+            // Enhanced error logging
+            const initialErrorDetails = {
+              name: error.name,
+              message: error.message,
+              code: error.code,
+              stack: error.stack?.split('\n').slice(0, 3).join('\n') // First 3 lines of stack trace
+            };
+
+            console.error(` [KIMI] Attempt ${attempt}/${maxAttempts} failed:`, JSON.stringify(initialErrorDetails, null, 2));
+
+            if (attempt < maxAttempts) {
+              // Check if this is a retryable error
+              const isNetworkError = err.name === 'AbortError' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT';
+              const isServerError = (err as any)?.status && [429, 500, 502, 503, 504, 520].includes((err as any).status);
+              const isRetryable = isNetworkError || isServerError;
+
+              if (isRetryable) {
+                // Exponential backoff with jitter (10s, 20s, 40s)
+                const jitter = Math.random() * 3000; // Add up to 3s jitter
+                const delay = Math.min(baseDelayMs * Math.pow(2, attempt - 1) + jitter, 120000); // Max 2 minutes
+                console.log(` [KIMI] ${isNetworkError ? 'Network' : 'Server'} error detected. Retrying in ${Math.round(delay/1000)}s...`);
+
+                try {
+                  await new Promise(resolve => setTimeout(resolve, delay));
+                  console.log(` [KIMI] Retry #${attempt} starting...`);
+                  continue;
+                } catch (retryError) {
+                  console.error(' [KIMI] Error during retry delay:', retryError);
+                  // Continue to next iteration to try again if possible
+                  continue;
+                }
               }
             }
-          }
-          
-          // If we get here, either we've exhausted all retries or it's a non-retryable error
-          let errorMessage = lastError.message || 'Unknown error';
-          let errorDetails: any = { error: lastError };
-          
-          if (lastResponse) {
-            errorMessage += ` (HTTP ${lastResponse.status})`;
-            errorDetails.status = lastResponse.status;
-            errorDetails.headers = lastResponse.headers ? Object.fromEntries(lastResponse.headers.entries()) : undefined;
-            
-            try {
-              const errorBody = await lastResponse.text();
-              errorMessage += ` - ${errorBody.substring(0, 200)}`; // Truncate long error messages
-              errorDetails.responseBody = errorBody;
-            } catch (e) {
-              console.error(' [KIMI] Error reading error response body:', e);
+
+            // If we get here, either we've exhausted all retries or it's a non-retryable error
+            let errorMessage = lastError.message || 'Unknown error';
+            let errorDetails: any = { error: lastError };
+
+            console.error(` [KIMI] Fatal error after ${attempt} attempt(s):`, JSON.stringify(errorDetails, null, 2));
+
+            // Provide more helpful error message for timeouts
+            if (lastError?.name === 'AbortError') {
+              errorMessage = `Request timed out after ${currentTimeoutMs/1000} seconds. The server took too long to respond.`;
+            }
+
+            // At final failure, throw to outer catch
+            if (attempt === maxAttempts) {
+              throw new Error(`Document generation failed after ${attempt} attempt(s): ${errorMessage}`);
             }
           }
-          
-          console.error(` [KIMI] Fatal error after ${attempt} attempt(s):`, JSON.stringify(errorDetails, null, 2));
-          
-          // Provide more helpful error message for timeouts
-          if (lastError?.name === 'AbortError') {
-            errorMessage = `Request timed out after ${currentTimeoutMs/1000} seconds. The server took too long to respond.`;
-          }
-          
-          throw new Error(`Document generation failed after ${attempt} attempt(s): ${errorMessage}`);
         }
+      } catch (kimiErr) {
+        // No fallback; rethrow to be handled by outer error handling
+        throw kimiErr;
       }
-    } else if (useOpenAI) {
-      if (!openai) throw new Error('OpenAI not configured');
-      completion = await openai.chat.completions.create({
-        // Align with usage elsewhere in the project for compatibility
-        model: 'gpt-4-1106-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 4096
-      });
     }
 
     let documentContent = completion.choices?.[0]?.message?.content || 'Failed to generate document content.';

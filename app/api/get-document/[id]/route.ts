@@ -4,10 +4,10 @@ import { cookies } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const docId = params.id;
+    const { id: docId } = await params;
     
     if (!docId) {
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });

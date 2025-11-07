@@ -679,6 +679,7 @@ function AIAssistantStep1Content() {
   };
 
   const handleGenerateDocument = async () => {
+    setShowSplitPane(true)
     console.log("🚀 handleGenerateDocument called!");
     if (typeof window === 'undefined') {
       console.log("❌ Browser environment not available");
@@ -709,6 +710,8 @@ function AIAssistantStep1Content() {
     // Show immediate feedback
     toast.info("Starting document generation... This may take up to 5 minutes for complex documents.");
     setIsProcessing(true);
+    // Interval handle accessible to try/catch/finally
+    let progressInterval: ReturnType<typeof setInterval> | undefined;
     
     try {
       // Ensure we have a valid UUID for userId
@@ -758,7 +761,7 @@ function AIAssistantStep1Content() {
       }, 300000); // 5 minutes timeout for full document generation
 
       // Add progress updates for long-running requests
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         toast.info("AI is still processing your document... This is normal for complex legal documents.");
       }, 60000); // Show progress every minute
 
@@ -773,7 +776,7 @@ function AIAssistantStep1Content() {
       });
 
       clearTimeout(timeoutId);
-      clearInterval(progressInterval);
+      if (progressInterval) clearInterval(progressInterval);
       console.log("📥 API response received:", response.status);
       console.log("📥 API response status:", response.status);
 
@@ -837,7 +840,7 @@ function AIAssistantStep1Content() {
         console.log("🔄 Preparing to navigate to Step 2...");
         setTimeout(() => {
           console.log("🚀 Navigating to Step 2 now!");
-          router.push("/ai-assistant/step-2");
+          router.push(`/ai-assistant/step-2?docId=${docId}`);
         }, 2000); // Give user time to see the success message
       } else {
         console.error("❌ No document content in API response");
@@ -848,7 +851,7 @@ function AIAssistantStep1Content() {
       console.error("Error generating document:", error);
       
       // Clear any pending intervals
-      if (typeof progressInterval !== 'undefined') {
+      if (progressInterval) {
         clearInterval(progressInterval);
       }
       
