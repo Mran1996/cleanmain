@@ -11,6 +11,7 @@ import { Loader2, FileText, Trash2, Info, Save, Download, Mail, MessageSquare } 
 import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
+import { createDocumentGenerationToast } from '@/lib/promise-toast';
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import { SplitPaneLayout } from "@/components/split-pane-layout";
@@ -707,11 +708,8 @@ function AIAssistantStep1Content() {
     
     console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
     
-    // Show immediate feedback
-    toast.info("Starting document generation... This may take up to 5 minutes for complex documents.");
+    // Set processing state
     setIsProcessing(true);
-    // Interval handle accessible to try/catch/finally
-    let progressInterval: ReturnType<typeof setInterval> | undefined;
     
     try {
       // Ensure we have a valid UUID for userId
@@ -753,121 +751,119 @@ function AIAssistantStep1Content() {
         messages: finalChatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
       });
 
-      // Add timeout for large documents
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log("⏰ API call timed out after 5 minutes");
-        controller.abort();
-      }, 300000); // 5 minutes timeout for full document generation
+      // Create the API call promise
+      const documentGenerationPromise = (async () => {
+        // Add timeout for large documents
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("⏰ API call timed out after 5 minutes");
+          controller.abort();
+        }, 300000); // 5 minutes timeout for full document generation
 
-      // Add progress updates for long-running requests
-      progressInterval = setInterval(() => {
-        toast.info("AI is still processing your document... This is normal for complex legal documents.");
-      }, 60000); // Show progress every minute
-
-      console.log("🚀 Making API call to /api/generate-document (full processing)");
-      
-      // Use the main document generation API that processes chat history
-      const response = await fetch("/api/generate-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(genState),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-      if (progressInterval) clearInterval(progressInterval);
-      console.log("📥 API response received:", response.status);
-      console.log("📥 API response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ API Error:", errorText);
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log("📥 API response data:", data);
-      
-      if (!response.ok || data?.success === false) {
-        const msg = data?.error || `HTTP ${response.status}`;
-        console.error("❌ API error:", msg);
+        console.log("🚀 Making API call to /api/generate-document (full processing)");
         
-        // Provide more specific error messages
-        if (msg.includes("No real case information")) {
-          throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
-        } else if (msg.includes("Rate limit")) {
-          throw new Error("Please wait a moment and try again. The system is processing many requests.");
-        } else {
-          throw new Error(`Document generation failed: ${msg}`);
+        // Use the main document generation API that processes chat history
+        const response = await fetch("/api/generate-document", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(genState),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log("📥 API response received:", response.status);
+        console.log("📥 API response status:", response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ API Error:", errorText);
+          throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
-      }
 
-      const { docId, document } = data.data;
-      console.log("✅ Document generated successfully, updating document preview");
-      
-      // Update the document preview with the generated content
-      if (document) {
-        setDocumentPreview(document);
-        toast.success("Document generated successfully! Navigating to Step 2...");
+        const data = await response.json();
+        console.log("📥 API response data:", data);
         
-        // Auto-save the project to database
-        try {
-          const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
+        if (!response.ok || data?.success === false) {
+          const msg = data?.error || `HTTP ${response.status}`;
+          console.error("❌ API error:", msg);
           
-          if (user) {
-            const projectData = {
-              user_id: user.id,
-              title: `Legal Document - ${new Date().toLocaleDateString()}`,
-              content: document,
-              chat_history: JSON.stringify(finalChatHistory),
-            };
-
-            const { error } = await supabase
-              .from("projects")
-              .insert(projectData);
-
-            if (!error) {
-              console.log("✅ Project auto-saved to database");
-            }
+          // Provide more specific error messages
+          if (msg.includes("No real case information")) {
+            throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
+          } else if (msg.includes("Rate limit")) {
+            throw new Error("Please wait a moment and try again. The system is processing many requests.");
+          } else {
+            throw new Error(`Document generation failed: ${msg}`);
           }
-        } catch (error) {
-          console.error("❌ Error auto-saving project:", error);
         }
+
+        const { docId, document } = data.data;
+        console.log("✅ Document generated successfully, updating document preview");
         
-        // Navigate to Step 2 after successful document generation
-        console.log("🔄 Preparing to navigate to Step 2...");
-        setTimeout(() => {
-          console.log("🚀 Navigating to Step 2 now!");
-          router.push(`/ai-assistant/step-2?docId=${docId}`);
-        }, 2000); // Give user time to see the success message
-      } else {
-        console.error("❌ No document content in API response");
-        toast.error("Document generated but content not received. Please try again.");
-      }
+        // Update the document preview with the generated content
+        if (document) {
+          setDocumentPreview(document);
+          
+          // Auto-save the project to database
+          try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              const projectData = {
+                user_id: user.id,
+                title: `Legal Document - ${new Date().toLocaleDateString()}`,
+                content: document,
+                chat_history: JSON.stringify(finalChatHistory),
+              };
+
+              const { error } = await supabase
+                .from("projects")
+                .insert(projectData);
+
+              if (!error) {
+                console.log("✅ Project auto-saved to database");
+              }
+            }
+          } catch (error) {
+            console.error("❌ Error auto-saving project:", error);
+          }
+          
+          // Navigate to Step 2 after successful document generation
+          console.log("🔄 Preparing to navigate to Step 2...");
+          setTimeout(() => {
+            console.log("🚀 Navigating to Step 2 now!");
+            router.push(`/ai-assistant/step-2?docId=${docId}`);
+          }, 2000); // Give user time to see the success message
+          
+          return { docId, document };
+        } else {
+          console.error("❌ No document content in API response");
+          throw new Error("Generation incomplete");
+        }
+      })();
+
+      // Use promise-based toast with motivational messages
+      const result = await createDocumentGenerationToast(documentGenerationPromise);
+      
+      return result;
       
     } catch (error) {
       console.error("Error generating document:", error);
       
-      // Clear any pending intervals
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
-      
       // Handle specific error types
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          toast.error("Document generation timed out after 5 minutes. The AI is processing a complex document. Please try again or contact support if this persists.");
+          toast.error("Generation timed out", { description: "Complex documents take time. Please try again" });
         } else if (error.message.includes('fetch')) {
-          toast.error("Network error. Please check your connection and try again.");
+          toast.error("Network error", { description: "Please check your connection" });
         } else if (error.message.includes('API Error')) {
-          toast.error(`API Error: ${error.message}`);
+          toast.error("API Error", { description: error.message });
         } else {
-          toast.error(`Failed to generate document: ${error.message}`);
+          toast.error("Generation failed", { description: error.message });
         }
       } else {
-        toast.error("An unexpected error occurred. Please try again.");
+        toast.error("Something went wrong", { description: "Please try again" });
       }
     } finally {
       setIsProcessing(false);
