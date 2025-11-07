@@ -212,7 +212,7 @@ export function ChatFlowDemo({
         {shouldShowCompletionMessage && (
           <div className="mb-3 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
             <h3 className="font-bold mb-2">Interview Complete!</h3>
-            <p>You have completed the comprehensive attorney-client interview.</p>
+            <p>You have completed the comprehensive legal intake interview.</p>
             <p className="mt-2 text-sm">
               Summary: {interviewSummary.substring(0, 200)}...
             </p>

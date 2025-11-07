@@ -67,6 +67,17 @@ export function EnhancedChatInterface({
   const [micPermissionError, setMicPermissionError] = useState(false)
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
+
+  // Safety: Reset stuck states after timeout
+  useEffect(() => {
+    if (isUploading) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Upload state stuck, resetting...');
+        setIsUploading(false);
+      }, 60000); // Reset after 60 seconds if stuck
+      return () => clearTimeout(timeout);
+    }
+  }, [isUploading]);
   const [pdfjsLib, setPdfjsLib] = useState<any>(null)
   const [rotatingSuggestions, setRotatingSuggestions] = useState<string[]>([])
   const [lastAssistantCount, setLastAssistantCount] = useState(0)
@@ -952,22 +963,34 @@ export function EnhancedChatInterface({
             <textarea
               ref={inputRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                console.log('📝 Textarea onChange triggered, value:', e.target.value);
+                setInputValue(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit(e);
                 }
               }}
+              onFocus={() => {
+                console.log('📝 Textarea focused');
+                console.log('📊 isWaitingForResponse:', isWaitingForResponse);
+                console.log('📊 isUploading:', isUploading);
+              }}
+              onClick={() => {
+                console.log('📝 Textarea clicked');
+              }}
               placeholder={currentQuestion ? "Type your answer..." : "Type a message..."}
               className="flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none overflow-hidden placeholder:text-gray-500"
               disabled={isWaitingForResponse || isUploading}
+              readOnly={false}
               rows={1}
               style={{
-                color: '#111827 !important',
-                backgroundColor: '#ffffff !important',
-                maxHeight: '50rem', // increased to allow much longer messages
-                minHeight: '2.5rem', // initial height
+                color: '#111827',
+                backgroundColor: '#ffffff',
+                maxHeight: '50rem',
+                minHeight: '2.5rem',
               }}
             />
             {/* Live interim transcript overlay (read-only) */}
@@ -1064,25 +1087,56 @@ export function EnhancedChatInterface({
             </div>
           )}
 
-          {/* Generate Document Button - Only show if we have enough messages */}
-          {messages && messages.length >= 2 && (
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  if (onGenerateDocument) {
-                    onGenerateDocument();
-                  }
-                }}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Generate Document and Case Analysis
-              </button>
-        </div>
-          )}
+          {/* Generate Document Button - Always visible and clickable */}
+          <div className="mt-6 mb-4 flex flex-col items-center" style={{ zIndex: 1000, position: 'relative', width: '100%' }}>
+            <button
+              type="button"
+              onClick={async (e) => {
+                console.log('🔘 Generate Document button clicked!');
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Test if handler exists
+                if (!onGenerateDocument) {
+                  console.error('❌ onGenerateDocument handler is not defined');
+                  alert('Document generation handler is not available. Please refresh the page.');
+                  return;
+                }
+                
+                // Call handler with error handling
+                try {
+                  console.log('✅ Calling onGenerateDocument...');
+                  await onGenerateDocument();
+                  console.log('✅ onGenerateDocument completed');
+                } catch (error) {
+                  console.error('❌ Error in document generation button:', error);
+                  const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                  alert(`Document generation failed: ${errorMsg}`);
+                }
+              }}
+              onMouseDown={(e) => {
+                console.log('🖱️ Button mouse down event');
+              }}
+              onMouseUp={(e) => {
+                console.log('🖱️ Button mouse up event');
+              }}
+              disabled={false}
+              style={{
+                pointerEvents: 'auto',
+                cursor: 'pointer',
+                zIndex: 1001,
+                position: 'relative'
+              }}
+              className="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Generate Document and Case Analysis"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Generate Document and Case Analysis
+            </button>
+          </div>
 
       </div>
     </div>

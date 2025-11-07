@@ -48,6 +48,7 @@ function AIAssistantStep1Content() {
   ];
   const [showSplitPane, setShowSplitPane] = useState(false);
   const [documentPreview, setDocumentPreview] = useState("");
+  const [isStreamingDocument, setIsStreamingDocument] = useState(false);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -190,6 +191,20 @@ function AIAssistantStep1Content() {
       if (savedChatHistory) {
         try {
           const parsedHistory = JSON.parse(savedChatHistory);
+          
+          // Check if first message contains old "attorney-client" text and update it
+          if (parsedHistory.length > 0 && parsedHistory[0].sender === 'assistant' && 
+              parsedHistory[0].text && (parsedHistory[0].text.includes('attorney-client interview') || parsedHistory[0].text.includes('attorney-client'))) {
+            const newInitialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+            
+            // Replace the first message with the updated version
+            parsedHistory[0] = { sender: "assistant", text: newInitialMessage };
+            setChatHistory(parsedHistory);
+            // Update localStorage with the corrected message
+            localStorage.setItem('step1_chat_history', JSON.stringify(parsedHistory));
+            return;
+          }
+          
           setChatHistory(parsedHistory);
           return;
         } catch (error) {
@@ -205,7 +220,7 @@ function AIAssistantStep1Content() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
       setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -266,7 +281,7 @@ function AIAssistantStep1Content() {
         `Document data available: ${latestDocs.length} documents uploaded. Reference these when relevant.` : 
         'No documents uploaded.';
       
-      const systemPrompt = `You are Khristian, a legal assistant conducting an attorney-client interview. ${documentInfo}
+      const systemPrompt = `You are Khristian, a legal assistant conducting a comprehensive interview. ${documentInfo}
 
 🚨 CRITICAL RULES - MUST FOLLOW:
 - Ask ONLY ONE question at a time - NEVER ask multiple questions in a single response
@@ -680,6 +695,8 @@ function AIAssistantStep1Content() {
 
   const handleGenerateDocument = async () => {
     console.log("🚀 handleGenerateDocument called!");
+    console.log("📊 Function execution started");
+    
     if (typeof window === 'undefined') {
       console.log("❌ Browser environment not available");
       toast.error("Browser environment required");
@@ -688,6 +705,14 @@ function AIAssistantStep1Content() {
     
     console.log("🚀 Generate Document button clicked!");
     console.log("📊 Current chat history from context:", chatHistory);
+    
+    // Show immediate visual feedback
+    toast.info("Starting document generation...");
+    setDocumentPreview(""); // Start with empty document - it will populate as it generates
+    setIsProcessing(true);
+    
+    // Ensure chat waiting state cannot block generation
+    setIsWaiting(false);
     
     // Try to load chat history from localStorage as fallback
     let finalChatHistory = chatHistory;
@@ -710,6 +735,11 @@ function AIAssistantStep1Content() {
     toast.info("Starting document generation... This may take up to 5 minutes for complex documents.");
     setIsProcessing(true);
     
+    // Declare timeout/interval variables in outer scope for cleanup
+    let timeoutId: NodeJS.Timeout | null = null;
+    let progressInterval: NodeJS.Timeout | null = null;
+    let typewriterInterval: NodeJS.Timeout | null = null;
+    
     try {
       // Ensure we have a valid UUID for userId
       let userId = localStorage.getItem("userId");
@@ -721,23 +751,24 @@ function AIAssistantStep1Content() {
       const genState = {
         userId: userId,
         title: `Legal Document - ${localStorage.getItem("legalCategory") || "Case"}`,
-        caseNumber: localStorage.getItem("caseNumber"),
-        county: localStorage.getItem("county"),
+        caseNumber: localStorage.getItem("caseNumber") || null,
+        county: localStorage.getItem("county") || null,
         state: localStorage.getItem("state") || "California",
-        opposingParty: localStorage.getItem("opposingParty"),
-        courtName: localStorage.getItem("courtName"),
+        opposingParty: localStorage.getItem("opposingParty") || null,
+        courtName: localStorage.getItem("courtName") || null,
         includeCaseLaw: localStorage.getItem("includeCaseLaw") === "true",
+        shortDraft: true,
         chatHistory: finalChatHistory.map(msg => ({
           role: msg.sender === "user" ? "user" : "assistant",
-          content: msg.text
-        }))
+          content: msg.text || ""
+        })).filter(msg => msg.content && msg.content.trim().length > 0) // Filter out empty messages
       };
 
-      // Validate that we have meaningful chat history
-      if (finalChatHistory.length < 2) {
-        console.error("❌ Insufficient chat history:", finalChatHistory.length, "messages");
-        throw new Error("Please have a conversation with the AI assistant first to gather your case information.");
-      }
+      console.log("📤 Ready to send to API:", {
+        chatHistoryCount: genState.chatHistory.length,
+        hasState: !!genState.state,
+        hasUserId: !!genState.userId
+      });
 
       console.log("📊 Chat history validation passed:", {
         messageCount: finalChatHistory.length,
@@ -750,15 +781,10 @@ function AIAssistantStep1Content() {
         messages: finalChatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
       });
 
-      // Add timeout for large documents
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log("⏰ API call timed out after 5 minutes");
-        controller.abort();
-      }, 300000); // 5 minutes timeout for full document generation
+      // Optional: show a periodic progress toast for long-running requests
 
       // Add progress updates for long-running requests
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         toast.info("AI is still processing your document... This is normal for complex legal documents.");
       }, 60000); // Show progress every minute
 
@@ -768,12 +794,12 @@ function AIAssistantStep1Content() {
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(genState),
-        signal: controller.signal
+        body: JSON.stringify(genState)
       });
 
-      clearTimeout(timeoutId);
-      clearInterval(progressInterval);
+      // Clear intervals
+      if (progressInterval) clearInterval(progressInterval);
+
       console.log("📥 API response received:", response.status);
       console.log("📥 API response status:", response.status);
 
@@ -784,29 +810,126 @@ function AIAssistantStep1Content() {
       }
 
       const data = await response.json();
-      console.log("📥 API response data:", data);
+      console.log("📥 API response data (full):", JSON.stringify(data, null, 2));
+      console.log("📥 API response success:", data?.success);
+      console.log("📥 API response data.data:", data?.data);
+      console.log("📥 API response data.data?.document:", data?.data?.document);
+      console.log("📥 API response data.data?.document length:", data?.data?.document?.length);
+      console.log("📥 API response data.data?.document type:", typeof data?.data?.document);
       
+      // Check if response is successful
       if (!response.ok || data?.success === false) {
         const msg = data?.error || `HTTP ${response.status}`;
+        const details = data?.details || '';
         console.error("❌ API error:", msg);
+        console.error("❌ Error details:", details);
         
         // Provide more specific error messages
         if (msg.includes("No real case information")) {
           throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
-        } else if (msg.includes("Rate limit")) {
+        } else if (msg.includes("Rate limit") || msg.includes("429")) {
           throw new Error("Please wait a moment and try again. The system is processing many requests.");
+        } else if (msg.includes("suspended") || msg.includes("quota exceeded") || msg.includes("exceeded_current_quota")) {
+          throw new Error(
+            "OpenAI API account is suspended or quota exceeded. " +
+            "Please check your OpenAI billing at https://platform.openai.com/account/billing. " +
+            "The system will automatically use an alternative provider if configured."
+          );
+        } else if (details.includes("suspended") || details.includes("exceeded_current_quota")) {
+          throw new Error(
+            "The AI service account is currently suspended. " +
+            "Please contact support or check your API billing settings. " +
+            "If you have MOONSHOT_API_KEY or KIMI_API_KEY configured, the system will try to use that automatically."
+          );
         } else {
-          throw new Error(`Document generation failed: ${msg}`);
+          throw new Error(`Document generation failed: ${msg}${details ? ` - ${details.substring(0, 200)}` : ''}`);
         }
       }
 
-      const { docId, document } = data.data;
-      console.log("✅ Document generated successfully, updating document preview");
+      // Check if data exists and has the expected structure
+      if (!data) {
+        console.error("❌ No data in API response");
+        throw new Error("Invalid response from server. Please try again.");
+      }
+
+      // Try multiple possible response structures
+      let document = null;
+      let docId = null;
       
-      // Update the document preview with the generated content
-      if (document) {
-        setDocumentPreview(document);
-        toast.success("Document generated successfully! Navigating to Step 2...");
+      console.log("🔍 Searching for document in response...");
+      console.log("🔍 data.data exists?", !!data.data);
+      console.log("🔍 data.data.document exists?", !!data?.data?.document);
+      console.log("🔍 data.document exists?", !!data.document);
+      
+      if (data.data && data.data.document) {
+        // Standard structure: data.data.document
+        document = data.data.document;
+        docId = data.data.docId;
+        console.log("✅ Found document in data.data.document");
+        console.log("✅ Document length:", document?.length);
+        console.log("✅ Document first 500 chars:", document?.substring(0, 500));
+      } else if (data.document) {
+        // Alternative structure: data.document
+        document = data.document;
+        docId = data.docId;
+        console.log("✅ Found document in data.document");
+        console.log("✅ Document length:", document?.length);
+      } else if (data.data && typeof data.data === 'string') {
+        // Document might be directly in data.data as a string
+        document = data.data;
+        console.log("✅ Found document as string in data.data");
+        console.log("✅ Document length:", document?.length);
+      } else if (data.data && data.data.content) {
+        // Another possible structure: data.data.content
+        document = data.data.content;
+        docId = data.data.docId;
+        console.log("✅ Found document in data.data.content");
+        console.log("✅ Document length:", document?.length);
+      } else {
+        console.error("❌ Invalid API response structure:", data);
+        console.error("❌ Available keys:", Object.keys(data));
+        if (data.data) {
+          console.error("❌ data.data type:", typeof data.data);
+          if (typeof data.data === 'object') {
+            console.error("❌ data.data keys:", Object.keys(data.data));
+          }
+        }
+        throw new Error("Document not found in API response. Please check the console for the full response structure.");
+      }
+      
+      // Validate document is not empty
+      if (!document || (typeof document === 'string' && document.trim().length === 0)) {
+        console.error("❌ Document is empty or null");
+        console.error("❌ Document value:", document);
+        throw new Error("Document was generated but is empty. Please try again.");
+      }
+
+      console.log("✅ Document extracted successfully");
+      console.log("📄 Document length:", document?.length || 0);
+      console.log("📄 Document preview (first 200 chars):", document?.substring(0, 200));
+      
+      // Update the document preview with the generated content - display progressively
+      if (document && typeof document === 'string' && document.trim().length > 0) {
+        console.log("✅ Setting document preview with length:", document.length);
+        console.log("✅ Document preview first 500 chars:", document.substring(0, 500));
+        
+        // Display document progressively (typewriter effect) so user sees it generating
+        const fullDocument = document;
+        let currentIndex = 0;
+        const chunkSize = 50; // Display 50 characters at a time for smooth effect
+        const delay = 10; // 10ms delay between chunks for fast but visible generation
+        
+        typewriterInterval = setInterval(() => {
+          currentIndex += chunkSize;
+          if (currentIndex >= fullDocument.length) {
+            currentIndex = fullDocument.length;
+            if (typewriterInterval) clearInterval(typewriterInterval);
+            typewriterInterval = null;
+            setIsProcessing(false);
+            toast.success("Document generated successfully!");
+          }
+          setDocumentPreview(fullDocument.substring(0, currentIndex));
+        }, delay);
         
         // Auto-save the project to database
         try {
@@ -833,29 +956,39 @@ function AIAssistantStep1Content() {
           console.error("❌ Error auto-saving project:", error);
         }
         
-        // Navigate to Step 2 after successful document generation
-        console.log("🔄 Preparing to navigate to Step 2...");
-        setTimeout(() => {
-          console.log("🚀 Navigating to Step 2 now!");
-          router.push("/ai-assistant/step-2");
-        }, 2000); // Give user time to see the success message
+        // Don't auto-navigate - let user review the document first
+        console.log("✅ Document generation complete - staying on Step 1 for review");
       } else {
         console.error("❌ No document content in API response");
-        toast.error("Document generated but content not received. Please try again.");
+        console.error("❌ Document value:", document);
+        console.error("❌ Document type:", typeof document);
+        console.error("❌ Full response data:", JSON.stringify(data, null, 2));
+        
+        // Show user-friendly error with details
+        const errorMsg = `Document generated but content not received.\n\nReceived: ${JSON.stringify(data, null, 2).substring(0, 500)}\n\nPlease check the console for full details.`;
+        setDocumentPreview(`❌ Error: Document generated but content not received.\n\nPlease check the browser console (F12) for details.\n\nResponse structure: ${Object.keys(data || {}).join(', ')}`);
+        setIsProcessing(false);
+        toast.error("Document generated but content not received. Please check console for details.");
+        alert(errorMsg);
       }
       
     } catch (error) {
-      console.error("Error generating document:", error);
+      console.error("❌ Error generating document:", error);
+      console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       
       // Clear any pending intervals
-      if (typeof progressInterval !== 'undefined') {
-        clearInterval(progressInterval);
-      }
+      if (timeoutId) clearTimeout(timeoutId);
+      if (progressInterval) clearInterval(progressInterval);
+      if (typewriterInterval) clearInterval(typewriterInterval);
+      
+      // Show error in document preview
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDocumentPreview(`❌ Error: ${errorMessage}\n\nPlease check the browser console (F12) for more details.\n\nIf this persists, please try refreshing the page and generating again.`);
       
       // Handle specific error types
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          toast.error("Document generation timed out after 5 minutes. The AI is processing a complex document. Please try again or contact support if this persists.");
+          toast.error("Document generation timed out. Please try again.");
         } else if (error.message.includes('fetch')) {
           toast.error("Network error. Please check your connection and try again.");
         } else if (error.message.includes('API Error')) {
@@ -867,7 +1000,15 @@ function AIAssistantStep1Content() {
         toast.error("An unexpected error occurred. Please try again.");
       }
     } finally {
-      setIsProcessing(false);
+      // Clean up any remaining intervals
+      if (progressInterval) clearInterval(progressInterval);
+      if (typewriterInterval) clearInterval(typewriterInterval);
+      // Note: Don't set isProcessing to false here if typewriter is still running
+      // It will be set to false when typewriter completes
+      if (!typewriterInterval) {
+        setIsProcessing(false);
+      }
+      console.log("🏁 Document generation process finished");
     }
   };
 
@@ -875,7 +1016,7 @@ function AIAssistantStep1Content() {
 
   // Chat content for left pane
   const chatContent = (
-    <div className="h-full flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Chat Header with Clear Conversation button */}
       {chatHistory.length > 0 && (
         <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
@@ -922,7 +1063,7 @@ function AIAssistantStep1Content() {
 
   // Document preview content for right pane - matches Step 2 layout
   const documentPreviewContent = (
-    <div className="h-full flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Match chat header spacing/style so rows align horizontally */}
       <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -979,17 +1120,25 @@ function AIAssistantStep1Content() {
           <div className="bg-gray-50 border border-gray-300 rounded-lg shadow-sm">
             <Textarea
               className="w-full min-h-[300px] font-mono text-base border-0 focus:ring-0 p-6 bg-transparent"
-              value={documentPreview}
+              value={documentPreview || ""}
               onChange={e => setDocumentPreview(e.target.value)}
               disabled={isProcessing}
               placeholder={
-                isProcessing ? "Generating document..." : 
                 documentPreview ? "Your generated legal document appears above..." :
-                "Your generated legal document will appear here..."
+                "Your generated legal document will appear here as it's being generated..."
               }
             />
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-100 rounded border">
+                <div><strong>Debug Info:</strong></div>
+                <div>documentPreview length: {documentPreview?.length || 0}</div>
+                <div>isProcessing: {String(isProcessing)}</div>
+                <div>First 100 chars: "{documentPreview?.substring(0, 100)}"</div>
+                <div>Last 50 chars: "{documentPreview?.substring(Math.max(0, (documentPreview?.length || 0) - 50))}"</div>
+              </div>
+            )}
           </div>
-          {isProcessing && <div className="flex items-center mt-2 text-gray-500"><Loader2 className="animate-spin mr-2" /> Generating document...</div>}
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
               <FileText className="mr-2 h-4 w-4" />
@@ -1119,7 +1268,7 @@ function AIAssistantStep1Content() {
         headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
         headerSubtitle=""
       >
-        <div className="h-[calc(100vh-200px)] mt-8">
+        <div className="min-h-[calc(100vh-200px)] mt-8">
           <SplitPaneLayout
             leftContent={chatContent}
             rightContent={documentPreviewContent}
