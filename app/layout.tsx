@@ -127,7 +127,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'Customer Service',
-      email: 'support@askai.legal',
+      email: 'support@askailegal.com',
     },
     sameAs: [
       // Add your social media profiles

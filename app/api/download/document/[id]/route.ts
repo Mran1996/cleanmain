@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getDocumentPdfBuffer, getCaseAnalysisPdfBuffer } from '@/lib/pdf-storage';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const url = new URL(req.url);
   const type = url.searchParams.get('type');
 
   try {
-    const pdfBuffer =
+    const pdfBuffer:any =
       type === 'analysis'
         ? await getCaseAnalysisPdfBuffer(id)
         : await getDocumentPdfBuffer(id);
@@ -23,4 +23,4 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     console.error('Download error:', error);
     return new NextResponse('Failed to download file', { status: 500 });
   }
-} 
+}

@@ -137,28 +137,54 @@ function Step2Content() {
   // Function to check if we have real user data from Step 1
   const checkForRealUserData = () => {
     if (typeof window === 'undefined') return false;
-    
-    const firstName = localStorage.getItem("firstName");
-    const lastName = localStorage.getItem("lastName");
+
     const legalCategory = localStorage.getItem("legalCategory");
-    const chatHistory = localStorage.getItem("step1_chat_history");
+    const chatHistoryStr = localStorage.getItem("step1_chat_history");
+    const chatResponsesStr = localStorage.getItem("step1_chat_responses");
     const uploadedText = localStorage.getItem("uploaded_parsed_text");
-    
-    // We need at least basic user info and some chat history or uploaded documents
-    const hasBasicInfo = firstName && lastName && legalCategory;
-    const hasContent = (chatHistory && chatHistory.length > 10) || (uploadedText && uploadedText.length > 50);
-    
+    const uploadedDocsStr = localStorage.getItem("uploaded_documents");
+
+    let chatHistoryLen = 0;
+    let chatResponsesLen = 0;
+    let uploadedDocsLen = 0;
+
+    try {
+      if (chatHistoryStr) {
+        const arr = JSON.parse(chatHistoryStr);
+        if (Array.isArray(arr)) chatHistoryLen = arr.length;
+      }
+    } catch {}
+
+    try {
+      if (chatResponsesStr) {
+        const arr = JSON.parse(chatResponsesStr);
+        if (Array.isArray(arr)) chatResponsesLen = arr.length;
+      }
+    } catch {}
+
+    try {
+      if (uploadedDocsStr) {
+        const arr = JSON.parse(uploadedDocsStr);
+        if (Array.isArray(arr)) uploadedDocsLen = arr.length;
+      }
+    } catch {}
+
+    // Accept if we have meaningful conversation or uploaded content; names are optional
+    const hasConversation = chatHistoryLen >= 2 || chatResponsesLen >= 1;
+    const hasUploadedContent = (uploadedText && uploadedText.length > 50) || uploadedDocsLen > 0;
+
+    const hasContent = hasConversation || hasUploadedContent;
+
     console.log("📊 Data check:", {
-      hasBasicInfo,
       hasContent,
-      firstName: !!firstName,
-      lastName: !!lastName,
       legalCategory: !!legalCategory,
-      chatHistoryLength: chatHistory ? chatHistory.length : 0,
-      uploadedTextLength: uploadedText ? uploadedText.length : 0
+      chatHistoryLen,
+      chatResponsesLen,
+      uploadedTextLength: uploadedText ? uploadedText.length : 0,
+      uploadedDocsLen
     });
-    
-    return hasBasicInfo && hasContent;
+
+    return hasContent;
   };
 
   // Calculate document plan when component mounts (no auto-generation)
@@ -374,7 +400,27 @@ function Step2Content() {
           }
         }
         
-        // Fetch the document content using the docId
+        // Prefer server-returned document content if available
+        if (result.data.document) {
+          const content = result.data.document as string;
+          setDocumentText(content);
+          localStorage.setItem("finalDocument", content);
+          localStorage.setItem("currentDocumentId", result.data.docId);
+          localStorage.setItem("documentGeneratedAt", new Date().toISOString());
+          setSavedDocumentId(null);
+          setIsDocumentSaved(false);
+          localStorage.removeItem("savedDocumentId");
+          console.log("✅ Document generated successfully with REAL data! (inline content)");
+          console.log("✅ Document ID:", result.data.docId);
+          toast.success('Legal document generated successfully!', { duration: 4000 });
+          // Trigger case analysis
+          console.log("🔍 Automatically triggering case analysis for generated document...");
+          toast.info('Analyzing your document for case success insights...');
+          setTimeout(() => {
+            handleGenerateCaseAnalysis();
+          }, 1000);
+        } else {
+          // Fallback: Fetch the document content using the docId
         const docResponse = await fetch(`/api/get-document/${result.data.docId}`);
         if (docResponse.ok) {
           const docData = await docResponse.json();
@@ -405,6 +451,7 @@ function Step2Content() {
         } else {
           setError("Failed to fetch document content");
           toast.error("Failed to fetch document content");
+        }
         }
       } else {
         const errorMessage = result.error || "Failed to generate document";
@@ -807,17 +854,7 @@ function Step2Content() {
           )}
           
                       <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
-              {/* Only show generate button when real data is available */}
-              {checkForRealUserData() && !documentText && (
-                <Button 
-                  onClick={generateDocument} 
-                  disabled={generating} 
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {generating ? <Loader2 className="animate-spin mr-2" /> : null}
-                  Generate Legal Document
-                </Button>
-              )}
+              {/* Document generation removed - document is generated in Step 1 */}
               <Button 
                 onClick={handleSave} 
                 disabled={generating || !documentText.trim() || saving} 
@@ -854,23 +891,7 @@ function Step2Content() {
             </div>
           {error && <div className="text-red-600 mb-4">{error}</div>}
           
-          {/* Show message when no real data is available */}
-          {!checkForRealUserData() && !documentText && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-4">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-yellow-800 mb-2">No Case Information Found</h3>
-                <p className="text-yellow-700 mb-4">
-                  To generate a legal document, you need to complete Step 1 first with your case information.
-                </p>
-                <Button 
-                  onClick={() => router.push('/ai-assistant/step-1')}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                >
-                  Go to Step 1 - Provide Case Information
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Document should be loaded from Step 1 - no generation needed */}
           
           <Textarea
             className="w-full min-h-[300px] font-mono text-base"
@@ -961,4 +982,4 @@ function Step2Content() {
 
 export default function Step2() {
   return <Step2Content />;
-} 
+}

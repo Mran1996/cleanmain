@@ -11,6 +11,7 @@ import { Loader2, FileText, Trash2, Info, Save, Download, Mail, MessageSquare } 
 import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
+import { createDocumentGenerationToast } from '@/lib/promise-toast';
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import { SplitPaneLayout } from "@/components/split-pane-layout";
@@ -694,6 +695,7 @@ function AIAssistantStep1Content() {
   };
 
   const handleGenerateDocument = async () => {
+    setShowSplitPane(true)
     console.log("🚀 handleGenerateDocument called!");
     console.log("📊 Function execution started");
     
@@ -731,8 +733,7 @@ function AIAssistantStep1Content() {
     
     console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
     
-    // Show immediate feedback
-    toast.info("Starting document generation... This may take up to 5 minutes for complex documents.");
+    // Set processing state
     setIsProcessing(true);
     
     // Declare timeout/interval variables in outer scope for cleanup
@@ -781,223 +782,120 @@ function AIAssistantStep1Content() {
         messages: finalChatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
       });
 
-      // Optional: show a periodic progress toast for long-running requests
+      // Create the API call promise
+      const documentGenerationPromise = (async () => {
+        // Add timeout for large documents
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("⏰ API call timed out after 5 minutes");
+          controller.abort();
+        }, 300000); // 5 minutes timeout for full document generation
 
-      // Add progress updates for long-running requests
-      progressInterval = setInterval(() => {
-        toast.info("AI is still processing your document... This is normal for complex legal documents.");
-      }, 60000); // Show progress every minute
-
-      console.log("🚀 Making API call to /api/generate-document (full processing)");
-      
-      // Use the main document generation API that processes chat history
-      const response = await fetch("/api/generate-document", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(genState)
-      });
-
-      // Clear intervals
-      if (progressInterval) clearInterval(progressInterval);
-
-      console.log("📥 API response received:", response.status);
-      console.log("📥 API response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ API Error:", errorText);
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log("📥 API response data (full):", JSON.stringify(data, null, 2));
-      console.log("📥 API response success:", data?.success);
-      console.log("📥 API response data.data:", data?.data);
-      console.log("📥 API response data.data?.document:", data?.data?.document);
-      console.log("📥 API response data.data?.document length:", data?.data?.document?.length);
-      console.log("📥 API response data.data?.document type:", typeof data?.data?.document);
-      
-      // Check if response is successful
-      if (!response.ok || data?.success === false) {
-        const msg = data?.error || `HTTP ${response.status}`;
-        const details = data?.details || '';
-        console.error("❌ API error:", msg);
-        console.error("❌ Error details:", details);
+        console.log("🚀 Making API call to /api/generate-document (full processing)");
         
-        // Provide more specific error messages
-        if (msg.includes("No real case information")) {
-          throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
-        } else if (msg.includes("Rate limit") || msg.includes("429")) {
-          throw new Error("Please wait a moment and try again. The system is processing many requests.");
-        } else if (msg.includes("suspended") || msg.includes("quota exceeded") || msg.includes("exceeded_current_quota")) {
-          throw new Error(
-            "OpenAI API account is suspended or quota exceeded. " +
-            "Please check your OpenAI billing at https://platform.openai.com/account/billing. " +
-            "The system will automatically use an alternative provider if configured."
-          );
-        } else if (details.includes("suspended") || details.includes("exceeded_current_quota")) {
-          throw new Error(
-            "The AI service account is currently suspended. " +
-            "Please contact support or check your API billing settings. " +
-            "If you have MOONSHOT_API_KEY or KIMI_API_KEY configured, the system will try to use that automatically."
-          );
-        } else {
-          throw new Error(`Document generation failed: ${msg}${details ? ` - ${details.substring(0, 200)}` : ''}`);
+        // Use the main document generation API that processes chat history
+        const response = await fetch("/api/generate-document", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(genState),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log("📥 API response received:", response.status);
+        console.log("📥 API response status:", response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ API Error:", errorText);
+          throw new Error(`API Error: ${response.status} - ${errorText}`);
         }
-      }
 
-      // Check if data exists and has the expected structure
-      if (!data) {
-        console.error("❌ No data in API response");
-        throw new Error("Invalid response from server. Please try again.");
-      }
-
-      // Try multiple possible response structures
-      let document = null;
-      let docId = null;
-      
-      console.log("🔍 Searching for document in response...");
-      console.log("🔍 data.data exists?", !!data.data);
-      console.log("🔍 data.data.document exists?", !!data?.data?.document);
-      console.log("🔍 data.document exists?", !!data.document);
-      
-      if (data.data && data.data.document) {
-        // Standard structure: data.data.document
-        document = data.data.document;
-        docId = data.data.docId;
-        console.log("✅ Found document in data.data.document");
-        console.log("✅ Document length:", document?.length);
-        console.log("✅ Document first 500 chars:", document?.substring(0, 500));
-      } else if (data.document) {
-        // Alternative structure: data.document
-        document = data.document;
-        docId = data.docId;
-        console.log("✅ Found document in data.document");
-        console.log("✅ Document length:", document?.length);
-      } else if (data.data && typeof data.data === 'string') {
-        // Document might be directly in data.data as a string
-        document = data.data;
-        console.log("✅ Found document as string in data.data");
-        console.log("✅ Document length:", document?.length);
-      } else if (data.data && data.data.content) {
-        // Another possible structure: data.data.content
-        document = data.data.content;
-        docId = data.data.docId;
-        console.log("✅ Found document in data.data.content");
-        console.log("✅ Document length:", document?.length);
-      } else {
-        console.error("❌ Invalid API response structure:", data);
-        console.error("❌ Available keys:", Object.keys(data));
-        if (data.data) {
-          console.error("❌ data.data type:", typeof data.data);
-          if (typeof data.data === 'object') {
-            console.error("❌ data.data keys:", Object.keys(data.data));
-          }
-        }
-        throw new Error("Document not found in API response. Please check the console for the full response structure.");
-      }
-      
-      // Validate document is not empty
-      if (!document || (typeof document === 'string' && document.trim().length === 0)) {
-        console.error("❌ Document is empty or null");
-        console.error("❌ Document value:", document);
-        throw new Error("Document was generated but is empty. Please try again.");
-      }
-
-      console.log("✅ Document extracted successfully");
-      console.log("📄 Document length:", document?.length || 0);
-      console.log("📄 Document preview (first 200 chars):", document?.substring(0, 200));
-      
-      // Update the document preview with the generated content - display progressively
-      if (document && typeof document === 'string' && document.trim().length > 0) {
-        console.log("✅ Setting document preview with length:", document.length);
-        console.log("✅ Document preview first 500 chars:", document.substring(0, 500));
+        const data = await response.json();
+        console.log("📥 API response data:", data);
         
-        // Display document progressively (typewriter effect) so user sees it generating
-        const fullDocument = document;
-        let currentIndex = 0;
-        const chunkSize = 50; // Display 50 characters at a time for smooth effect
-        const delay = 10; // 10ms delay between chunks for fast but visible generation
-        
-        typewriterInterval = setInterval(() => {
-          currentIndex += chunkSize;
-          if (currentIndex >= fullDocument.length) {
-            currentIndex = fullDocument.length;
-            if (typewriterInterval) clearInterval(typewriterInterval);
-            typewriterInterval = null;
-            setIsProcessing(false);
-            toast.success("Document generated successfully!");
-          }
-          setDocumentPreview(fullDocument.substring(0, currentIndex));
-        }, delay);
-        
-        // Auto-save the project to database
-        try {
-          const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
+        if (!response.ok || data?.success === false) {
+          const msg = data?.error || `HTTP ${response.status}`;
+          console.error("❌ API error:", msg);
           
-          if (user) {
-            const projectData = {
-              user_id: user.id,
-              title: `Legal Document - ${new Date().toLocaleDateString()}`,
-              content: document,
-              chat_history: JSON.stringify(finalChatHistory),
-            };
-
-            const { error } = await supabase
-              .from("projects")
-              .insert(projectData);
-
-            if (!error) {
-              console.log("✅ Project auto-saved to database");
-            }
+          // Provide more specific error messages
+          if (msg.includes("No real case information")) {
+            throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
+          } else if (msg.includes("Rate limit")) {
+            throw new Error("Please wait a moment and try again. The system is processing many requests.");
+          } else {
+            throw new Error(`Document generation failed: ${msg}`);
           }
-        } catch (error) {
-          console.error("❌ Error auto-saving project:", error);
         }
+
+        const { docId, document } = data.data;
+        console.log("✅ Document generated successfully, updating document preview");
         
-        // Don't auto-navigate - let user review the document first
-        console.log("✅ Document generation complete - staying on Step 1 for review");
-      } else {
-        console.error("❌ No document content in API response");
-        console.error("❌ Document value:", document);
-        console.error("❌ Document type:", typeof document);
-        console.error("❌ Full response data:", JSON.stringify(data, null, 2));
-        
-        // Show user-friendly error with details
-        const errorMsg = `Document generated but content not received.\n\nReceived: ${JSON.stringify(data, null, 2).substring(0, 500)}\n\nPlease check the console for full details.`;
-        setDocumentPreview(`❌ Error: Document generated but content not received.\n\nPlease check the browser console (F12) for details.\n\nResponse structure: ${Object.keys(data || {}).join(', ')}`);
-        setIsProcessing(false);
-        toast.error("Document generated but content not received. Please check console for details.");
-        alert(errorMsg);
-      }
+        // Update the document preview with the generated content
+        if (document) {
+          setDocumentPreview(document);
+          
+          // Auto-save the project to database
+          try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              const projectData = {
+                user_id: user.id,
+                title: `Legal Document - ${new Date().toLocaleDateString()}`,
+                content: document,
+                chat_history: JSON.stringify(finalChatHistory),
+              };
+
+              const { error } = await supabase
+                .from("projects")
+                .insert(projectData);
+
+              if (!error) {
+                console.log("✅ Project auto-saved to database");
+              }
+            }
+          } catch (error) {
+            console.error("❌ Error auto-saving project:", error);
+          }
+          
+          // Navigate to Step 2 after successful document generation
+          console.log("🔄 Preparing to navigate to Step 2...");
+          setTimeout(() => {
+            console.log("🚀 Navigating to Step 2 now!");
+            router.push(`/ai-assistant/step-2?docId=${docId}`);
+          }, 2000); // Give user time to see the success message
+          
+          return { docId, document };
+        } else {
+          console.error("❌ No document content in API response");
+          throw new Error("Generation incomplete");
+        }
+      })();
+
+      // Use promise-based toast with motivational messages
+      const result = await createDocumentGenerationToast(documentGenerationPromise);
+      
+      return result;
       
     } catch (error) {
       console.error("❌ Error generating document:", error);
       console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       
-      // Clear any pending intervals
-      if (timeoutId) clearTimeout(timeoutId);
-      if (progressInterval) clearInterval(progressInterval);
-      if (typewriterInterval) clearInterval(typewriterInterval);
-      
-      // Show error in document preview
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setDocumentPreview(`❌ Error: ${errorMessage}\n\nPlease check the browser console (F12) for more details.\n\nIf this persists, please try refreshing the page and generating again.`);
-      
       // Handle specific error types
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          toast.error("Document generation timed out. Please try again.");
+          toast.error("Generation timed out", { description: "Complex documents take time. Please try again" });
         } else if (error.message.includes('fetch')) {
-          toast.error("Network error. Please check your connection and try again.");
+          toast.error("Network error", { description: "Please check your connection" });
         } else if (error.message.includes('API Error')) {
-          toast.error(`API Error: ${error.message}`);
+          toast.error("API Error", { description: error.message });
         } else {
-          toast.error(`Failed to generate document: ${error.message}`);
+          toast.error("Generation failed", { description: error.message });
         }
       } else {
-        toast.error("An unexpected error occurred. Please try again.");
+        toast.error("Something went wrong", { description: "Please try again" });
       }
     } finally {
       // Clean up any remaining intervals
