@@ -6,7 +6,6 @@ interface SettingsSectionProps {
 }
 
 export default function SettingsSection({ user }: SettingsSectionProps) {
-  const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("en");
   
   return (
@@ -19,21 +18,10 @@ export default function SettingsSection({ user }: SettingsSectionProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div>
-            <h4 className="font-medium">Dark Mode</h4>
-            <p className="text-sm text-gray-500">Toggle dark mode theme</p>
+            <h4 className="font-medium">Theme</h4>
+            <p className="text-sm text-gray-500">Light theme is always enabled.</p>
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
-              darkMode ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                darkMode ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
+          <span className="text-sm font-medium text-black bg-white border border-gray-200 rounded-md px-3 py-1">Light</span>
         </div>
 
         <div className="p-4 border rounded-lg">
@@ -64,4 +52,4 @@ export default function SettingsSection({ user }: SettingsSectionProps) {
       </div>
     </div>
   );
-} 
+}
