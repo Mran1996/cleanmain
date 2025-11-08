@@ -9,7 +9,7 @@ import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "../step-1/prompts/attorney-interview";
 import { Loader2, FileText, Trash2, Save, Download, ArrowLeft } from "lucide-react";
-import { DocumentData } from "@/components/context/legal-assistant-context";
+import { DocumentData as UploadedDocumentData } from "@/lib/documentFormatter";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
@@ -21,7 +21,7 @@ function AIAssistantStep1SplitPaneContent() {
   const router = useRouter();
   const [isWaiting, setIsWaiting] = useState(false);
   const [suggestedResponses, setSuggestedResponses] = useState<string[]>([]);
-  const [allDocuments, setAllDocuments] = useState<DocumentData[]>([]);
+  const [allDocuments, setAllDocuments] = useState<UploadedDocumentData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
@@ -36,7 +36,8 @@ function AIAssistantStep1SplitPaneContent() {
     setDocumentContent,
     documentId,
     chatCollapsed,
-    setChatCollapsed
+    setChatCollapsed,
+    setDocumentId
   } = useLegalAssistant();
 
   // Load uploaded documents from localStorage
@@ -97,7 +98,7 @@ function AIAssistantStep1SplitPaneContent() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
         setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -467,50 +468,25 @@ ${documentInfo}
           console.log("📄 Loaded document content:", documentContent.substring(0, 200) + "...");
           
           // Check if we're in full page mode (not split pane mode)
-          if (!isSplitPaneMode) {
-            // Navigate to Step 2 for full page mode
-            console.log("🔄 Full page mode - preparing to navigate to Step 2...");
-            toast.success("Document generated successfully! Navigating to Step 2...");
-            setTimeout(() => {
-              console.log("🚀 Navigating to Step 2 now!");
-              router.push("/ai-assistant/step-2");
-            }, 2000);
-          } else {
-            // Enter split pane mode if already in split pane
+          // Always enter split-pane mode and show preview on the right
+          toast.success("Document generated successfully! Preview is now visible on the right.");
           enterSplitPaneMode(docId, documentContent);
-          }
         } else {
           // Fallback to the content from the generation response
           const documentContent = data.data.content || "Document content not available";
           
-          if (!isSplitPaneMode) {
-            // Navigate to Step 2 for full page mode
-            console.log("🔄 Full page mode - preparing to navigate to Step 2...");
-            toast.success("Document generated successfully! Navigating to Step 2...");
-            setTimeout(() => {
-              console.log("🚀 Navigating to Step 2 now!");
-              router.push("/ai-assistant/step-2");
-            }, 2000);
-          } else {
-            // Enter split pane mode if already in split pane
+          // Always enter split-pane mode and show preview on the right
+          toast.success("Document generated successfully! Preview is now visible on the right.");
           enterSplitPaneMode(docId, documentContent);
-          }
         }
       } catch (error) {
         console.error("Error loading document content:", error);
         // Fallback to the content from the generation response
         const documentContent = data.data.content || "Document content not available";
         
-        if (!isSplitPaneMode) {
-          // Navigate to Step 2 for full page mode
-          toast.success("Document generated successfully! Navigating to Step 2...");
-          setTimeout(() => {
-            router.push("/ai-assistant/step-2");
-          }, 2000);
-        } else {
-          // Enter split pane mode if already in split pane
+        // Always enter split-pane mode and show preview on the right
+        toast.success("Document generated successfully! Preview is now visible on the right.");
         enterSplitPaneMode(docId, documentContent);
-        }
       }
       
     } catch (error) {
@@ -582,23 +558,18 @@ ${documentInfo}
   const handleDocumentUpload = async (documentText: string, filename: string) => {
     try {
       console.log('📄 Document uploaded:', { filename, length: documentText.length });
-      
-      // Add document to the documents array
-      const newDocument = {
-        id: Date.now().toString(),
-        filename: filename,
-        content: documentText,
-        uploadedAt: new Date().toISOString()
-      };
-      
-      setAllDocuments(prev => [...prev, newDocument]);
-      
-      // Save to localStorage
+      // The EnhancedChatInterface already stores the full document metadata in localStorage.
+      // Simply reload the uploaded documents to keep our local state in sync.
       if (typeof window !== 'undefined') {
-        const updatedDocs = [...allDocuments, newDocument];
-        localStorage.setItem('uploaded_documents', JSON.stringify(updatedDocs));
+        try {
+          const docsRaw = localStorage.getItem('uploaded_documents');
+          const updatedDocs: UploadedDocumentData[] = docsRaw ? JSON.parse(docsRaw) : [];
+          setAllDocuments(updatedDocs);
+        } catch (error) {
+          console.error('Error reloading uploaded documents:', error);
+        }
       }
-      
+
       toast.success(`Document "${filename}" uploaded successfully`);
     } catch (error) {
       console.error('Error handling document upload:', error);

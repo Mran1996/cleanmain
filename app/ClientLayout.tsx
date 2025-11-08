@@ -19,6 +19,8 @@ import { LanguageProvider } from '../components/context/language-context'
 import { SupabaseProvider } from '../components/SupabaseProvider'
 import { AuthProvider } from '../components/auth-provider'
 import { LegalAssistantProvider } from '../components/context/legal-assistant-context'
+import { ThemeProvider } from '../components/theme-provider'
+import { Toaster } from '../components/ui/sonner'
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -30,10 +32,13 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       <AuthProvider>
         <LanguageProvider>
           <LegalAssistantProvider>
-            {children}
+            <ThemeProvider>
+              {children}
+              <Toaster position="top-right" className="mt-[220px]" />
+            </ThemeProvider>
           </LegalAssistantProvider>
         </LanguageProvider>
       </AuthProvider>
     </SupabaseProvider>
   )
-} 
+}

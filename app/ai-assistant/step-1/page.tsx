@@ -51,6 +51,10 @@ function AIAssistantStep1Content() {
   const [documentPreview, setDocumentPreview] = useState("");
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [downloadingDoc, setDownloadingDoc] = useState(false);
+  const [downloadingAnalysis, setDownloadingAnalysis] = useState(false);
   const [open, setOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -95,11 +99,17 @@ function AIAssistantStep1Content() {
     }
 
     try {
+      if (saving) {
+        toast.info('Save already in progress...');
+        return;
+      }
+      setSaving(true);
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
         toast.error('Please sign in to save documents');
+        setSaving(false);
         return;
       }
 
@@ -119,15 +129,27 @@ function AIAssistantStep1Content() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save document');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save document');
       }
 
       const result = await response.json();
+      const newId = result?.document?.id;
+      if (newId) {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('currentDocumentId', newId);
+          }
+        } catch {}
+        setGeneratedDocId(newId);
+      }
       toast.success('Document saved successfully!');
       console.log('Document saved:', result);
     } catch (error) {
       console.error('Error saving document:', error);
       toast.error('Failed to save document');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -146,25 +168,210 @@ function AIAssistantStep1Content() {
     }
   };
 
-  const handleDownload = () => {
-    if (!documentPreview.trim()) {
+  const handleDownload = async () => {
+    // Prefer server PDF if we have a document ID, otherwise download text
+    const docId = generatedDocId || (typeof window !== 'undefined' ? localStorage.getItem('currentDocumentId') : null);
+    const hasPreview = !!documentPreview.trim();
+
+    if (!hasPreview && !docId) {
       toast.error('No document to download');
       return;
     }
 
     try {
-      const blob = new Blob([documentPreview], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
+      if (downloadingDoc) return;
+      setDownloadingDoc(true);
+      if (docId) {
+        const res = await fetch(`/api/download/document/${docId}`);
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Failed to download document');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `legal-document-${docId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('Document PDF downloaded');
+      } else {
+        const blob = new Blob([documentPreview], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Legal_Document.txt';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('Document downloaded!');
+      }
+    } catch (err) {
+      console.error('Download document error:', err);
+      toast.error('Failed to download document');
+    } finally {
+      setDownloadingDoc(false);
+    }
+  };
+
+  // Generate AI Case Analysis for the current document (DB-first, no local content storage)
+  const handleGenerateCaseAnalysis = async () => {
+    // Determine document ID early and allow analysis if either preview or docId exists
+    const docId = generatedDocId || (typeof window !== 'undefined' ? localStorage.getItem('currentDocumentId') : null);
+    if (!documentPreview.trim() && !docId) {
+      toast.error('Please generate a document first or ensure a saved document exists');
+      return;
+    }
+
+    setAnalysisLoading(true);
+    setCaseAnalysis(null);
+
+    try {
+      // Gather user and case context from localStorage
+      const firstName = (typeof window !== 'undefined' ? localStorage.getItem('firstName') : '') || '';
+      const lastName = (typeof window !== 'undefined' ? localStorage.getItem('lastName') : '') || '';
+      const legalCategory = (typeof window !== 'undefined' ? localStorage.getItem('legalCategory') : '') || '';
+      const legalIssue = (typeof window !== 'undefined' ? localStorage.getItem('legalIssue') : '') || '';
+      const desiredOutcome = (typeof window !== 'undefined' ? localStorage.getItem('desiredOutcome') : '') || '';
+      const additionalInfo = (typeof window !== 'undefined' ? localStorage.getItem('additionalInfo') : '') || '';
+      const includeCaseLaw = (typeof window !== 'undefined' ? localStorage.getItem('includeCaseLaw') === 'true' : false);
+      const uploadedJudge = typeof window !== 'undefined' ? localStorage.getItem('uploaded_judge') : null;
+      const uploadedFilingDate = typeof window !== 'undefined' ? localStorage.getItem('uploaded_filing_date') : null;
+      const defendantName = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_opposing_party') : '') || (typeof window !== 'undefined' ? localStorage.getItem('opposingParty') : '') || '';
+      const caseNumber = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_case_number') : '') || (typeof window !== 'undefined' ? localStorage.getItem('caseNumber') : '') || '';
+      const courtName = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_court_name') : '') || (typeof window !== 'undefined' ? localStorage.getItem('courtName') : '') || '';
+      const county = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_county') : '') || (typeof window !== 'undefined' ? localStorage.getItem('county') : '') || '';
+      const state = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_state') : '') || (typeof window !== 'undefined' ? localStorage.getItem('state') : '') || '';
+      const documentType = (typeof window !== 'undefined' ? localStorage.getItem('uploaded_document_type') : '') || (typeof window !== 'undefined' ? localStorage.getItem('documentType') : '') || '';
+
+      // Get chat responses for additional context
+      let chatResponses: string[] = [];
+      try {
+        const chatResponsesStr = typeof window !== 'undefined' ? localStorage.getItem('step1_chat_responses') || localStorage.getItem('chat_responses') : null;
+        if (chatResponsesStr) chatResponses = JSON.parse(chatResponsesStr);
+      } catch {}
+
+      // Prepare document text for analysis: prefer preview, fallback to stored or API
+      let documentTextForAnalysis = documentPreview;
+      if (!documentTextForAnalysis || documentTextForAnalysis.trim().length === 0) {
+        if (docId) {
+          try {
+            const response = await fetch(`/api/get-document/${docId}`);
+            if (response.ok) {
+              const data = await response.json();
+              documentTextForAnalysis = data.content || '';
+            }
+          } catch (e) {
+            console.error('Error loading document from API:', e);
+          }
+        }
+      }
+
+      if (!documentTextForAnalysis || documentTextForAnalysis.trim().length === 0) {
+        toast.error('No document content available for analysis');
+        setAnalysisLoading(false);
+        return;
+      }
+
+      // Fetch user ID to allow server to store analysis for download
+      let userId: string | null = null;
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id || null;
+      } catch {}
+
+      toast.info('Generating AI Case Analysis...');
+
+      const analysisResponse = await fetch('/api/case-success-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentText: documentTextForAnalysis,
+          documentId: docId,
+          state,
+          legalCategory,
+          courtName,
+          caseNumber,
+          userInfo: { firstName, lastName, id: userId || undefined },
+          caseInfo: {
+            legalIssue,
+            desiredOutcome,
+            opposingParty: defendantName,
+            additionalInfo,
+            chatResponses,
+            userFacts: (typeof window !== 'undefined' ? localStorage.getItem('userFacts') : '') || (typeof window !== 'undefined' ? localStorage.getItem('document_facts') : '') || '',
+            documentType,
+            county,
+            judge: uploadedJudge || undefined,
+            filingDate: uploadedFilingDate || undefined,
+            includeCaseLaw
+          },
+        }),
+      });
+
+      if (!analysisResponse.ok) {
+        const errorText = await analysisResponse.text();
+        throw new Error(errorText || 'Analysis generation failed');
+      }
+
+      // Some models may return text with JSON embedded; parse robustly
+      const text = await analysisResponse.text();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { parsed = JSON.parse(match[0]); } catch { parsed = { error: 'Could not parse analysis response.' }; }
+        } else {
+          parsed = { error: 'Could not parse analysis response.' };
+        }
+      }
+
+      setCaseAnalysis(parsed);
+      toast.success('AI Case Analysis generated successfully!');
+    } catch (error) {
+      console.error('Case analysis error:', error);
+      toast.error(`Failed to generate case analysis${error instanceof Error && error.message ? `: ${error.message}` : ''}`);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  // Download AI Case Analysis PDF for the current document
+  const handleDownloadCaseAnalysis = async () => {
+    try {
+      const docId = generatedDocId || (typeof window !== 'undefined' ? localStorage.getItem('currentDocumentId') : null);
+      if (!docId) {
+        toast.error('No document ID found. Generate a document first.');
+        return;
+      }
+      if (downloadingAnalysis) return;
+      setDownloadingAnalysis(true);
+      const res = await fetch(`/api/download/document/${docId}?type=analysis`);
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Failed to download analysis');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Legal_Document.txt';
+      a.download = `case-analysis-${docId}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Document downloaded!');
-    } catch (err) {
-      toast.error('Failed to download document');
+      URL.revokeObjectURL(url);
+      toast.success('Case analysis PDF downloaded');
+    } catch (error) {
+      console.error('Download analysis error:', error);
+      toast.error(`Failed to download analysis${error instanceof Error && error.message ? `: ${error.message}` : ''}`);
+    } finally {
+      setDownloadingAnalysis(false);
     }
   };
 
@@ -206,7 +413,7 @@ function AIAssistantStep1Content() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
       setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -776,8 +983,27 @@ function AIAssistantStep1Content() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ API Error:", errorText);
-          throw new Error(`API Error: ${response.status} - ${errorText}`);
+          let userMessage = 'Document generation failed';
+          if (response.status === 401) {
+            userMessage = 'Please sign in to generate documents';
+          } else {
+            try {
+              const parsed = JSON.parse(errorText);
+              if (parsed?.error && typeof parsed.error === 'string') {
+                userMessage = parsed.error;
+              } else if (typeof parsed === 'string') {
+                userMessage = parsed;
+              }
+            } catch {
+              if (typeof errorText === 'string' && errorText.trim().length > 0) {
+                userMessage = errorText;
+              }
+            }
+          }
+          const err = new Error(userMessage);
+          // Attach status for downstream handling without exposing raw JSON
+          (err as any).status = response.status;
+          throw err;
         }
 
         const data = await response.json();
@@ -803,6 +1029,16 @@ function AIAssistantStep1Content() {
         // Update the document preview with the generated content
         if (document) {
           setDocumentPreview(document);
+          // Store for later analysis and download
+          try {
+            if (typeof window !== 'undefined') {
+              if (docId) {
+                localStorage.setItem('currentDocumentId', docId);
+                setGeneratedDocId(docId);
+              }
+              // Do not store full document content locally; rely on DB
+            }
+          } catch {}
           
           // Auto-save the project to database
           try {
@@ -829,12 +1065,10 @@ function AIAssistantStep1Content() {
             console.error("❌ Error auto-saving project:", error);
           }
           
-          // Navigate to Step 2 after successful document generation
-          console.log("🔄 Preparing to navigate to Step 2...");
-          setTimeout(() => {
-            console.log("🚀 Navigating to Step 2 now!");
-            router.push(`/ai-assistant/step-2?docId=${docId}`);
-          }, 2000); // Give user time to see the success message
+          // Show preview in split-pane on the right after generation
+          console.log("🔄 Document generated. Showing preview in split-pane right panel...");
+          setShowSplitPane(true);
+          toast.success("Document generated successfully! Preview is now visible on the right.");
           
           return { docId, document };
         } else {
@@ -851,19 +1085,20 @@ function AIAssistantStep1Content() {
     } catch (error) {
       console.error("Error generating document:", error);
       
-      // Handle specific error types
+      // Handle specific error types with user-friendly messages (no raw JSON)
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          toast.error("Generation timed out", { description: "Complex documents take time. Please try again" });
+        const status = (error as any).status;
+        if (status === 401 || error.message.toLowerCase().includes('sign in')) {
+          toast.error('Authentication required', { description: 'Please sign in to generate documents' });
+        } else if (error.name === 'AbortError') {
+          toast.error('Generation timed out', { description: 'Complex documents take time. Please try again' });
         } else if (error.message.includes('fetch')) {
-          toast.error("Network error", { description: "Please check your connection" });
-        } else if (error.message.includes('API Error')) {
-          toast.error("API Error", { description: error.message });
+          toast.error('Network error', { description: 'Please check your connection' });
         } else {
-          toast.error("Generation failed", { description: error.message });
+          toast.error('Generation failed', { description: error.message });
         }
       } else {
-        toast.error("Something went wrong", { description: "Please try again" });
+        toast.error('Something went wrong', { description: 'Please try again' });
       }
     } finally {
       setIsProcessing(false);
@@ -938,7 +1173,8 @@ function AIAssistantStep1Content() {
             onClick={handleSave}
             disabled={!documentPreview.trim()} 
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+            variant="outline"
+            className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4 mr-1" />
             Save
@@ -947,7 +1183,8 @@ function AIAssistantStep1Content() {
             onClick={handleEmail}
             disabled={!documentPreview.trim()} 
             size="sm"
-            className="bg-yellow-600 hover:bg-yellow-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+            variant="outline"
+            className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Mail className="h-4 w-4 mr-1" />
             Email
@@ -956,7 +1193,8 @@ function AIAssistantStep1Content() {
             onClick={handleDownload}
             disabled={!documentPreview.trim()} 
             size="sm"
-            className="bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+            variant="outline"
+            className="text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4 mr-1" />
             Download
@@ -1000,53 +1238,17 @@ function AIAssistantStep1Content() {
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6 mt-2">
             <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
             
-            {/* Generate AI Case Analysis Buttons */}
-            <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
+          {/* Generate AI Case Analysis Buttons */}
+          <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
               <Button 
-                onClick={async () => {
-                  if (!documentPreview.trim()) {
-                    toast.error('Please generate a document first before creating case analysis');
-                    return;
-                  }
-                  
-                  setAnalysisLoading(true);
-                  setCaseAnalysis(null);
-                  
-                  try {
-                    toast.info('Generating AI Case Analysis...');
-                    
-                    const analysisResponse = await fetch('/api/case-success-analysis', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        documentText: documentPreview,
-                        state: 'Washington',
-                        legalCategory: 'Criminal',
-                        courtName: 'King County Superior Court',
-                        caseNumber: '24-12345',
-                        userInfo: { firstName: 'John', lastName: 'Doe' },
-                        caseInfo: { opposingParty: 'State of Washington' }
-                      })
-                    });
-                    
-                    if (analysisResponse.ok) {
-                      const analysisData = await analysisResponse.json();
-                      console.log('✅ Case analysis generated:', analysisData);
-                      setCaseAnalysis(analysisData);
-                      toast.success('AI Case Analysis generated successfully!');
-                    } else {
-                      const errorData = await analysisResponse.json();
-                      throw new Error(errorData.error || 'Analysis generation failed');
-                    }
-                  } catch (error) {
-                    console.error('❌ Case analysis error:', error);
-                    toast.error(`Failed to generate case analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                  } finally {
-                    setAnalysisLoading(false);
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white" 
-                disabled={isProcessing || !documentPreview.trim() || analysisLoading}
+                onClick={handleGenerateCaseAnalysis}
+                variant="outline"
+                className="text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300" 
+                disabled={
+                  isProcessing || analysisLoading || !(
+                    documentPreview.trim() || (generatedDocId || (typeof window !== 'undefined' && localStorage.getItem('currentDocumentId')))
+                  )
+                }
               >
                 {analysisLoading ? (
                   <>
@@ -1058,16 +1260,16 @@ function AIAssistantStep1Content() {
                 )}
               </Button>
               <Button 
-                onClick={() => {
-                  toast.info('Download AI Case Analysis coming soon!');
-                }}
-                className="bg-teal-600 hover:bg-teal-700 text-white" 
-                disabled={isProcessing}
+                onClick={handleDownloadCaseAnalysis}
+                variant="outline"
+                className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:border-teal-300" 
+                disabled={isProcessing || !(generatedDocId || (typeof window !== 'undefined' && localStorage.getItem('currentDocumentId')))}
               >
                 Download AI Case Analysis
               </Button>
               <Button 
-                className="bg-green-700 hover:bg-green-800 text-white" 
+                variant="outline"
+                className="text-green-700 border-green-200 hover:bg-green-50 hover:border-green-300" 
                 onClick={() => {}}
               >
                 Message
@@ -1169,14 +1371,16 @@ function AIAssistantStep1Content() {
             {/* Header with Prior Chats title and New Chat button */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Prior Chats</h3>
-              <button 
+              <Button 
                 onClick={handleNewChat}
-                className="flex items-center justify-center px-3 py-1.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition text-sm font-medium"
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
                 title="Start a new chat"
               >
                 <span className="mr-1.5">+</span>
                 New Chat
-              </button>
+              </Button>
             </div>
             <div className="flex-1 space-y-2 overflow-y-auto">
               {loadingChats ? (
@@ -1216,13 +1420,13 @@ function AIAssistantStep1Content() {
                       <div className="flex gap-2">
                         <button
                           onClick={handleSaveFolder}
-                          className="px-3 py-1 bg-emerald-500 text-white text-xs rounded hover:bg-emerald-600"
+                          className="px-3 py-1 text-emerald-600 border border-emerald-200 text-xs rounded hover:bg-emerald-50 hover:border-emerald-300"
                         >
                           Save
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
+                          className="px-3 py-1 text-gray-600 border border-gray-300 text-xs rounded hover:bg-gray-50"
                         >
                           Cancel
                         </button>
@@ -1353,7 +1557,7 @@ function AIAssistantStep1Content() {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                className="px-4 py-2 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 transition"
                 onClick={confirmClearConversation}
               >
                 Yes, Clear
@@ -1391,7 +1595,8 @@ function AIAssistantStep1Content() {
           </ScrollArea>
           <DialogFooter>
             <Button 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              variant="outline"
+              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
               onClick={() => {
                 setOpen(false);
                 // Start a new project by clearing current state
