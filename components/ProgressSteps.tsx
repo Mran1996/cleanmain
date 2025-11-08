@@ -21,10 +21,10 @@ export function ProgressSteps({ current }: { current: StepKey }) {
               className={clsx(
                 "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
                 active
-                  ? "bg-black text-white"
+                  ? "bg-white text-emerald-600 border border-emerald-300"
                   : done
-                  ? "bg-neutral-800 text-white"
-                  : "bg-neutral-200 text-neutral-700"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-gray-100 text-gray-700 border border-gray-200"
               )}
             >
               {i + 1}
