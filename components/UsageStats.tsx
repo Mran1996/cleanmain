@@ -86,7 +86,7 @@ export default function UsageStats() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-white text-neutral-800 border border-neutral-200 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -94,11 +94,12 @@ export default function UsageStats() {
               <CardDescription>Track monthly and one-time credits with live updates.</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={fetchUsage} 
-                disabled={loading}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={fetchUsage}
+                className="bg-white text-black border-neutral-300 hover:bg-neutral-50"
                 title="Refresh credit data (auto-verification runs on every load)"
               >
                 {loading ? "Loading..." : "Refresh"}
@@ -108,48 +109,48 @@ export default function UsageStats() {
         </CardHeader>
         <CardContent>
           {error ? (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-rose-700 bg-rose-50 border border-rose-200 rounded-md p-2 text-sm">{error}</div>
           ) : loading ? (
             <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/3" />
-              <div className="h-3 bg-gray-200 rounded w-full" />
-              <div className="h-3 bg-gray-200 rounded w-2/3" />
+              <div className="h-4 bg-neutral-100 rounded w-1/3" />
+              <div className="h-3 bg-neutral-100 rounded w-full" />
+              <div className="h-3 bg-neutral-100 rounded w-2/3" />
             </div>
           ) : data ? (
             <div className="space-y-6">
               {/* ⭐ TOTAL AVAILABLE CREDITS - Prominent Display */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-gray-700">Total Available Credits</h3>
+                  <h3 className="text-sm font-semibold text-black">Total Available Credits</h3>
                
                 </div>
                 <div className="text-4xl font-bold text-green-700 mb-1">
                   {totalAvailable.toLocaleString()}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-black">
                   {monthly.remaining} monthly + {oneTime.remaining} one-time
                 </div>
               </div>
 
               {/* Monthly Usage */}
-              <div>
+              <div className="bg-white border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold">Monthly Subscription Credits</h3>
                 </div>
-                <div className="text-sm text-gray-700 mb-2">
+                <div className="text-sm text-black mb-2">
                   <span className="font-medium">{monthly.used}</span> used of <span className="font-medium">{monthly.limit}</span> credits
                   {typeof monthly.remaining === "number" && (
-                    <> · <span className="font-medium text-green-600">{monthly.remaining} remaining</span></>
+                    <> · <span className="font-medium text-emerald-700">{monthly.remaining} remaining</span></>
                   )}
                 </div>
-                <div className="w-full h-3 bg-gray-200 rounded overflow-hidden">
+                <div className="w-full h-3 bg-emerald-50 rounded overflow-hidden">
                   <div
-                    className="h-3 bg-green-600"
+                    className="h-3 bg-emerald-500"
                     style={{ width: `${monthly.pctUsed}%` }}
                     aria-label={`Monthly used ${monthly.pctUsed}%`}
                   />
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-black mt-1">
                   {periodEnd ? (
                     <>Resets by <span className="font-medium">{periodEnd.toLocaleDateString()}</span></>
                   ) : (
@@ -159,25 +160,25 @@ export default function UsageStats() {
               </div>
 
               {/* One-Time Credits */}
-              <div>
+              <div className="bg-white border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold">One-Time Purchase Credits</h3>
-                  <span className="text-xs text-gray-500">Per purchase: {oneTime.perPurchaseLimit}</span>
+                  <span className="text-xs text-black">Per purchase: {oneTime.perPurchaseLimit}</span>
                 </div>
-                <div className="text-sm text-gray-700 mb-2">
+                <div className="text-sm text-black mb-2">
                   <span className="font-medium">{oneTime.used}</span> used of <span className="font-medium">{oneTime.totalGranted}</span> credits
                   {typeof oneTime.remaining === "number" && (
-                    <> · <span className="font-medium text-emerald-600">{oneTime.remaining} remaining</span></>
+                    <> · <span className="font-medium text-emerald-700">{oneTime.remaining} remaining</span></>
                   )}
                 </div>
-                <div className="w-full h-3 bg-gray-200 rounded overflow-hidden">
+                <div className="w-full h-3 bg-emerald-50 rounded overflow-hidden">
                   <div
                     className="h-3 bg-emerald-500"
                     style={{ width: `${oneTime.pctUsed}%` }}
                     aria-label={`One-time used ${oneTime.pctUsed}%`}
                   />
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-black mt-1">
                   {oneTime.purchaseCount > 0 
                     ? `From ${oneTime.purchaseCount} purchase${oneTime.purchaseCount !== 1 ? 's' : ''}. Never expires.`
                     : 'Accumulates across all purchases. Never expires.'
@@ -186,12 +187,12 @@ export default function UsageStats() {
               </div>
 
               {/* Updated timestamp */}
-              <div className="text-xs text-gray-500 border-t pt-3">
+              <div className="text-xs text-black border-t border-neutral-200 pt-3">
                 Updated {data.usage?.updated_at ? new Date(data.usage.updated_at).toLocaleString() : "recently"}
               </div>
             </div>
           ) : (
-            <div className="text-sm text-gray-600">No usage data available.</div>
+            <div className="text-sm text-black">No usage data available.</div>
           )}
         </CardContent>
       </Card>
