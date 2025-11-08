@@ -48,7 +48,7 @@ export function SplitPaneLayout({
   }, []);
 
   return (
-    <div className={`h-full flex flex-col bg-white transition-all duration-300 ease-in-out ${className}`}>
+    <div className={`min-h-full flex flex-col bg-white transition-all duration-300 ease-in-out ${className}`}>
       {/* Improved Header - Cleaner and more functional */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-gray-200 bg-white z-10">
         <div className="flex items-center space-x-3">
@@ -123,20 +123,20 @@ export function SplitPaneLayout({
       </div>
 
       {/* Enhanced Main Content Area with better visual separation */}
-      <div ref={containerRef} className="flex-1 overflow-hidden bg-gray-50">
+      <div ref={containerRef} className="flex-1 bg-gray-50">
         {isMobile ? (
           /* Mobile: Show only active pane with full screen experience */
           <>
             {activePane === 'chat' && (
-              <div className="w-full h-full bg-white">
-                <div className="h-full overflow-hidden">
+              <div className="w-full min-h-full bg-white">
+                <div className="min-h-full">
                   {leftContent}
                 </div>
               </div>
             )}
             {activePane === 'document' && (
-              <div className="w-full h-full bg-white">
-                <div className="h-full overflow-y-auto">
+              <div className="w-full min-h-full bg-white">
+                <div className="min-h-full">
                   {rightContent}
                 </div>
               </div>
@@ -146,7 +146,7 @@ export function SplitPaneLayout({
           /* Desktop: Enhanced Resizable panels with better visual separation */
           <ResizablePanelGroup 
             direction="horizontal" 
-            className="h-full"
+            className="min-h-full"
             onLayout={(sizes) => {
               if (sizes.length > 0 && !collapsed) {
                 setLeftPanelSize(sizes[0]);
@@ -161,8 +161,8 @@ export function SplitPaneLayout({
                   maxSize={70}
                   className="min-w-[320px]"
                 >
-                  <div className="h-full flex flex-col bg-white border-r border-gray-200">
-                    <div className="flex-1 overflow-hidden">
+                  <div className="min-h-full flex flex-col bg-white border-r border-gray-200">
+                    <div className="flex-1">
                       {leftContent}
                     </div>
                   </div>
@@ -185,8 +185,8 @@ export function SplitPaneLayout({
               minSize={30} 
               maxSize={collapsed ? 100 : 70}
             >
-              <div className="h-full flex flex-col bg-white">
-                <div className="flex-1 overflow-y-auto">
+              <div className="min-h-full flex flex-col bg-white">
+                <div className="flex-1">
                   {rightContent}
                 </div>
               </div>

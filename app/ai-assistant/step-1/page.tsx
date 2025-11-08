@@ -49,6 +49,7 @@ function AIAssistantStep1Content() {
   ];
   const [showSplitPane, setShowSplitPane] = useState(false);
   const [documentPreview, setDocumentPreview] = useState("");
+  const [isStreamingDocument, setIsStreamingDocument] = useState(false);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
@@ -398,6 +399,20 @@ function AIAssistantStep1Content() {
       if (savedChatHistory) {
         try {
           const parsedHistory = JSON.parse(savedChatHistory);
+          
+          // Check if first message contains old "attorney-client" text and update it
+          if (parsedHistory.length > 0 && parsedHistory[0].sender === 'assistant' && 
+              parsedHistory[0].text && (parsedHistory[0].text.includes('attorney-client interview') || parsedHistory[0].text.includes('attorney-client'))) {
+            const newInitialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+            
+            // Replace the first message with the updated version
+            parsedHistory[0] = { sender: "assistant", text: newInitialMessage };
+            setChatHistory(parsedHistory);
+            // Update localStorage with the corrected message
+            localStorage.setItem('step1_chat_history', JSON.stringify(parsedHistory));
+            return;
+          }
+          
           setChatHistory(parsedHistory);
           return;
         } catch (error) {
@@ -474,7 +489,7 @@ function AIAssistantStep1Content() {
         `Document data available: ${latestDocs.length} documents uploaded. Reference these when relevant.` : 
         'No documents uploaded.';
       
-      const systemPrompt = `You are Khristian, a legal assistant conducting an attorney-client interview. ${documentInfo}
+      const systemPrompt = `You are Khristian, a legal assistant conducting a comprehensive interview. ${documentInfo}
 
 🚨 CRITICAL RULES - MUST FOLLOW:
 - Ask ONLY ONE question at a time - NEVER ask multiple questions in a single response
@@ -889,6 +904,8 @@ function AIAssistantStep1Content() {
   const handleGenerateDocument = async () => {
     setShowSplitPane(true)
     console.log("🚀 handleGenerateDocument called!");
+    console.log("📊 Function execution started");
+    
     if (typeof window === 'undefined') {
       console.log("❌ Browser environment not available");
       toast.error("Browser environment required");
@@ -897,6 +914,14 @@ function AIAssistantStep1Content() {
     
     console.log("🚀 Generate Document button clicked!");
     console.log("📊 Current chat history from context:", chatHistory);
+    
+    // Show immediate visual feedback
+    toast.info("Starting document generation...");
+    setDocumentPreview(""); // Start with empty document - it will populate as it generates
+    setIsProcessing(true);
+    
+    // Ensure chat waiting state cannot block generation
+    setIsWaiting(false);
     
     // Try to load chat history from localStorage as fallback
     let finalChatHistory = chatHistory;
@@ -918,6 +943,11 @@ function AIAssistantStep1Content() {
     // Set processing state
     setIsProcessing(true);
     
+    // Declare timeout/interval variables in outer scope for cleanup
+    let timeoutId: NodeJS.Timeout | null = null;
+    let progressInterval: NodeJS.Timeout | null = null;
+    let typewriterInterval: NodeJS.Timeout | null = null;
+    
     try {
       // Ensure we have a valid UUID for userId
       let userId = localStorage.getItem("userId");
@@ -929,23 +959,24 @@ function AIAssistantStep1Content() {
       const genState = {
         userId: userId,
         title: `Legal Document - ${localStorage.getItem("legalCategory") || "Case"}`,
-        caseNumber: localStorage.getItem("caseNumber"),
-        county: localStorage.getItem("county"),
+        caseNumber: localStorage.getItem("caseNumber") || null,
+        county: localStorage.getItem("county") || null,
         state: localStorage.getItem("state") || "California",
-        opposingParty: localStorage.getItem("opposingParty"),
-        courtName: localStorage.getItem("courtName"),
+        opposingParty: localStorage.getItem("opposingParty") || null,
+        courtName: localStorage.getItem("courtName") || null,
         includeCaseLaw: localStorage.getItem("includeCaseLaw") === "true",
+        shortDraft: true,
         chatHistory: finalChatHistory.map(msg => ({
           role: msg.sender === "user" ? "user" : "assistant",
-          content: msg.text
-        }))
+          content: msg.text || ""
+        })).filter(msg => msg.content && msg.content.trim().length > 0) // Filter out empty messages
       };
 
-      // Validate that we have meaningful chat history
-      if (finalChatHistory.length < 2) {
-        console.error("❌ Insufficient chat history:", finalChatHistory.length, "messages");
-        throw new Error("Please have a conversation with the AI assistant first to gather your case information.");
-      }
+      console.log("📤 Ready to send to API:", {
+        chatHistoryCount: genState.chatHistory.length,
+        hasState: !!genState.state,
+        hasUserId: !!genState.userId
+      });
 
       console.log("📊 Chat history validation passed:", {
         messageCount: finalChatHistory.length,
@@ -1083,7 +1114,8 @@ function AIAssistantStep1Content() {
       return result;
       
     } catch (error) {
-      console.error("Error generating document:", error);
+      console.error("❌ Error generating document:", error);
+      console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       
       // Handle specific error types with user-friendly messages (no raw JSON)
       if (error instanceof Error) {
@@ -1101,7 +1133,15 @@ function AIAssistantStep1Content() {
         toast.error('Something went wrong', { description: 'Please try again' });
       }
     } finally {
-      setIsProcessing(false);
+      // Clean up any remaining intervals
+      if (progressInterval) clearInterval(progressInterval);
+      if (typewriterInterval) clearInterval(typewriterInterval);
+      // Note: Don't set isProcessing to false here if typewriter is still running
+      // It will be set to false when typewriter completes
+      if (!typewriterInterval) {
+        setIsProcessing(false);
+      }
+      console.log("🏁 Document generation process finished");
     }
   };
 
@@ -1109,7 +1149,7 @@ function AIAssistantStep1Content() {
 
   // Chat content for left pane
   const chatContent = (
-    <div className="h-full flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Chat Header with Clear Conversation button */}
       {chatHistory.length > 0 && (
         <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
@@ -1156,7 +1196,7 @@ function AIAssistantStep1Content() {
 
   // Document preview content for right pane - matches Step 2 layout
   const documentPreviewContent = (
-    <div className="h-full flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Match chat header spacing/style so rows align horizontally */}
       <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -1216,17 +1256,25 @@ function AIAssistantStep1Content() {
           <div className="bg-gray-50 border border-gray-300 rounded-lg shadow-sm">
             <Textarea
               className="w-full min-h-[300px] font-mono text-base border-0 focus:ring-0 p-6 bg-transparent"
-              value={documentPreview}
+              value={documentPreview || ""}
               onChange={e => setDocumentPreview(e.target.value)}
               disabled={isProcessing}
               placeholder={
-                isProcessing ? "Generating document..." : 
                 documentPreview ? "Your generated legal document appears above..." :
-                "Your generated legal document will appear here..."
+                "Your generated legal document will appear here as it's being generated..."
               }
             />
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-100 rounded border">
+                <div><strong>Debug Info:</strong></div>
+                <div>documentPreview length: {documentPreview?.length || 0}</div>
+                <div>isProcessing: {String(isProcessing)}</div>
+                <div>First 100 chars: "{documentPreview?.substring(0, 100)}"</div>
+                <div>Last 50 chars: "{documentPreview?.substring(Math.max(0, (documentPreview?.length || 0) - 50))}"</div>
+              </div>
+            )}
           </div>
-          {isProcessing && <div className="flex items-center mt-2 text-gray-500"><Loader2 className="animate-spin mr-2" /> Generating document...</div>}
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
               <FileText className="mr-2 h-4 w-4" />
@@ -1320,7 +1368,7 @@ function AIAssistantStep1Content() {
         headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
         headerSubtitle=""
       >
-        <div className="h-[calc(100vh-200px)] mt-8">
+        <div className="min-h-[calc(100vh-200px)] mt-8">
           <SplitPaneLayout
             leftContent={chatContent}
             rightContent={documentPreviewContent}
