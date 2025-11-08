@@ -153,7 +153,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
   };
 
   return (
-    <html lang="en" className="min-h-screen bg-white text-sm md:text-base">
+    <html 
+      lang="en" 
+      className="light min-h-screen bg-white text-sm md:text-base"
+      style={{ colorScheme: "light" }}
+      suppressHydrationWarning
+    >
       <head>
         {/* Structured Data for SEO */}
         <script
