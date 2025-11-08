@@ -25,6 +25,7 @@ function AIAssistantStep1SplitPaneContent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
+ 
   const { 
     chatHistory, 
     setChatHistory, 
