@@ -60,6 +60,8 @@ function AIAssistantStep1Content() {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [isMessageButtonSelected, setIsMessageButtonSelected] = useState(false);
+  const [inspirationalMessage, setInspirationalMessage] = useState<string | null>(null);
   const { 
     chatHistory, 
     setChatHistory, 
@@ -199,16 +201,16 @@ function AIAssistantStep1Content() {
         window.URL.revokeObjectURL(url);
         toast.success('Document PDF downloaded');
       } else {
-        const blob = new Blob([documentPreview], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Legal_Document.txt';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-        toast.success('Document downloaded!');
+      const blob = new Blob([documentPreview], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Legal_Document.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Document downloaded!');
       }
     } catch (err) {
       console.error('Download document error:', err);
@@ -343,6 +345,99 @@ function AIAssistantStep1Content() {
     }
   };
 
+  // Generate inspirational message from famous people
+  const handleMessageButtonClick = () => {
+    const messages = [
+      {
+        quote: "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.",
+        author: "Steve Jobs"
+      },
+      {
+        quote: "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+        author: "Winston Churchill"
+      },
+      {
+        quote: "It does not matter how slowly you go as long as you do not stop.",
+        author: "Confucius"
+      },
+      {
+        quote: "The future belongs to those who believe in the beauty of their dreams.",
+        author: "Eleanor Roosevelt"
+      },
+      {
+        quote: "I can't change the direction of the wind, but I can adjust my sails to always reach my destination.",
+        author: "Jimmy Dean"
+      },
+      {
+        quote: "Believe you can and you're halfway there.",
+        author: "Theodore Roosevelt"
+      },
+      {
+        quote: "The only impossible journey is the one you never begin.",
+        author: "Tony Robbins"
+      },
+      {
+        quote: "In the middle of difficulty lies opportunity.",
+        author: "Albert Einstein"
+      },
+      {
+        quote: "You are never too old to set another goal or to dream a new dream.",
+        author: "C.S. Lewis"
+      },
+      {
+        quote: "The way to get started is to quit talking and begin doing.",
+        author: "Walt Disney"
+      },
+      {
+        quote: "Don't let yesterday take up too much of today.",
+        author: "Will Rogers"
+      },
+      {
+        quote: "You learn more from failure than from success. Don't let it stop you. Failure builds character.",
+        author: "Unknown"
+      },
+      {
+        quote: "If you are working on something exciting that you really care about, you don't have to be pushed. The vision pulls you.",
+        author: "Steve Jobs"
+      },
+      {
+        quote: "People who are crazy enough to think they can change the world, are the ones who do.",
+        author: "Rob Siltanen"
+      },
+      {
+        quote: "We may encounter many defeats but we must not be defeated.",
+        author: "Maya Angelou"
+      },
+      {
+        quote: "The person who says it cannot be done should not interrupt the person who is doing it.",
+        author: "Chinese Proverb"
+      },
+      {
+        quote: "There are no limits to what you can accomplish, except the limits you place on your own thinking.",
+        author: "Brian Tracy"
+      },
+      {
+        quote: "Keep going. Everything you need will come to you at the perfect time.",
+        author: "Unknown"
+      },
+      {
+        quote: "The only person you are destined to become is the person you decide to be.",
+        author: "Ralph Waldo Emerson"
+      },
+      {
+        quote: "Fall seven times, stand up eight.",
+        author: "Japanese Proverb"
+      }
+    ];
+
+    // Randomly select a message
+    const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+    const fullMessage = `"${randomMessage.quote}"\n\n— ${randomMessage.author}`;
+    
+    setInspirationalMessage(fullMessage);
+    setIsMessageButtonSelected(true);
+  };
+
   // Download AI Case Analysis PDF for the current document
   const handleDownloadCaseAnalysis = async () => {
     try {
@@ -353,11 +448,20 @@ function AIAssistantStep1Content() {
       }
       if (downloadingAnalysis) return;
       setDownloadingAnalysis(true);
-      const res = await fetch(`/api/download/document/${docId}?type=analysis`);
+      
+      // Try the dedicated analysis endpoint first
+      let res = await fetch(`/api/download/analysis/${docId}`);
+      
+      // If that fails, try the document endpoint with type parameter
+      if (!res.ok) {
+        res = await fetch(`/api/download/document/${docId}?type=analysis`);
+      }
+      
       if (!res.ok) {
         const msg = await res.text();
-        throw new Error(msg || 'Failed to download analysis');
+        throw new Error(msg || 'Failed to download analysis. Please ensure a case analysis has been generated first.');
       }
+      
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -399,20 +503,6 @@ function AIAssistantStep1Content() {
       if (savedChatHistory) {
         try {
           const parsedHistory = JSON.parse(savedChatHistory);
-          
-          // Check if first message contains old "attorney-client" text and update it
-          if (parsedHistory.length > 0 && parsedHistory[0].sender === 'assistant' && 
-              parsedHistory[0].text && (parsedHistory[0].text.includes('attorney-client interview') || parsedHistory[0].text.includes('attorney-client'))) {
-            const newInitialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, we'll proceed to Step 2 where I'll generate your comprehensive, **court-ready legal document** based on all the information we've gathered.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
-            
-            // Replace the first message with the updated version
-            parsedHistory[0] = { sender: "assistant", text: newInitialMessage };
-            setChatHistory(parsedHistory);
-            // Update localStorage with the corrected message
-            localStorage.setItem('step1_chat_history', JSON.stringify(parsedHistory));
-            return;
-          }
-          
           setChatHistory(parsedHistory);
           return;
         } catch (error) {
@@ -428,7 +518,7 @@ function AIAssistantStep1Content() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive consultation** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
       setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -489,14 +579,14 @@ function AIAssistantStep1Content() {
         `Document data available: ${latestDocs.length} documents uploaded. Reference these when relevant.` : 
         'No documents uploaded.';
       
-      const systemPrompt = `You are Khristian, a legal assistant conducting a comprehensive interview. ${documentInfo}
+      const systemPrompt = `You are Khristian, a legal assistant conducting a comprehensive consultation. ${documentInfo}
 
 🚨 CRITICAL RULES - MUST FOLLOW:
 - Ask ONLY ONE question at a time - NEVER ask multiple questions in a single response
 - NEVER use bullet points, numbered lists, or grouped questions
 - NEVER ask "What about X? What about Y? What about Z?" in one response
 - Wait for the user's complete answer before asking the next question
-- Be natural and conversational like a real attorney
+- Be natural and conversational like an experienced legal professional
 - Reference uploaded documents when relevant
 - Write responses in plain, natural text without special formatting
 - Do NOT group questions together or ask follow-up questions until you get an answer
@@ -536,12 +626,16 @@ function AIAssistantStep1Content() {
         console.log('🔍 [STEP1 DEBUG] Sending documents array with', latestDocs.length, 'documents');
       }
       
+      // Include generated document in chat context so chat is aware of it
+      const generatedDocumentContent = documentPreview?.trim() || "";
+      
       const response = await fetch('/api/step1-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: messagesForAPI,
-          documentData: documentDataToSend
+          documentData: documentDataToSend,
+          generatedDocument: generatedDocumentContent
         }),
       });
 
@@ -556,6 +650,58 @@ function AIAssistantStep1Content() {
                                data.content || 
                                data.reply || 
                                "I apologize, but I'm having trouble processing your request right now.";
+      
+      // Check if the response indicates a document correction request
+      const correctionKeywords = ['correct', 'fix', 'change', 'update', 'modify', 'edit', 'revise', 'amend', 'replace'];
+      const isCorrectionRequest = correctionKeywords.some(keyword => 
+        message.toLowerCase().includes(keyword) && 
+        (message.toLowerCase().includes('document') || message.toLowerCase().includes('doc'))
+      );
+      
+      // If it's a correction request and we have a document, apply the correction
+      if (isCorrectionRequest && documentPreview?.trim()) {
+        try {
+          const correctionResponse = await fetch('/api/correct-document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              documentId: generatedDocId || (typeof window !== 'undefined' ? localStorage.getItem('currentDocumentId') : null),
+              correction: message,
+              originalDocument: documentPreview,
+            }),
+          });
+          
+          if (correctionResponse.ok) {
+            const correctionData = await correctionResponse.json();
+            if (correctionData.correctedDocument) {
+              setDocumentPreview(correctionData.correctedDocument);
+              // Update document in database if we have an ID
+              if (generatedDocId || (typeof window !== 'undefined' && localStorage.getItem('currentDocumentId'))) {
+                const docId = generatedDocId || localStorage.getItem('currentDocumentId');
+                try {
+                  const supabase = createClient();
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user && docId) {
+                    const { error } = await supabase
+                      .from('documents')
+                      .update({ content: correctionData.correctedDocument })
+                      .eq('id', docId)
+                      .eq('user_id', user.id);
+                    if (!error) {
+                      console.log('✅ Document corrected and saved');
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error saving corrected document:', err);
+                }
+              }
+            }
+          }
+        } catch (correctionError) {
+          console.error('Error applying correction:', correctionError);
+          // Continue with normal chat response even if correction fails
+        }
+      }
       
       // Add assistant response to chat history
       const assistantMessage = { sender: "assistant", text: assistantResponse };
@@ -915,10 +1061,10 @@ function AIAssistantStep1Content() {
     console.log("🚀 Generate Document button clicked!");
     console.log("📊 Current chat history from context:", chatHistory);
     
-    // Show immediate visual feedback
-    toast.info("Starting document generation...");
+    // NO NOTIFICATIONS - start generation silently
     setDocumentPreview(""); // Start with empty document - it will populate as it generates
     setIsProcessing(true);
+    setShowSplitPane(true); // Show split-pane immediately so user sees document page
     
     // Ensure chat waiting state cannot block generation
     setIsWaiting(false);
@@ -989,129 +1135,194 @@ function AIAssistantStep1Content() {
         messages: finalChatHistory.map(msg => ({ sender: msg.sender, text: msg.text.substring(0, 100) + '...' }))
       });
 
-      // Create the API call promise
-      const documentGenerationPromise = (async () => {
-        // Add timeout for large documents
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log("⏰ API call timed out after 5 minutes");
-          controller.abort();
-        }, 300000); // 5 minutes timeout for full document generation
+      // STREAMING: Handle real-time document generation
+      const response = await fetch("/api/generate-document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(genState),
+      });
 
-        console.log("🚀 Making API call to /api/generate-document (full processing)");
-        
-        // Use the main document generation API that processes chat history
-        const response = await fetch("/api/generate-document", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(genState),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        console.log("📥 API response received:", response.status);
-        console.log("📥 API response status:", response.status);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          let userMessage = 'Document generation failed';
-          if (response.status === 401) {
-            userMessage = 'Please sign in to generate documents';
-          } else {
-            try {
-              const parsed = JSON.parse(errorText);
-              if (parsed?.error && typeof parsed.error === 'string') {
-                userMessage = parsed.error;
-              } else if (typeof parsed === 'string') {
-                userMessage = parsed;
-              }
-            } catch {
-              if (typeof errorText === 'string' && errorText.trim().length > 0) {
-                userMessage = errorText;
-              }
-            }
-          }
-          const err = new Error(userMessage);
-          // Attach status for downstream handling without exposing raw JSON
-          (err as any).status = response.status;
-          throw err;
-        }
-
-        const data = await response.json();
-        console.log("📥 API response data:", data);
-        
-        if (!response.ok || data?.success === false) {
-          const msg = data?.error || `HTTP ${response.status}`;
-          console.error("❌ API error:", msg);
-          
-          // Provide more specific error messages
-          if (msg.includes("No real case information")) {
-            throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
-          } else if (msg.includes("Rate limit")) {
-            throw new Error("Please wait a moment and try again. The system is processing many requests.");
-          } else {
-            throw new Error(`Document generation failed: ${msg}`);
-          }
-        }
-
-        const { docId, document } = data.data;
-        console.log("✅ Document generated successfully, updating document preview");
-        
-        // Update the document preview with the generated content
-        if (document) {
-          setDocumentPreview(document);
-          // Store for later analysis and download
-          try {
-            if (typeof window !== 'undefined') {
-              if (docId) {
-                localStorage.setItem('currentDocumentId', docId);
-                setGeneratedDocId(docId);
-              }
-              // Do not store full document content locally; rely on DB
-            }
-          } catch {}
-          
-          // Auto-save the project to database
-          try {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (user) {
-              const projectData = {
-                user_id: user.id,
-                title: `Legal Document - ${new Date().toLocaleDateString()}`,
-                content: document,
-                chat_history: JSON.stringify(finalChatHistory),
-              };
-
-              const { error } = await supabase
-                .from("projects")
-                .insert(projectData);
-
-              if (!error) {
-                console.log("✅ Project auto-saved to database");
-              }
-            }
-          } catch (error) {
-            console.error("❌ Error auto-saving project:", error);
-          }
-          
-          // Show preview in split-pane on the right after generation
-          console.log("🔄 Document generated. Showing preview in split-pane right panel...");
-          setShowSplitPane(true);
-          toast.success("Document generated successfully! Preview is now visible on the right.");
-          
-          return { docId, document };
+      if (!response.ok) {
+        const errorText = await response.text();
+        let userMessage = 'Document generation failed';
+        if (response.status === 401) {
+          userMessage = 'Please sign in to generate documents';
         } else {
-          console.error("❌ No document content in API response");
-          throw new Error("Generation incomplete");
+          try {
+            const parsed = JSON.parse(errorText);
+            if (parsed?.error && typeof parsed.error === 'string') {
+              userMessage = parsed.error;
+            } else if (typeof parsed === 'string') {
+              userMessage = parsed;
+            }
+          } catch {
+            if (typeof errorText === 'string' && errorText.trim().length > 0) {
+              userMessage = errorText;
+            }
+          }
         }
-      })();
+        throw new Error(userMessage);
+      }
 
-      // Use promise-based toast with motivational messages
-      const result = await createDocumentGenerationToast(documentGenerationPromise);
-      
-      return result;
+      // Check if response is streaming (text/event-stream)
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("text/event-stream")) {
+        // STREAMING MODE: Display chunks as they arrive in real-time
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = "";
+        let finalDocId = "";
+        let buffer = ""; // Buffer for incomplete lines
+
+        if (!reader) {
+          throw new Error("Stream reader not available");
+        }
+
+        // Show split-pane immediately
+        setShowSplitPane(true);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          // Decode and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // Keep last incomplete line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim() === "") continue; // Skip empty lines
+            
+            if (line.startsWith("data: ")) {
+              try {
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr) continue;
+                
+                const data = JSON.parse(jsonStr);
+                
+                if (data.type === "chunk") {
+                  // Append chunk IMMEDIATELY - REAL-TIME DISPLAY
+                  accumulatedContent += data.content;
+                  setDocumentPreview(accumulatedContent);
+                } else if (data.type === "done") {
+                  // Stream complete
+                  finalDocId = data.docId || "";
+                  if (data.document) {
+                    accumulatedContent = data.document;
+                    setDocumentPreview(accumulatedContent);
+                  }
+                  
+                  // Store document ID
+                  if (finalDocId && typeof window !== 'undefined') {
+                    localStorage.setItem('currentDocumentId', finalDocId);
+                    setGeneratedDocId(finalDocId);
+                  }
+                  
+                  setIsProcessing(false);
+                  
+                  // Auto-save the project to database
+                  try {
+                    const supabase = createClient();
+                    const { data: { user } } = await supabase.auth.getUser();
+                    
+                    if (user) {
+                      const projectData = {
+                        user_id: user.id,
+                        title: `Legal Document - ${new Date().toLocaleDateString()}`,
+                        content: accumulatedContent,
+                        chat_history: JSON.stringify(finalChatHistory),
+                      };
+
+                      const { error } = await supabase
+                        .from("projects")
+                        .insert(projectData);
+
+                      if (!error) {
+                        console.log("✅ Project auto-saved to database");
+                      }
+                    }
+                  } catch (error) {
+                    console.error("❌ Error auto-saving project:", error);
+                  }
+                  
+                  return { docId: finalDocId, document: accumulatedContent };
+                } else if (data.type === "error") {
+                  throw new Error(data.error || "Stream error occurred");
+                }
+              } catch (parseError) {
+                // Skip invalid JSON
+                continue;
+              }
+            }
+          }
+        }
+        
+        // If we exit loop without "done" signal, use accumulated content
+        if (accumulatedContent) {
+          setDocumentPreview(accumulatedContent);
+        setIsProcessing(false);
+          return { docId: finalDocId, document: accumulatedContent };
+        }
+      } else {
+        // FALLBACK: Non-streaming response (legacy support)
+        const data = await response.json();
+        
+        if (data?.success === false) {
+          const msg = data?.error || `HTTP ${response.status}`;
+          throw new Error(msg);
+        }
+
+        const { docId, document } = data.data || {};
+        
+        if (!document || document.trim().length === 0) {
+          throw new Error("Document was generated but content is empty");
+        }
+        
+        // Display document immediately
+        setDocumentPreview(document);
+        setShowSplitPane(true);
+        setIsProcessing(false);
+        
+        // Store document ID
+        if (docId && typeof window !== 'undefined') {
+          localStorage.setItem('currentDocumentId', docId);
+          setGeneratedDocId(docId);
+        }
+        
+        // Auto-save the project to database
+        try {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            const projectData = {
+              user_id: user.id,
+              title: `Legal Document - ${new Date().toLocaleDateString()}`,
+              content: document,
+              chat_history: JSON.stringify(finalChatHistory),
+            };
+
+            const { error } = await supabase
+              .from("projects")
+              .insert(projectData);
+
+            if (!error) {
+              console.log("✅ Project auto-saved to database");
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error auto-saving project:", error);
+        }
+        
+        return { docId, document };
+      }
+
+      // Document generation complete (no toast - document is already visible)
+      return { docId: "", document: "" };
       
     } catch (error) {
       console.error("❌ Error generating document:", error);
@@ -1139,7 +1350,7 @@ function AIAssistantStep1Content() {
       // Note: Don't set isProcessing to false here if typewriter is still running
       // It will be set to false when typewriter completes
       if (!typewriterInterval) {
-        setIsProcessing(false);
+      setIsProcessing(false);
       }
       console.log("🏁 Document generation process finished");
     }
@@ -1186,7 +1397,7 @@ function AIAssistantStep1Content() {
           userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
           suggestedResponses={suggestedResponses.map((text) => ({ text }))}
           onDocumentUpload={() => {}}
-          legalCategory="criminal"
+          legalCategory={getLegalCategory()}
           onGenerateDocument={handleGenerateDocument}
         />
 
@@ -1264,16 +1475,6 @@ function AIAssistantStep1Content() {
                 "Your generated legal document will appear here as it's being generated..."
               }
             />
-            {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-100 rounded border">
-                <div><strong>Debug Info:</strong></div>
-                <div>documentPreview length: {documentPreview?.length || 0}</div>
-                <div>isProcessing: {String(isProcessing)}</div>
-                <div>First 100 chars: "{documentPreview?.substring(0, 100)}"</div>
-                <div>Last 50 chars: "{documentPreview?.substring(Math.max(0, (documentPreview?.length || 0) - 50))}"</div>
-              </div>
-            )}
           </div>
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
@@ -1286,8 +1487,8 @@ function AIAssistantStep1Content() {
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6 mt-2">
             <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
             
-          {/* Generate AI Case Analysis Buttons */}
-          <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
+            {/* Generate AI Case Analysis Buttons */}
+            <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
               <Button 
                 onClick={handleGenerateCaseAnalysis}
                 variant="outline"
@@ -1317,14 +1518,40 @@ function AIAssistantStep1Content() {
               </Button>
               <Button 
                 variant="outline"
-                className="text-green-700 border-green-200 hover:bg-green-50 hover:border-green-300" 
-                onClick={() => {}}
+                className={`${
+                  isMessageButtonSelected 
+                    ? "text-white bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 shadow-md" 
+                    : "text-green-700 border-green-200 hover:bg-green-50 hover:border-green-300"
+                } transition-all duration-200`}
+                onClick={handleMessageButtonClick}
               >
                 Message
               </Button>
             </div>
             
             <div className="max-h-[400px] overflow-y-auto pr-2">
+              {inspirationalMessage ? (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg p-6 mb-4 shadow-sm">
+                  <div className="flex items-start">
+                    <div className="text-3xl mr-4">💪</div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-green-800 mb-3">Never Give Up!</h3>
+                      <p className="text-gray-700 italic text-base leading-relaxed whitespace-pre-line">
+                        {inspirationalMessage}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setInspirationalMessage(null);
+                          setIsMessageButtonSelected(false);
+                        }}
+                        className="mt-4 text-sm text-green-600 hover:text-green-800 underline"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {caseAnalysis ? (
                 <div className="prose max-w-none">
                   <h2 className="text-2xl font-bold mb-2">{caseAnalysis.title || "Case Analysis"}</h2>
@@ -1581,7 +1808,7 @@ function AIAssistantStep1Content() {
           userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
           suggestedResponses={suggestedResponses.map((text) => ({ text }))}
           onDocumentUpload={() => {}}
-          legalCategory="criminal"
+          legalCategory={getLegalCategory()}
           onGenerateDocument={handleGenerateDocument}
         />
 

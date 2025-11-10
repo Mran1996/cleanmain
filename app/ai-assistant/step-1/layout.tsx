@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import { generateMetadata, generateStructuredData } from '@/lib/seo';
 
 export const metadata: Metadata = generateMetadata({
-  title: 'AI Legal Assistant – Step 1 Interview',
+  title: 'AI Legal Assistant – Step 1 Consultation',
   description:
-    'Begin the comprehensive AI interview to gather case facts and generate court-ready documents. Upload files and answer one question at a time.',
+    'Begin the comprehensive consultation to gather case facts and generate court-ready documents. Upload files and answer one question at a time.',
   path: '/ai-assistant/step-1',
   image: undefined,
 });

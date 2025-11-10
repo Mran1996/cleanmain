@@ -56,7 +56,35 @@ export async function POST(req: NextRequest) {
     if (!chatHistory || chatHistory.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'No real case information provided. Please complete Step 1 first.'
+        error: 'No information provided. Please provide basic information about your case in the chat before generating a document.'
+      }, { status: 400 });
+    }
+
+    // Check if chat history contains actual case information (not just initial greeting)
+    const hasCaseInformation = chatHistory.some((msg: ChatMessage) => {
+      if (msg.role !== 'user') return false;
+      const content = (msg.content || '').toLowerCase();
+      // Filter out initial greetings and empty messages
+      const isGreeting = content.includes('hi') && content.length < 50;
+      const isEmpty = content.trim().length < 10;
+      // Check for actual case information indicators
+      const hasCaseInfo = content.includes('case') || 
+                         content.includes('court') || 
+                         content.includes('legal') ||
+                         content.includes('matter') ||
+                         content.includes('defendant') ||
+                         content.includes('plaintiff') ||
+                         content.includes('charge') ||
+                         content.includes('date') ||
+                         content.includes('name') ||
+                         content.length > 50; // Substantial user input
+      return !isGreeting && !isEmpty && hasCaseInfo;
+    });
+
+    if (!hasCaseInformation) {
+      return NextResponse.json({
+        success: false,
+        error: 'Insufficient information provided. Please provide basic information about your case in the chat (such as case type, parties involved, dates, or legal matter details) before generating a document.'
       }, { status: 400 });
     }
 
@@ -171,6 +199,16 @@ export async function POST(req: NextRequest) {
 
     // Create a comprehensive prompt for OpenAI using only real data
     const systemPrompt = `You are Khristian, a senior partner at a top 1% law firm with 25+ years of litigation experience. You have successfully argued before the Supreme Court and have a track record of winning complex, high-stakes cases. Every document you generate must be written with the strategic sophistication and persuasive power of an elite trial attorney.
+
+CRITICAL - DOCUMENT TYPE REQUIREMENT:
+- You MUST generate ONLY the actual legal document for the client's case (motion, petition, brief, etc.)
+- You MUST NOT generate any meta-documents about the consultation process
+- You MUST NOT generate documents about "attorney-client interview" or "case information procedures"
+- You MUST NOT generate declarations about yourself or the consultation process
+- You MUST generate the actual legal document the client needs for their specific case
+- The document must be filed in court or used for the client's actual legal matter
+- Examples of CORRECT documents: Motion to Vacate, Petition for Habeas Corpus, Motion to Dismiss, etc.
+- Examples of INCORRECT documents: "Declaration of Attorney Khristian in Support of Request for Comprehensive Case Information" or any document about the consultation process
 
  CRITICAL: YOU MUST ANALYZE THE CONVERSATION HISTORY AND UPLOADED DOCUMENTS THOROUGHLY
 - The client has provided detailed information in their conversation
@@ -327,19 +365,21 @@ CRITICAL INSTRUCTIONS FOR DOCUMENT GENERATION:
 1. ANALYZE THE CONVERSATION HISTORY THOROUGHLY - Extract the specific legal issues, facts, and circumstances from the client's actual situation
 2. DO NOT GENERATE GENERIC DOCUMENTS - Create a document that directly addresses the client's specific legal matter
 3. USE ONLY THE ACTUAL INFORMATION PROVIDED - Do not invent facts, case numbers, or legal issues
-4. DETERMINE THE APPROPRIATE DOCUMENT TYPE based on the client's situation (motion, petition, brief, etc.)
-5. INCORPORATE ALL RELEVANT DETAILS from the conversation history
-6. If the client's situation involves specific legal issues (criminal, civil, family, etc.), address those specific issues
-7. If the client mentions specific charges, dates, locations, or circumstances, include those exact details
-8. If the client uploaded documents (mentioned in conversation), reference and analyze those documents in the legal document
-9. Generate a document that reflects the client's actual legal needs, not a template
-10. Ensure the document is comprehensive and addresses the full scope of the client's situation
-11. Use proper legal formatting but make it specific to the client's case
-12. If the client mentioned specific legal documents, evidence, or case details in the conversation, incorporate those details
-13. EXPAND EVERY SECTION WITH DETAILED ANALYSIS - Use all the information from uploaded documents
-14. WRITE COMPREHENSIVE PARAGRAPHS - Each section must be substantial and detailed
-15. INCORPORATE ALL UPLOADED DOCUMENT CONTENT - Reference specific facts, arguments, and evidence from uploaded documents
-16. DEVELOP THOROUGH LEGAL ARGUMENTS - Expand on every legal point with extensive reasoning
+4. DETERMINE THE APPROPRIATE DOCUMENT TYPE based on the client's situation (motion, petition, brief, etc.) - This must be the ACTUAL legal document for the client's case, NOT a document about the consultation process
+5. ABSOLUTELY FORBIDDEN: Do NOT generate any documents about "attorney-client interview", "case information procedures", "comprehensive case information", or any meta-document about the consultation process
+6. You MUST generate the actual legal document the client needs (e.g., Motion to Vacate, Petition for Habeas Corpus, Motion to Dismiss, etc.)
+7. INCORPORATE ALL RELEVANT DETAILS from the conversation history
+8. If the client's situation involves specific legal issues (criminal, civil, family, etc.), address those specific issues
+9. If the client mentions specific charges, dates, locations, or circumstances, include those exact details
+10. If the client uploaded documents (mentioned in conversation), reference and analyze those documents in the legal document
+11. Generate a document that reflects the client's actual legal needs, not a template
+12. Ensure the document is comprehensive and addresses the full scope of the client's situation
+13. Use proper legal formatting but make it specific to the client's case
+14. If the client mentioned specific legal documents, evidence, or case details in the conversation, incorporate those details
+15. EXPAND EVERY SECTION WITH DETAILED ANALYSIS - Use all the information from uploaded documents
+16. WRITE COMPREHENSIVE PARAGRAPHS - Each section must be substantial and detailed
+17. INCORPORATE ALL UPLOADED DOCUMENT CONTENT - Reference specific facts, arguments, and evidence from uploaded documents
+18. DEVELOP THOROUGH LEGAL ARGUMENTS - Expand on every legal point with extensive reasoning
 
 MANDATORY REQUIREMENTS:
 - Use ONLY real names, dates, and information from the conversation
@@ -392,6 +432,9 @@ Generate a complete, professional legal document using ONLY the information prov
 - Make this document completely unique to this client's case
 - If you use placeholders, the document will be rejected as poor quality
 - The client expects a document that addresses their specific legal needs, not a template
+- CRITICAL: Generate ONLY the actual legal document for the client's case (motion, petition, brief, etc.)
+- ABSOLUTELY FORBIDDEN: Do NOT generate any documents about "attorney-client interview", "case information procedures", or any meta-document about the consultation process
+- You MUST generate the actual legal document the client needs for their case, NOT a document about the consultation
 - CRITICAL: Generate AT LEAST 3000 WORDS - expand every section with detailed analysis
 - Use comprehensive legal reasoning and extensive factual development
 - Fill the entire token limit with substantive legal content
@@ -432,7 +475,7 @@ Generate a complete, professional legal document using ONLY the information prov
 
             const startTime = Date.now();
             console.log(` [KIMI] Sending request via SDK with ${userPrompt.length} characters of prompt`);
-            completion = await kimiClient!.chat.completions.create({
+            const stream = await kimiClient!.chat.completions.create({
               model: 'kimi-k2-thinking-turbo',
               messages: [
                 { role: 'system', content: systemPrompt },
@@ -445,16 +488,75 @@ Generate a complete, professional legal document using ONLY the information prov
               temperature: 0.6,
               max_tokens: 32768,
               top_p: 1,
-              stream: false
+              stream: true  // ENABLE STREAMING for real-time generation
             });
-        
 
-            const responseTime = Date.now() - startTime;
-            console.log(` [KIMI] SDK responded in ${responseTime}ms`);
-
+            // Handle streaming response - return immediately with stream
             clearTimeout(timeoutId);
-            console.log(` [KIMI] Document generation successful on attempt ${attempt}`);
-            break;
+            console.log(` [KIMI] Streaming started on attempt ${attempt}`);
+            
+            // Return streaming response immediately - NO WAITING
+            const encoder = new TextEncoder();
+            const readableStream = new ReadableStream({
+              async start(controller) {
+                try {
+                  let fullContent = '';
+                  console.log(' [STREAM] Starting to process chunks...');
+                  
+                  for await (const chunk of stream) {
+                    const content = chunk.choices?.[0]?.delta?.content || '';
+                    if (content) {
+                      fullContent += content;
+                      // Send each chunk IMMEDIATELY to client - REAL-TIME
+                      const chunkData = JSON.stringify({ type: 'chunk', content });
+                      controller.enqueue(encoder.encode(`data: ${chunkData}\n\n`));
+                    }
+                  }
+                  
+                  console.log(` [STREAM] Stream complete. Total length: ${fullContent.length}`);
+                  
+                  // After stream completes, save document and send final message
+                  const documentContent = fullContent.trim();
+                  
+                  // Save document to database
+                  try {
+                    const { data: docData } = await supabase
+                      .from('documents')
+                      .insert([{
+                        id: docId,
+                        user_id: finalUid,
+                        title: title || 'Legal Document',
+                        content: documentContent,
+                        created_at: new Date().toISOString()
+                      }])
+                      .select()
+                      .single();
+                    
+                    console.log(' [STREAM] Document saved to database');
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', docId, document: documentContent })}\n\n`));
+                  } catch (saveError) {
+                    console.error(' [STREAM] Error saving document:', saveError);
+                    // Still send the document even if save fails
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done', docId, document: documentContent, saveError: true })}\n\n`));
+                  }
+                  
+                  controller.close();
+                } catch (error: any) {
+                  console.error(' [STREAM] Stream processing error:', error);
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`));
+                  controller.close();
+                }
+              }
+            });
+
+            // RETURN IMMEDIATELY - don't wait for stream to complete
+            return new NextResponse(readableStream, {
+              headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+              },
+            });
 
           } catch (error: any) {
             const err = error as Error & { code?: string; status?: number };

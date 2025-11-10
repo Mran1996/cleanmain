@@ -142,7 +142,7 @@ export function createPromiseToast<T>(
   toast.promise(
     promise,
     {
-      loading: `${loadingMessage}\n\n⏳ This may take a few minutes...`,
+      loading: loadingMessage, // Removed delay message - document generates in real-time
       success: `${successMessage}\n\n✅ Your document is ready!`,
       error: `${errorMessage}\n\n❌ Please try again`,
     }

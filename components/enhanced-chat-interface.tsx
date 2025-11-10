@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Mic, MicOff, Paperclip } from "lucide-react"
+import { Send, Mic, MicOff, Paperclip, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSuggestedReplies } from "@/utils/chat-suggestions"
 import * as mammoth from "mammoth"
@@ -67,6 +67,7 @@ export function EnhancedChatInterface({
   const [micPermissionError, setMicPermissionError] = useState(false)
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [searchModeEnabled, setSearchModeEnabled] = useState(false)
 
   // Safety: Reset stuck states after timeout
   useEffect(() => {
@@ -148,64 +149,129 @@ export function EnhancedChatInterface({
       return MASTER_SUGGESTED_RESPONSES.default.slice(0, 4);
     }
     
-    // Get recent user messages (last 3) for more focused detection
-    const recentUserMessages = messages
-      .filter(msg => msg.sender === "user")
-      .slice(-3)
+    // Analyze ALL messages (both user and assistant) for better context understanding
+    const allMessagesText = messages
       .map(msg => msg.text.toLowerCase())
       .join(' ');
     
+    // Get recent user messages (last 5) for more focused detection
+    const recentUserMessages = messages
+      .filter(msg => msg.sender === "user")
+      .slice(-5)
+      .map(msg => msg.text.toLowerCase())
+      .join(' ');
+    
+    // Combine both for comprehensive analysis
+    const combinedText = (recentUserMessages + ' ' + allMessagesText).toLowerCase();
+    
+    // Helper function to check for multiple keywords (more accurate matching)
+    const hasKeywords = (text: string, keywords: string[]): boolean => {
+      return keywords.some(keyword => text.includes(keyword));
+    };
+    
+    // Helper function to count keyword matches (for priority scoring)
+    const countMatches = (text: string, keywords: string[]): number => {
+      return keywords.filter(keyword => text.includes(keyword)).length;
+    };
+    
+    // Appeals detection (highest priority - very specific)
+    const appealKeywords = ['appeal', 'conviction', 'verdict', 'lost trial', 'appellate', 'appealing', 'overturn', 'reversal', 'appellate court'];
+    if (hasKeywords(combinedText, appealKeywords)) {
+      return MASTER_SUGGESTED_RESPONSES.appeals.slice(0, 4);
+    }
+    
+    // Sentence modification detection (high priority - specific)
+    const sentenceKeywords = ['sentence reduction', 'reduce sentence', 'resentencing', 'sentence modification', 'time served', 'early release', 'parole', 'commutation', 'sentence reduction motion'];
+    if (hasKeywords(combinedText, sentenceKeywords)) {
+      return MASTER_SUGGESTED_RESPONSES.sentenceModification.slice(0, 4);
+    }
+    
+    // Civil rights / Prison abuse detection (high priority - specific)
+    const civilRightsKeywords = ['prison abuse', 'jail abuse', 'assault by guard', 'assault by officer', 'corrections officer', 'mistreatment', 'prison guard', 'jail guard', '1983', 'civil rights', 'prison conditions', 'excessive force', 'brutality'];
+    if (hasKeywords(combinedText, civilRightsKeywords)) {
+      return MASTER_SUGGESTED_RESPONSES.civilRights.slice(0, 4);
+    }
+    
+    // Motions detection (medium-high priority)
+    const motionKeywords = ['motion to dismiss', 'motion to suppress', 'motion for discovery', 'file a motion', 'motion hearing', 'suppress evidence', 'dismiss charges', 'motion practice'];
+    if (hasKeywords(combinedText, motionKeywords)) {
+      return MASTER_SUGGESTED_RESPONSES.motions.slice(0, 4);
+    }
+    
+    // Category-specific detection
+    const normalizedCategory = category?.toLowerCase() || '';
+    
     // Criminal category detection
-    if (category === 'criminal' || category === 'Criminal') {
-      // Check for specific criminal issue types in recent messages
-      if (recentUserMessages.includes('appeal') || recentUserMessages.includes('conviction') || recentUserMessages.includes('verdict') || recentUserMessages.includes('lost trial')) {
-        return MASTER_SUGGESTED_RESPONSES.appeals.slice(0, 4);
+    if (normalizedCategory === 'criminal') {
+      // Check for post-conviction specific terms
+      const postConvictionKeywords = ['post-conviction', 'post conviction', 'after conviction', 'already convicted', 'serving time', 'incarcerated', 'in prison', 'in jail'];
+      if (hasKeywords(combinedText, postConvictionKeywords)) {
+        // Further refine based on specific issue
+        if (hasKeywords(combinedText, ['appeal', 'overturn', 'reversal'])) {
+          return MASTER_SUGGESTED_RESPONSES.appeals.slice(0, 4);
+        }
+        if (hasKeywords(combinedText, ['sentence', 'resentencing', 'reduction'])) {
+          return MASTER_SUGGESTED_RESPONSES.sentenceModification.slice(0, 4);
+        }
+        return MASTER_SUGGESTED_RESPONSES.criminal.slice(0, 4);
       }
-      if (recentUserMessages.includes('sentence') || recentUserMessages.includes('resentencing') || recentUserMessages.includes('reduction') || recentUserMessages.includes('time served')) {
-        return MASTER_SUGGESTED_RESPONSES.sentenceModification.slice(0, 4);
-      }
-      if (recentUserMessages.includes('motion') || recentUserMessages.includes('dismiss') || recentUserMessages.includes('suppress') || recentUserMessages.includes('discovery') || recentUserMessages.includes('evidence')) {
+      
+      // Pre-trial / charges keywords
+      const preTrialKeywords = ['charges', 'arrested', 'indicted', 'prosecution', 'facing charges', 'criminal charges', 'arraignment', 'plea'];
+      if (hasKeywords(combinedText, preTrialKeywords)) {
         return MASTER_SUGGESTED_RESPONSES.motions.slice(0, 4);
       }
-      if (recentUserMessages.includes('prison') || recentUserMessages.includes('jail') || recentUserMessages.includes('assault') || recentUserMessages.includes('abuse') || recentUserMessages.includes('mistreatment') || recentUserMessages.includes('guard') || recentUserMessages.includes('officer')) {
-        return MASTER_SUGGESTED_RESPONSES.civilRights.slice(0, 4);
-      }
-      if (recentUserMessages.includes('charges') || recentUserMessages.includes('arrested') || recentUserMessages.includes('indicted') || recentUserMessages.includes('prosecution')) {
-        return MASTER_SUGGESTED_RESPONSES.motions.slice(0, 4);
-      }
+      
       // Default criminal suggestions
       return MASTER_SUGGESTED_RESPONSES.criminal.slice(0, 4);
     }
     
     // Civil category detection
-    if (category === 'civil' || category === 'Civil') {
-      if (recentUserMessages.includes('wage') || recentUserMessages.includes('employment') || recentUserMessages.includes('pay') || recentUserMessages.includes('salary') || recentUserMessages.includes('overtime')) {
+    if (normalizedCategory === 'civil') {
+      // Employment-related
+      const employmentKeywords = ['wage', 'employment', 'pay', 'salary', 'overtime', 'unpaid', 'employer', 'workplace', 'discrimination', 'harassment', 'wrongful termination', 'fired', 'laid off'];
+      if (hasKeywords(combinedText, employmentKeywords)) {
         return MASTER_SUGGESTED_RESPONSES.civil.slice(0, 4);
       }
-      if (recentUserMessages.includes('landlord') || recentUserMessages.includes('tenant') || recentUserMessages.includes('eviction') || recentUserMessages.includes('rent') || recentUserMessages.includes('lease')) {
+      
+      // Housing/landlord-tenant
+      const housingKeywords = ['landlord', 'tenant', 'eviction', 'rent', 'lease', 'housing', 'apartment', 'rental', 'security deposit', 'habitability'];
+      if (hasKeywords(combinedText, housingKeywords)) {
         return MASTER_SUGGESTED_RESPONSES.civil.slice(0, 4);
       }
-      if (recentUserMessages.includes('discrimination') || recentUserMessages.includes('harassment') || recentUserMessages.includes('wrongful termination')) {
-        return MASTER_SUGGESTED_RESPONSES.civil.slice(0, 4);
-      }
+      
       // Default civil suggestions
       return MASTER_SUGGESTED_RESPONSES.civil.slice(0, 4);
     }
     
-    // General detection based on keywords in recent messages
-    if (recentUserMessages.includes('appeal') || recentUserMessages.includes('conviction') || recentUserMessages.includes('trial') || recentUserMessages.includes('sentence') || recentUserMessages.includes('guilty') || recentUserMessages.includes('innocent')) {
+    // General detection (when category is not specified or is 'General')
+    // Check for criminal-related terms
+    const criminalGeneralKeywords = ['criminal', 'charges', 'arrested', 'indicted', 'prosecution', 'guilty', 'innocent', 'trial', 'conviction', 'defendant', 'prosecutor'];
+    const criminalMatchCount = countMatches(combinedText, criminalGeneralKeywords);
+    
+    // Check for civil-related terms
+    const civilGeneralKeywords = ['lawsuit', 'sue', 'suing', 'plaintiff', 'defendant', 'damages', 'compensation', 'breach of contract', 'negligence'];
+    const civilMatchCount = countMatches(combinedText, civilGeneralKeywords);
+    
+    // If strong criminal indicators
+    if (criminalMatchCount >= 2) {
+      // Further refine
+      if (hasKeywords(combinedText, ['appeal', 'conviction', 'verdict'])) {
+        return MASTER_SUGGESTED_RESPONSES.appeals.slice(0, 4);
+      }
+      if (hasKeywords(combinedText, ['sentence', 'resentencing'])) {
+        return MASTER_SUGGESTED_RESPONSES.sentenceModification.slice(0, 4);
+      }
       return MASTER_SUGGESTED_RESPONSES.criminal.slice(0, 4);
     }
-    if (recentUserMessages.includes('prison') || recentUserMessages.includes('jail') || recentUserMessages.includes('assault') || recentUserMessages.includes('abuse') || recentUserMessages.includes('mistreatment') || recentUserMessages.includes('guard') || recentUserMessages.includes('officer')) {
-      return MASTER_SUGGESTED_RESPONSES.civilRights.slice(0, 4);
-    }
-    if (recentUserMessages.includes('wage') || recentUserMessages.includes('landlord') || recentUserMessages.includes('tenant') || recentUserMessages.includes('employment') || recentUserMessages.includes('work') || recentUserMessages.includes('job')) {
+    
+    // If strong civil indicators
+    if (civilMatchCount >= 2) {
       return MASTER_SUGGESTED_RESPONSES.civil.slice(0, 4);
     }
-    if (recentUserMessages.includes('charges') || recentUserMessages.includes('arrested') || recentUserMessages.includes('indicted') || recentUserMessages.includes('prosecution') || recentUserMessages.includes('criminal')) {
-      return MASTER_SUGGESTED_RESPONSES.criminal.slice(0, 4);
-    }
-    if (recentUserMessages.includes('motion') || recentUserMessages.includes('dismiss') || recentUserMessages.includes('suppress') || recentUserMessages.includes('discovery') || recentUserMessages.includes('evidence') || recentUserMessages.includes('court')) {
+    
+    // Check for motion-related terms (can apply to both)
+    if (hasKeywords(combinedText, ['motion', 'file motion', 'dismiss', 'suppress', 'discovery'])) {
       return MASTER_SUGGESTED_RESPONSES.motions.slice(0, 4);
     }
     
@@ -377,8 +443,15 @@ export function EnhancedChatInterface({
     }
     window.lastMessageTime = now;
 
-    console.log("✅ Calling onSendMessage with:", message);
-    onSendMessage(message)
+    // If search mode is enabled, prepend instruction to use internet search
+    let finalMessage = message;
+    if (searchModeEnabled) {
+      finalMessage = `[Please search the internet for current information about] ${message}`;
+      setSearchModeEnabled(false); // Reset after use
+    }
+
+    console.log("✅ Calling onSendMessage with:", finalMessage);
+    onSendMessage(finalMessage)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -960,6 +1033,27 @@ export function EnhancedChatInterface({
               <Paperclip className="h-4 w-4" />
             </Button>
             
+            {/* Internet Search button */}
+            <Button
+              type="button"
+              size="icon"
+              onClick={() => {
+                setSearchModeEnabled(true);
+                if (inputRef.current) {
+                  inputRef.current.focus();
+                }
+              }}
+              className={`rounded-full shadow-md h-9 w-9 sm:h-10 sm:w-10 ${
+                searchModeEnabled 
+                  ? "bg-emerald-500 hover:bg-emerald-600" 
+                  : "bg-blue-500 hover:bg-blue-600"
+              } text-white`}
+              disabled={isWaitingForResponse || isUploading}
+              title={searchModeEnabled ? "Search mode enabled - your next message will use internet search" : "Enable internet search for your next message"}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
+            
             <textarea
               ref={inputRef}
               value={inputValue}
@@ -981,8 +1075,10 @@ export function EnhancedChatInterface({
               onClick={() => {
                 console.log('📝 Textarea clicked');
               }}
-              placeholder={currentQuestion ? "Type your answer..." : "Type a message..."}
-              className="flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none overflow-hidden placeholder:text-gray-500"
+              placeholder={searchModeEnabled ? "Type your search question (internet search enabled)..." : (currentQuestion ? "Type your answer..." : "Type a message...")}
+              className={`flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white focus:outline-none focus:ring-2 resize-none overflow-hidden placeholder:text-gray-500 ${
+                searchModeEnabled ? "focus:ring-blue-500 border-blue-300" : "focus:ring-emerald-500"
+              }`}
               disabled={isWaitingForResponse || isUploading}
               readOnly={false}
               rows={1}

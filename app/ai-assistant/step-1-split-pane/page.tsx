@@ -99,7 +99,7 @@ function AIAssistantStep1SplitPaneContent() {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive attorney-client interview** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis interview will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this interview, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive consultation** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
         setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -218,10 +218,15 @@ ${documentInfo}
         console.log('🔍 [STEP1 DEBUG] Sending documents array with', latestDocs.length, 'documents');
       }
       
+      // Include generated document in chat context so chat is aware of it
+      const generatedDocumentContent = documentContent?.trim() || "";
+      
       console.log('🔍 [SPLIT-PANE DEBUG] Sending request to API:', {
         messagesCount: messagesForAPI.length,
         hasDocumentData: !!documentDataToSend,
         documentDataLength: documentDataToSend?.length || 0,
+        hasGeneratedDocument: !!generatedDocumentContent,
+        generatedDocumentLength: generatedDocumentContent?.length || 0,
         systemPrompt: systemPrompt.substring(0, 200) + '...',
         lastMessage: messagesForAPI[messagesForAPI.length - 1]
       });
@@ -231,7 +236,8 @@ ${documentInfo}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: messagesForAPI,
-          documentData: documentDataToSend
+          documentData: documentDataToSend,
+          generatedDocument: generatedDocumentContent
         }),
       });
 
@@ -380,9 +386,16 @@ ${documentInfo}
     
     console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
     
-    // Show immediate feedback
-    toast.info("Starting document generation...");
+    // Show immediate feedback - NO DELAY MESSAGES
     setIsGeneratingDocument(true);
+    
+    // CRITICAL: Enter split-pane mode IMMEDIATELY so user sees the document page
+    if (!isSplitPaneMode) {
+      enterSplitPaneMode("", ""); // Enter split-pane mode with empty content
+    }
+    
+    // Start with EMPTY document - it will fill immediately as chunks arrive
+    setDocumentContent("");
     
     try {
       // Ensure we have a valid UUID for userId
@@ -420,19 +433,12 @@ ${documentInfo}
 
       console.log("📤 Sending request to API with data:", genState);
 
-      // Add timeout for large documents
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
-
+      // STREAMING: Handle real-time document generation like ChatGPT
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(genState),
-        signal: controller.signal
       });
-
-      clearTimeout(timeoutId);
-      console.log("📥 API response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -440,60 +446,117 @@ ${documentInfo}
         throw new Error(`API Error: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
-      console.log("📥 API response data:", data);
-      
-      if (!response.ok || data?.success === false) {
-        const msg = data?.error || `HTTP ${response.status}`;
-        console.error("❌ API error:", msg);
-        
-        // Provide more specific error messages
-        if (msg.includes("No real case information")) {
-          throw new Error("Please complete your conversation with the AI assistant first. The system needs to gather your case details before generating a document.");
-        } else if (msg.includes("Rate limit")) {
-          throw new Error("Please wait a moment and try again. The system is processing many requests.");
-        } else {
-          throw new Error(`Document generation failed: ${msg}`);
-        }
-      }
+      // Check if response is streaming (text/event-stream)
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("text/event-stream")) {
+        // STREAMING MODE: Display chunks as they arrive in real-time
+        // Streaming response detected - starting real-time display (silent)
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = "";
+        let finalDocId = "";
+        let buffer = ""; // Buffer for incomplete lines
 
-      const { docId } = data.data;
-      console.log("✅ Document generated successfully, entering split-pane mode with docId:", docId);
-      
-      // Load the actual document content from the API
-      try {
-        const docResponse = await fetch(`/api/get-document/${docId}`);
-        if (docResponse.ok) {
-          const docData = await docResponse.json();
-          const documentContent = docData.content || "Document content not available";
-          console.log("📄 Loaded document content:", documentContent.substring(0, 200) + "...");
-          
-          // Check if we're in full page mode (not split pane mode)
-          // Always enter split-pane mode and show preview on the right
-          toast.success("Document generated successfully! Preview is now visible on the right.");
-          enterSplitPaneMode(docId, documentContent);
-        } else {
-          // Fallback to the content from the generation response
-          const documentContent = data.data.content || "Document content not available";
-          
-          // Always enter split-pane mode and show preview on the right
-          toast.success("Document generated successfully! Preview is now visible on the right.");
-          enterSplitPaneMode(docId, documentContent);
+        if (!reader) {
+          throw new Error("Stream reader not available");
         }
-      } catch (error) {
-        console.error("Error loading document content:", error);
-        // Fallback to the content from the generation response
-        const documentContent = data.data.content || "Document content not available";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            // Stream complete (silent)
+            break;
+          }
+
+          // Decode and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          
+          // Keep last incomplete line in buffer
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim() === "") continue; // Skip empty lines
+            
+            if (line.startsWith("data: ")) {
+              try {
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr) continue;
+                
+                const data = JSON.parse(jsonStr);
+                
+                if (data.type === "chunk") {
+                  // Append chunk IMMEDIATELY - REAL-TIME DISPLAY
+                  accumulatedContent += data.content;
+                  setDocumentContent(accumulatedContent);
+                  // Chunk received and displayed (silent)
+                } else if (data.type === "done") {
+                  // Stream complete (silent)
+                  finalDocId = data.docId || "";
+                  if (data.document) {
+                    accumulatedContent = data.document;
+                    setDocumentContent(accumulatedContent);
+                  }
+                  setDocumentId(finalDocId);
+                  setIsGeneratingDocument(false);
+                  
+                  if (!isSplitPaneMode) {
+                    enterSplitPaneMode(finalDocId, accumulatedContent);
+                  }
+                  
+                  // NO NOTIFICATIONS - document is already visible
+                  return; // Exit function
+                } else if (data.type === "error") {
+                  throw new Error(data.error || "Stream error occurred");
+                }
+              } catch (parseError) {
+                // Skip invalid JSON - log for debugging
+                console.warn("⚠️ Failed to parse stream line:", line, parseError);
+                continue;
+              }
+            }
+          }
+        }
         
-        // Always enter split-pane mode and show preview on the right
-        toast.success("Document generated successfully! Preview is now visible on the right.");
-        enterSplitPaneMode(docId, documentContent);
+        // If we exit loop without "done" signal, use accumulated content
+        if (accumulatedContent) {
+          setDocumentContent(accumulatedContent);
+          setIsGeneratingDocument(false);
+        }
+      } else {
+        // FALLBACK: Non-streaming response (legacy support)
+        const data = await response.json();
+        
+        if (data?.success === false) {
+          const msg = data?.error || `HTTP ${response.status}`;
+          throw new Error(msg);
+        }
+
+        const { docId } = data.data || {};
+        const fullDocument = data.data?.content || data.data?.document || "";
+        
+        if (!fullDocument || fullDocument.trim().length === 0) {
+          throw new Error("Document was generated but content is empty");
+        }
+        
+        // Display document immediately
+        setDocumentContent(fullDocument);
+        setDocumentId(docId);
+        setIsGeneratingDocument(false);
+        
+        if (!isSplitPaneMode) {
+          enterSplitPaneMode(docId, fullDocument);
+        }
+        
+        // NO NOTIFICATIONS - document is already visible
       }
       
     } catch (error) {
       console.error("Error generating document:", error);
-      toast.error(`Failed to generate document: ${error instanceof Error ? error.message : "An unexpected error occurred"}`);
-    } finally {
+      
+      // Show error in document viewer - NO TOAST NOTIFICATION
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setDocumentContent(`❌ Error: ${errorMessage}\n\nPlease check the browser console (F12) for more details.\n\nIf this persists, please try refreshing the page and generating again.`);
       setIsGeneratingDocument(false);
     }
   };
@@ -732,7 +795,7 @@ ${documentInfo}
           userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
           suggestedResponses={suggestedResponses.map((text) => ({ text }))}
           onDocumentUpload={() => {}}
-          legalCategory="criminal"
+          legalCategory={getLegalCategory()}
           onGenerateDocument={handleGenerateDocument}
         />
 

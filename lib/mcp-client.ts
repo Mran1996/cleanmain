@@ -26,7 +26,7 @@ export async function getMcpClient(): Promise<McpClient> {
     const n8nApiUrl = process.env.N8N_API_URL || "https://askailegal3.app.n8n.cloud/";
     const n8nApiKey = process.env.N8N_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0YTAxYzEyMC1mN2ZhLTQwMTktOTExZS0zNzVhZGNiMzNmM2QiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYyMTMzOTg3LCJleHAiOjE3NjQ2NjI0MDB9.jwO9MPbhUwyZTX0Ff9q-ygV7L-Bpjcl4bgaKb6Zy8wM";
 
-    console.log("🔌 Initializing MCP client connection to n8n...");
+    // MCP client initialization (silent)
 
     // Spawn n8n-mcp process
     const command = "npx";
@@ -53,7 +53,7 @@ export async function getMcpClient(): Promise<McpClient> {
     });
 
     clientProcess.on("exit", (code) => {
-      console.log(`⚠️ MCP client process exited with code ${code}`);
+      // MCP client process exited (silent)
       cachedClient = null;
       clientProcess = null;
     });
@@ -79,20 +79,18 @@ export async function getMcpClient(): Promise<McpClient> {
     // Connect to the server
     await client.connect(transport);
 
-    console.log("✅ MCP client connected successfully");
+    // MCP client connected (silent)
 
     // List available tools
     const toolsList = await client.listTools();
     const toolNames = toolsList.tools.map((tool) => tool.name);
-
-    console.log(`📋 Available MCP tools: ${toolNames.join(", ")}`);
 
     // Create the client interface
     const mcpClient: McpClient = {
       tools: toolNames,
       callTool: async (toolName: string, args: any) => {
         try {
-          console.log(`🔧 Calling MCP tool: ${toolName}`, args);
+          // Calling MCP tool (silent)
           
           // Find the tool definition
           const tool = toolsList.tools.find((t) => t.name === toolName);
@@ -106,7 +104,7 @@ export async function getMcpClient(): Promise<McpClient> {
             arguments: args,
           });
 
-          console.log(`✅ MCP tool ${toolName} completed successfully`);
+          // MCP tool completed (silent)
           return result;
         } catch (error: any) {
           console.error(`❌ Error calling MCP tool ${toolName}:`, error);
@@ -121,7 +119,7 @@ export async function getMcpClient(): Promise<McpClient> {
             clientProcess = null;
           }
           cachedClient = null;
-          console.log("🔌 MCP client disconnected");
+          // MCP client disconnected (silent)
         } catch (error) {
           console.error("❌ Error disconnecting MCP client:", error);
         }
