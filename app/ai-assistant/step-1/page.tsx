@@ -7,7 +7,7 @@ import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
 import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "./prompts/attorney-interview";
-import { Loader2, FileText, Trash2, Info, Save, Download, Mail, MessageSquare } from "lucide-react";
+import { Loader2, FileText, Trash2, Info, Save, Download, Mail, MessageSquare, FileX } from "lucide-react";
 import { DocumentData } from "@/components/context/legal-assistant-context";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ function AIAssistantStep1Content() {
   const [allDocuments, setAllDocuments] = useState<DocumentData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showClearDocumentModal, setShowClearDocumentModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<number | null>(null);
   const [folderName, setFolderName] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
@@ -770,6 +771,40 @@ function AIAssistantStep1Content() {
     setShowClearModal(false);
   };
 
+  const handleClearDocument = () => {
+    setShowClearDocumentModal(true);
+  };
+
+  const confirmClearDocument = () => {
+    setDocumentPreview("");
+    setCaseAnalysis(null);
+    setGeneratedDocId(null);
+    setIsStreamingDocument(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("finalDocument");
+      localStorage.removeItem("currentDocumentId");
+      localStorage.removeItem("documentGeneratedAt");
+    }
+    setShowClearDocumentModal(false);
+    toast.success("Document cleared successfully");
+  };
+
+  const cancelClearDocument = () => {
+    setShowClearDocumentModal(false);
+  };
+
+  // Check if there's a document to clear (either in state or localStorage)
+  const hasDocumentToClear = () => {
+    if (documentPreview && documentPreview.trim()) return true;
+    if (generatedDocId) return true;
+    if (typeof window !== 'undefined') {
+      const finalDoc = localStorage.getItem('finalDocument');
+      const docId = localStorage.getItem('currentDocumentId');
+      if (finalDoc || docId) return true;
+    }
+    return false;
+  };
+
   const handleEditFolder = (folderId: number) => {
     const folder = priorChats.find(f => f.id === folderId);
     if (folder) {
@@ -1363,8 +1398,8 @@ function AIAssistantStep1Content() {
     <div className="min-h-full flex flex-col">
       {/* Chat Header with Clear Conversation button */}
       {chatHistory.length > 0 && (
-        <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 flex-shrink-0">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <MessageSquare className="h-4 w-4 text-white" />
             </div>
@@ -1373,7 +1408,7 @@ function AIAssistantStep1Content() {
               <p className="text-xs text-gray-500">AI Legal Assistant</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               onClick={handleClearConversation}
               variant="outline"
@@ -1383,6 +1418,17 @@ function AIAssistantStep1Content() {
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Conversation
             </Button>
+            {hasDocumentToClear() && (
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-4 w-4 mr-2" />
+                Clear Document
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -1629,6 +1675,32 @@ function AIAssistantStep1Content() {
             </div>
           </div>
         )}
+        
+        {/* Clear Document Confirmation Modal */}
+        {showClearDocumentModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Document?</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to clear the document? This will remove the generated document and allow you to start fresh with a new document. This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  onClick={cancelClearDocument}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                  onClick={confirmClearDocument}
+                >
+                  Yes, Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </StepLayout>
     );
   }
@@ -1766,6 +1838,17 @@ function AIAssistantStep1Content() {
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Conversation
             </Button>
+            {hasDocumentToClear() && (
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-4 w-4 mr-2" />
+                Clear Document
+              </Button>
+            )}
             <Button
               onClick={() => setShowSplitPane(!showSplitPane)}
               variant="outline"
@@ -1834,6 +1917,32 @@ function AIAssistantStep1Content() {
               <button
                 className="px-4 py-2 text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 transition"
                 onClick={confirmClearConversation}
+              >
+                Yes, Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Clear Document Confirmation Modal */}
+      {showClearDocumentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Document?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to clear the document? This will remove the generated document and allow you to start fresh with a new document. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelClearDocument}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                onClick={confirmClearDocument}
               >
                 Yes, Clear
               </button>

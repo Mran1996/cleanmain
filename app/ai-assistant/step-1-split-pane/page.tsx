@@ -8,7 +8,7 @@ import { ProgressSteps } from "@/components/ProgressSteps";
 import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "../step-1/prompts/attorney-interview";
-import { Loader2, FileText, Trash2, Save, Download, ArrowLeft } from "lucide-react";
+import { Loader2, FileText, Trash2, Save, Download, ArrowLeft, FileX } from "lucide-react";
 import { DocumentData as UploadedDocumentData } from "@/lib/documentFormatter";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ function AIAssistantStep1SplitPaneContent() {
   const [allDocuments, setAllDocuments] = useState<UploadedDocumentData[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showClearDocumentModal, setShowClearDocumentModal] = useState(false);
   const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
  
   const { 
@@ -324,6 +325,38 @@ ${documentInfo}
 
   const cancelClearConversation = () => {
     setShowClearModal(false);
+  };
+
+  const handleClearDocument = () => {
+    setShowClearDocumentModal(true);
+  };
+
+  const confirmClearDocument = () => {
+    setDocumentContent("");
+    setDocumentId(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("finalDocument");
+      localStorage.removeItem("currentDocumentId");
+      localStorage.removeItem("documentGeneratedAt");
+    }
+    setShowClearDocumentModal(false);
+    toast.success("Document cleared successfully");
+  };
+
+  const cancelClearDocument = () => {
+    setShowClearDocumentModal(false);
+  };
+
+  // Check if there's a document to clear (either in state or localStorage)
+  const hasDocumentToClear = () => {
+    if (documentContent && documentContent.trim()) return true;
+    if (documentId) return true;
+    if (typeof window !== 'undefined') {
+      const finalDoc = localStorage.getItem('finalDocument');
+      const docId = localStorage.getItem('currentDocumentId');
+      if (finalDoc || docId) return true;
+    }
+    return false;
   };
 
   // Auto-save current chat conversation
@@ -773,7 +806,7 @@ ${documentInfo}
         
         {/* Chat Controls */}
         {chatHistory.length > 0 && (
-          <div className="mb-4 flex justify-center">
+          <div className="mb-4 flex justify-center gap-2">
             <Button
               onClick={handleClearConversation}
               variant="outline"
@@ -783,6 +816,17 @@ ${documentInfo}
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Conversation
             </Button>
+            {hasDocumentToClear() && (
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-4 w-4 mr-2" />
+                Clear Document
+              </Button>
+            )}
           </div>
         )}
         
@@ -820,6 +864,32 @@ ${documentInfo}
               <button
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
                 onClick={confirmClearConversation}
+              >
+                Yes, Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Clear Document Confirmation Modal */}
+      {showClearDocumentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Document?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to clear the document? This will remove the generated document and allow you to start fresh with a new document. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={cancelClearDocument}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
+                onClick={confirmClearDocument}
               >
                 Yes, Clear
               </button>
