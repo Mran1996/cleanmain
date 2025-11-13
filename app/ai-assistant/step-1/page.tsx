@@ -16,6 +16,7 @@ import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import { SplitPaneLayout } from "@/components/split-pane-layout";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/utils/supabase/client";
@@ -50,7 +51,35 @@ function AIAssistantStep1Content() {
   ];
   const [showSplitPane, setShowSplitPane] = useState(false);
   const [documentPreview, setDocumentPreview] = useState("");
+  const [documentPreviewHTML, setDocumentPreviewHTML] = useState("");
   const [isStreamingDocument, setIsStreamingDocument] = useState(false);
+  
+  // Helper function to convert HTML to plain text
+  const htmlToPlainText = (html: string): string => {
+    if (!html) return "";
+    // Create a temporary div element
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    // Get text content and preserve line breaks
+    let text = tempDiv.textContent || tempDiv.innerText || "";
+    // Replace multiple spaces with single space, but preserve line breaks
+    text = text.replace(/\n\s*\n/g, '\n\n'); // Preserve paragraph breaks
+    return text.trim();
+  };
+  
+  // Helper function to convert plain text to HTML
+  const plainTextToHTML = (text: string): string => {
+    if (!text) return "";
+    // Escape HTML and preserve line breaks
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+      .replace(/^/, '<p>')
+      .replace(/$/, '</p>');
+  };
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [generatedDocId, setGeneratedDocId] = useState<string | null>(null);
@@ -676,6 +705,7 @@ function AIAssistantStep1Content() {
             const correctionData = await correctionResponse.json();
             if (correctionData.correctedDocument) {
               setDocumentPreview(correctionData.correctedDocument);
+              setDocumentPreviewHTML(plainTextToHTML(correctionData.correctedDocument));
               // Update document in database if we have an ID
               if (generatedDocId || (typeof window !== 'undefined' && localStorage.getItem('currentDocumentId'))) {
                 const docId = generatedDocId || localStorage.getItem('currentDocumentId');
@@ -777,6 +807,7 @@ function AIAssistantStep1Content() {
 
   const confirmClearDocument = () => {
     setDocumentPreview("");
+    setDocumentPreviewHTML("");
     setCaseAnalysis(null);
     setGeneratedDocId(null);
     setIsStreamingDocument(false);
@@ -1032,6 +1063,7 @@ function AIAssistantStep1Content() {
     // Load project data into the interface
     if (project.content) {
       setDocumentPreview(project.content);
+      setDocumentPreviewHTML(plainTextToHTML(project.content));
     }
     if (project.chat_history) {
       try {
@@ -1098,6 +1130,7 @@ function AIAssistantStep1Content() {
     
     // NO NOTIFICATIONS - start generation silently
     setDocumentPreview(""); // Start with empty document - it will populate as it generates
+    setDocumentPreviewHTML("");
     setIsProcessing(true);
     setShowSplitPane(true); // Show split-pane immediately so user sees document page
     
@@ -1299,6 +1332,7 @@ function AIAssistantStep1Content() {
         // If we exit loop without "done" signal, use accumulated content
         if (accumulatedContent) {
           setDocumentPreview(accumulatedContent);
+          setDocumentPreviewHTML(plainTextToHTML(accumulatedContent));
         setIsProcessing(false);
           return { docId: finalDocId, document: accumulatedContent };
         }
@@ -1319,6 +1353,7 @@ function AIAssistantStep1Content() {
         
         // Display document immediately
         setDocumentPreview(document);
+        setDocumentPreviewHTML(plainTextToHTML(document));
         setShowSplitPane(true);
         setIsProcessing(false);
         
@@ -1509,19 +1544,22 @@ function AIAssistantStep1Content() {
       {/* Content area */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-5xl mx-auto">
-          {/* Document Textarea */}
-          <div className="bg-gray-50 border border-gray-300 rounded-lg shadow-sm">
-            <Textarea
-              className="w-full min-h-[300px] font-mono text-base border-0 focus:ring-0 p-6 bg-transparent"
-              value={documentPreview || ""}
-              onChange={e => setDocumentPreview(e.target.value)}
-              disabled={isProcessing}
-              placeholder={
-                documentPreview ? "Your generated legal document appears above..." :
-                "Your generated legal document will appear here as it's being generated..."
-              }
-            />
-          </div>
+          {/* Rich Text Editor */}
+          <RichTextEditor
+            content={documentPreviewHTML || plainTextToHTML(documentPreview || "")}
+            onChange={(html) => {
+              setDocumentPreviewHTML(html);
+              // Also update plain text version for compatibility
+              const plainText = htmlToPlainText(html);
+              setDocumentPreview(plainText);
+            }}
+            disabled={isProcessing}
+            placeholder={
+              documentPreview ? "Your generated legal document appears above..." :
+              "Your generated legal document will appear here as it's being generated..."
+            }
+            className="font-mono text-base"
+          />
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
               <FileText className="mr-2 h-4 w-4" />
