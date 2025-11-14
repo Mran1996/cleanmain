@@ -24,7 +24,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           )}
         </div>
         
-        <div className={`grid grid-cols-1 ${isHomePage ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-4'} max-w-6xl mx-auto px-4 ${!isHomePage ? 'items-stretch' : ''}`}>
+        <div className={`grid grid-cols-1 ${isHomePage ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-8 ${isHomePage ? 'md:gap-8' : 'md:gap-0'} max-w-6xl mx-auto px-4 ${!isHomePage ? 'items-stretch' : ''}`}>
           {/* Full Service Card - Only show on pricing page */}
           {!isHomePage && (
             <Card className="w-full max-w-md mx-auto border-emerald-500 border-2 shadow-lg relative flex flex-col">
