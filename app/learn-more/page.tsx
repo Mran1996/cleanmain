@@ -170,7 +170,7 @@ export default function LearnMorePage() {
       {/* What's Included Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-5xl mx-auto px-4 md:px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-6">
             Everything you need to win
           </h2>
           
