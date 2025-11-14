@@ -49,9 +49,10 @@ export default function AccountPage() {
           setLoadingBilling(true)
           console.log('🔄 Fetching billing data for user:', user.email)
           
-          // Set a timeout for billing data loading (8 seconds)
+          // Set a timeout for billing data loading (20 seconds to account for retries)
+          // With 3 retries and exponential backoff, this gives enough time
           const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Billing data loading timeout')), 8000)
+            setTimeout(() => reject(new Error('Billing data loading timeout')), 20000)
           })
           
           // Race between billing data fetch and timeout
@@ -73,7 +74,13 @@ export default function AccountPage() {
           
           setBillingData(data)
         } catch (err) {
-          console.error('❌ Error fetching billing data:', err)
+          // Only log non-timeout errors to avoid console spam
+          // Timeout errors are expected and handled gracefully
+          if (err instanceof Error && err.message === 'Billing data loading timeout') {
+            console.warn('⏱️ Billing data fetch timed out, using empty data')
+          } else {
+            console.error('❌ Error fetching billing data:', err)
+          }
           
           if (!mounted) return
           
