@@ -133,7 +133,7 @@ export default function FeaturesPage() {
               Join thousands of Americans who've successfully defended their rights, filed winning motions, and navigated the legal system confidently with AI-powered legal document preparation.
             </p>
             <Link href="/pricing">
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold">Generate My Legal Document Now</Button>
+              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold">Generate Document</Button>
             </Link>
           </div>
         </div>
