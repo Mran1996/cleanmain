@@ -812,7 +812,7 @@ function Step2Content() {
     return (
     <StepLayout 
       headerTitle="Your Document is Ready"
-      headerSubtitle="Review, edit, and download your legal document"
+      headerSubtitle="Chat, review, edit, and download your legal document"
     >
       <div className="max-w-2xl mx-auto mt-8">
         <div className="mb-4"><ProgressSteps current="document" /></div>

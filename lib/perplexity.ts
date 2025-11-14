@@ -21,25 +21,26 @@ Smith v. Jones, 789 P.3d 012 (${state} 2023)
 
     console.log(`🔍 [PERPLEXITY] Searching for case law: ${query}`);
 
-    const response = await fetch('https://api.perplexity.ai/search', {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${perplexityKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: query,
-        model: 'llama-3-70b-instruct',
-        max_tokens: 1000
+        model: 'sonar-pro', // Use sonar-pro for real-time internet search
+        messages: [{ role: 'user', content: query }],
+        temperature: 0.0
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
-    const caseLaw = data.output || data.text || data.response || '';
+    const caseLaw = data?.choices?.[0]?.message?.content || data.output || data.text || data.response || '';
 
     console.log(`📚 [PERPLEXITY] Retrieved case law: ${caseLaw.substring(0, 200)}...`);
 

@@ -1480,6 +1480,7 @@ function AIAssistantStep1Content() {
           onDocumentUpload={() => {}}
           legalCategory={getLegalCategory()}
           onGenerateDocument={handleGenerateDocument}
+          isGeneratingDocument={isProcessing}
         />
 
       </div>
@@ -1676,7 +1677,7 @@ function AIAssistantStep1Content() {
   if (showSplitPane && chatHistory.length > 0) {
     return (
       <StepLayout
-        headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+        headerTitle="Let's get you the legal help that you deserve"
         headerSubtitle=""
       >
         <div className="min-h-[calc(100vh-200px)] mt-8">
@@ -1746,7 +1747,7 @@ function AIAssistantStep1Content() {
   // Original layout for single pane with sidebar
   return (
     <StepLayout
-      headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+      headerTitle="Let's get you the legal help that you deserve"
       headerSubtitle=""
     >
       <div className="max-w-7xl mx-auto py-6 px-4 md:px-8">
@@ -1931,6 +1932,7 @@ function AIAssistantStep1Content() {
           onDocumentUpload={() => {}}
           legalCategory={getLegalCategory()}
           onGenerateDocument={handleGenerateDocument}
+          isGeneratingDocument={isProcessing}
         />
 
           </div>

@@ -348,6 +348,33 @@ ALWAYS REMEMBER:
 - After discussing corrections, you can suggest regenerating the document with the updates`;
     }
 
+    // Retrieve user context from Pinecone for RAG
+    let userContextSection = "";
+    try {
+      const { retrieveContextForRAG } = await import('@/lib/rag-system');
+      const { createClient } = await import('@/utils/supabase/server');
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+        if (lastUserMessage) {
+          const ragContext = await retrieveContextForRAG(user.id, lastUserMessage, {
+            limit: 5,
+            minScore: 0.7,
+            includeConversationHistory: true,
+          });
+          
+          if (ragContext.hasRelevantContext && ragContext.contextText) {
+            userContextSection = `\n\n🧠 USER CONTEXT (What I remember about this user):\n${ragContext.contextText}\n\nUse this context to provide personalized, relevant responses. Reference past conversations and preferences when appropriate.\n`;
+          }
+        }
+      }
+    } catch (ragError) {
+      console.error('Error retrieving RAG context:', ragError);
+      // Continue without RAG context if there's an error
+    }
+
     const systemPrompt = [
       "You are Khristian, an expert legal assistant for Washington State and US matters.",
       "",
@@ -355,6 +382,7 @@ ALWAYS REMEMBER:
       generatedDocument?.trim() 
         ? "✅ A legal document has been GENERATED and is currently visible to the user. You generated this document and are fully aware of its contents. You can discuss it, reference it, and help make corrections at any time."
         : "⏳ No document has been generated yet. Continue gathering information through the consultation process.",
+      userContextSection,
       "",
       "🚨 CRITICAL RULE: Ask ONLY ONE question at a time - NEVER ask multiple questions in a single response.",
       "NEVER use bullet points, numbered lists, or grouped questions.",
@@ -448,6 +476,33 @@ ALWAYS REMEMBER:
       const followup = useKimi 
         ? await callKimi(followupMessages)
         : await callOpenAI(followupMessages);
+      
+      // Store conversation in Pinecone for RAG (async, don't block response)
+      try {
+        const { createClient } = await import('@/utils/supabase/server');
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+          const assistantResponse = followup.choices?.[0]?.message?.content || '';
+          if (lastUserMsg && assistantResponse) {
+            // Store asynchronously (don't await to avoid blocking)
+            fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/rag/store-conversation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userMessage: lastUserMsg,
+                assistantResponse: assistantResponse,
+                conversationText: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
+              })
+            }).catch(err => console.error('Error storing conversation:', err));
+          }
+        }
+      } catch (storeError) {
+        console.error('Error storing conversation for RAG:', storeError);
+        // Continue even if storage fails
+      }
+      
       return NextResponse.json(followup);
     }
 
@@ -455,6 +510,32 @@ ALWAYS REMEMBER:
       const result = await saveStep2Payload(args as Step2Payload);
       return NextResponse.json({ tool: "handoff_step2", result });
     }
+  }
+
+  // Store conversation in Pinecone for RAG (after successful response, async)
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+      const assistantResponse = completion.choices?.[0]?.message?.content || '';
+      if (lastUserMsg && assistantResponse) {
+        // Store asynchronously (don't await to avoid blocking response)
+        fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/rag/store-conversation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userMessage: lastUserMsg,
+            assistantResponse: assistantResponse,
+            conversationText: messages.map(m => `${m.role}: ${m.content}`).join('\n'),
+          })
+        }).catch(err => console.error('Error storing conversation:', err));
+      }
+    }
+  } catch (storeError) {
+    console.error('Error storing conversation for RAG:', storeError);
+    // Continue even if storage fails
   }
 
   return NextResponse.json(completion);

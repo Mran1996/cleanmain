@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Send, Mic, MicOff, Paperclip, Globe } from "lucide-react"
+import { Send, Mic, MicOff, Paperclip, Globe, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getSuggestedReplies } from "@/utils/chat-suggestions"
 import * as mammoth from "mammoth"
@@ -34,6 +34,7 @@ interface EnhancedChatInterfaceProps {
   onDocumentUpload?: (documentText: string, filename: string) => void
   legalCategory?: string
   onGenerateDocument?: () => void
+  isGeneratingDocument?: boolean
 }
 
 export function EnhancedChatInterface({
@@ -46,6 +47,7 @@ export function EnhancedChatInterface({
   onDocumentUpload,
   legalCategory,
   onGenerateDocument,
+  isGeneratingDocument = false,
 }: EnhancedChatInterfaceProps) {
   const formatContent = (content: string) => {
     // Simple formatting for bold, italic, and code
@@ -1217,20 +1219,29 @@ export function EnhancedChatInterface({
               onMouseUp={(e) => {
                 console.log('🖱️ Button mouse up event');
               }}
-              disabled={false}
+              disabled={isGeneratingDocument}
               style={{
-                pointerEvents: 'auto',
-                cursor: 'pointer',
+                pointerEvents: isGeneratingDocument ? 'none' : 'auto',
+                cursor: isGeneratingDocument ? 'not-allowed' : 'pointer',
                 zIndex: 1001,
                 position: 'relative'
               }}
               className="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Generate Document and Case Analysis"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Generate Document and Case Analysis
+              {isGeneratingDocument ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Generating Document...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Generate Document and Case Analysis
+                </>
+              )}
             </button>
           </div>
 
