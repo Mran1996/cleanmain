@@ -176,15 +176,18 @@ export default function AccountPage() {
                   <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
                 </div>
                 
-                {/* Usage Stats Skeleton */}
-                <div className="mt-6 border rounded-lg p-4">
-                  <div className="h-5 bg-gray-200 rounded w-1/3 mb-3 animate-pulse"></div>
-                  <div className="space-y-3">
-                    <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-4/5 animate-pulse"></div>
+                {/*
+                  Usage Stats Skeleton
+                  (Commented out per request — not needed)
+                  <div className="mt-6 border rounded-lg p-4">
+                    <div className="h-5 bg-gray-200 rounded w-1/3 mb-3 animate-pulse"></div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-4/5 animate-pulse"></div>
+                    </div>
                   </div>
-                </div>
+                */}
               </div>
             </div>
           </div>
@@ -303,4 +306,4 @@ export default function AccountPage() {
       </div>
     </div>
   )
-} 
+}

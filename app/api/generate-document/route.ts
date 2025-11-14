@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/server';
 import { getServerUser } from '@/utils/server-auth';
-import { consumeCredit } from '@/lib/usage';
 import { cookies } from 'next/headers';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
@@ -100,53 +99,8 @@ export async function POST(req: NextRequest) {
     }
     finalUid = user.id;
 
-    // Check subscription status and credit availability
-    console.log(' Checking credit availability for user:', finalUid);
+    // Initialize database client (usage restrictions disabled)
     const supabase = await createAdminClient();
-
-    const { data: subRows } = await supabase
-      .from('subscriptions')
-      .select('status')
-      .eq('user_id', finalUid)
-      .order('updated_at', { ascending: false })
-      .limit(1);
-
-    const subActive = Array.isArray(subRows) && subRows[0] && ['active','trialing'].includes(subRows[0].status);
-
-    const { data: usage } = await supabase
-      .from('document_usage')
-      .select('monthly_remaining, one_time_remaining')
-      .eq('user_id', finalUid)
-      .single();
-
-    const monthlyRemaining = usage?.monthly_remaining || 0;
-    const oneTimeRemaining = usage?.one_time_remaining || 0;
-    const totalAvailable = monthlyRemaining + oneTimeRemaining;
-
-    console.log(' Credit status:', {
-      subscriptionActive: subActive,
-      monthlyRemaining,
-      oneTimeRemaining,
-      totalAvailable
-    });
-
-    if (totalAvailable === 0) {
-      // Allow generation in non-production environments for testing
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(' No credits available – allowing generation in non-production for testing');
-      } else {
-        console.error(' No credits available - blocking generation');
-        return NextResponse.json({
-          success: false,
-          error: 'Insufficient credits. You have 0 monthly credits and 0 one-time credits. Please purchase a document pack or subscribe to continue.',
-        }, { status: 402 });
-      }
-    }
-
-    const creditSource = (subActive && monthlyRemaining > 0) ? 'subscription' : 'one_time';
-    const creditsToUse = creditSource === 'subscription' ? monthlyRemaining : oneTimeRemaining;
-
-    console.log(` Credits available: Will use ${creditSource} credits (${creditsToUse} available)`);
 
     // Declare finalUid at function scope
     // ... (rest of the original logic remains unchanged)
@@ -733,7 +687,7 @@ Generate a complete, professional legal document using ONLY the information prov
       metadata: {
         ...metadata,
         generated_by_api: true,
-        credit_source: 'pending', // Will be updated after credit consumption
+        credit_source: 'unlimited',
         generation_timestamp: new Date().toISOString()
       },
       created_at: new Date().toISOString()
@@ -842,74 +796,7 @@ Generate a complete, professional legal document using ONLY the information prov
     
     console.log(' Document saved to Supabase:', { docId, userId: finalUid, title: documentTitle });
 
-    // On success, consume credit and return detailed information
-    try {
-      // FINAL VERIFICATION: Re-check credits immediately before consumption
-      console.log(' [FINAL CHECK] Verifying credits before consumption...');
-      const { data: finalCheck } = await authSupabase
-        .from('document_usage')
-        .select('monthly_remaining, one_time_remaining')
-        .eq('user_id', finalUid)
-        .single();
-      
-      const finalMonthly = finalCheck?.monthly_remaining || 0;
-      const finalOneTime = finalCheck?.one_time_remaining || 0;
-      const finalTotal = finalMonthly + finalOneTime;
-      
-      console.log(' [FINAL CHECK] Credits before consumption:', {
-        monthly: finalMonthly,
-        oneTime: finalOneTime,
-        total: finalTotal
-      });
-      
-      if (finalTotal === 0) {
-        console.error(' [FINAL CHECK] Race condition: Credits consumed between check and generation');
-        // Rollback document creation
-        await supabase.from('documents').delete().eq('id', docId);
-        return NextResponse.json({
-          success: false,
-          error: 'Credits were consumed during document generation. Please try again.',
-        }, { status: 402 });
-      }
-      
-      const consumed = await consumeCredit(supabase, finalUid, creditSource, creditsToUse);
-      
-      if (!consumed.ok) {
-        console.warn(' Credit consumption failed - insufficient credits');
-        console.warn(' Message:', consumed.message || 'No credits available');
-        
-        // Rollback document creation if credit consumption fails
-        await supabase
-          .from('documents')
-          .delete()
-          .eq('id', docId);
-        
-        return NextResponse.json({
-          success: false,
-          error: consumed.message || 'Insufficient credits. Please purchase a document pack or subscribe to continue.',
-        }, { status: 402 });
-      } else {
-        console.log(` [TESTING MODE] Credit consumption successful - document generation allowed`);
-        console.log(` [TESTING MODE] ${consumed.message}`);
-        
-        // Update document metadata with credit source
-        await supabase
-          .from('documents')
-          .update({
-            metadata: {
-              ...metadata,
-              generated_by_api: true,
-              credit_source: consumed.source,
-              credits_remaining_after: consumed.remaining,
-              generation_timestamp: new Date().toISOString()
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', docId);
-        
-        console.log(' Document metadata updated with credit tracking');
-        
-        // Return success with credit information
+    // Return success without credit enforcement
     return NextResponse.json({
       success: true,
       data: {
@@ -917,29 +804,8 @@ Generate a complete, professional legal document using ONLY the information prov
         title: documentTitle,
         document: documentContent,
         metadata
-          },
-          creditInfo: {
-            source: consumed.source,
-            remaining: consumed.remaining,
-            message: consumed.message
-          }
-        });
       }
-    } catch (consumeErr) {
-      console.error(' Error consuming credit post-generation:', consumeErr);
-      
-      // Rollback document creation on credit error
-      await supabase
-        .from('documents')
-        .delete()
-        .eq('id', docId);
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Credit system error - document generation cancelled',
-        details: consumeErr instanceof Error ? consumeErr.message : String(consumeErr)
-      }, { status: 500 });
-    }
+    });
 
   } catch (error) {
     console.error('Document generation error:', error);
