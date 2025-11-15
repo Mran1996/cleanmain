@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
+import { getServerUser } from '@/utils/server-auth';
 
 export async function PUT(
   request: NextRequest,
@@ -19,35 +19,44 @@ export async function PUT(
       return NextResponse.json({ error: 'Document content is required' }, { status: 400 });
     }
 
-    // Create Supabase client
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: any) {
-            cookieStore.set({ name, value: "", ...options });
-          },
-        },
-      }
-    );
+    // SECURITY: Verify user is authenticated
+    const { user, isAuthenticated } = await getServerUser();
+    if (!isAuthenticated || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // SECURITY: Validate content size to prevent DoS
+    const contentSize = Buffer.byteLength(content, 'utf8');
+    const maxSize = 50 * 1024 * 1024; // 50MB limit
+    if (contentSize > maxSize) {
+      return NextResponse.json({ error: 'Document content too large (max 50MB)' }, { status: 400 });
+    }
+
+    // Create Supabase client with user authentication
+    const supabase = await createClient();
+
+    // SECURITY: First verify document exists and belongs to user
+    const { data: existingDoc, error: fetchError } = await supabase
+      .from('documents')
+      .select('id, user_id')
+      .eq('id', docId)
+      .eq('user_id', user.id) // SECURITY: Verify ownership
+      .single();
+
+    if (fetchError || !existingDoc) {
+      return NextResponse.json({ error: 'Document not found or unauthorized' }, { status: 404 });
+    }
 
     // Update document content in Supabase
     const { data: document, error } = await supabase
       .from('documents')
       .update({ 
         content: content,
-        file_size: Buffer.byteLength(content, 'utf8'),
+        file_size: contentSize,
         updated_at: new Date().toISOString()
       })
       .eq('id', docId)
+      .eq('user_id', user.id) // SECURITY: Double-check ownership in update
       .select()
       .single();
 
