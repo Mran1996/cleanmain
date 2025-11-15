@@ -52,8 +52,20 @@ export function middleware(req: NextRequest) {
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
     
+    // Content Security Policy - adjust based on your external resources
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://*.amazonaws.com https://api.openai.com https://api.anthropic.com; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';"
+    );
+    
     // Performance headers
     response.headers.set('X-Robots-Tag', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+  }
+  
+  // Force HTTPS redirect in production
+  if (isProd && req.headers.get('x-forwarded-proto') !== 'https') {
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, 301);
   }
   
   // Cache control for static assets
