@@ -669,7 +669,7 @@ export default function AccountClient({
           <div className="text-center mb-3">
             <p className="text-xs md:text-sm text-gray-700 font-semibold leading-tight">Empowering access to justice with Artificial Intelligence</p>
           </div>
-          <div className="w-full flex flex-col gap-2 px-2 md:px-0">
+          <div className="w-full flex flex-col gap-2 px-2 md:px-2">
             <button
               className={`font-semibold rounded py-2 w-full mb-2 transition-colors text-sm ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
               onClick={() => handleTabChange('settings')}
