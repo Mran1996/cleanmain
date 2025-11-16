@@ -17,8 +17,6 @@ import { SubscriptionGuard } from "@/components/subscription-guard";
 import { SplitPaneLayout } from "@/components/split-pane-layout";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/utils/supabase/client";
 
 function AIAssistantStep1Content() {
@@ -86,10 +84,6 @@ function AIAssistantStep1Content() {
   const [saving, setSaving] = useState(false);
   const [downloadingDoc, setDownloadingDoc] = useState(false);
   const [downloadingAnalysis, setDownloadingAnalysis] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
   const [isMessageButtonSelected, setIsMessageButtonSelected] = useState(false);
   const [inspirationalMessage, setInspirationalMessage] = useState<string | null>(null);
   const { 
@@ -1021,61 +1015,6 @@ function AIAssistantStep1Content() {
     return firstMessage.length > 30 ? firstMessage.substring(0, 30) + '...' : firstMessage;
   };
 
-  // Fetch projects from database
-  const fetchProjects = async () => {
-    if (typeof window === 'undefined') return;
-    
-    setProjectsLoading(true);
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("Please sign in to view your projects");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching projects:", error);
-        toast.error("Failed to load projects");
-      } else {
-        setProjects(data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      toast.error("Failed to load projects");
-    } finally {
-      setProjectsLoading(false);
-    }
-  };
-
-  // Handle project selection
-  const handleSelectProject = (project: any) => {
-    setSelectedProject(project);
-    setOpen(false);
-    
-    // Load project data into the interface
-    if (project.content) {
-      setDocumentPreview(project.content);
-      setDocumentPreviewHTML(plainTextToHTML(project.content));
-    }
-    if (project.chat_history) {
-      try {
-        const parsedHistory = JSON.parse(project.chat_history);
-        setChatHistory(parsedHistory);
-        toast.success(`Loaded project: ${project.title}`);
-      } catch (error) {
-        console.error("Error parsing chat history:", error);
-        toast.error("Failed to load chat history");
-      }
-    }
-  };
 
   // Save current project
   const saveCurrentProject = async () => {
@@ -1106,7 +1045,6 @@ function AIAssistantStep1Content() {
         toast.error("Failed to save project");
       } else {
         toast.success("Project saved successfully!");
-        fetchProjects(); // Refresh the list
       }
     } catch (error) {
       console.error("Error saving project:", error);
@@ -1897,17 +1835,6 @@ function AIAssistantStep1Content() {
               <FileText className="h-4 w-4 mr-2" />
               {showSplitPane ? "Hide Document Preview" : "Show Document Preview"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                fetchProjects();
-                setOpen(true);
-              }}
-              size="sm"
-              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
-            >
-              📁 My Projects
-            </Button>
             {documentPreview && (
               <Button
                 variant="outline"
@@ -1991,50 +1918,6 @@ function AIAssistantStep1Content() {
         </div>
       )}
 
-      {/* My Projects Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>My Previous Projects</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-80">
-            {projectsLoading ? (
-              <div className="p-4 text-center text-muted-foreground">Loading projects...</div>
-            ) : projects.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground">No saved projects yet.</div>
-            ) : (
-              projects.map((p) => (
-                <div 
-                  key={p.id} 
-                  className="p-2 border-b hover:bg-muted rounded-md cursor-pointer"
-                  onClick={() => handleSelectProject(p)}
-                >
-                  <p className="font-medium">{p.title || "Untitled Document"}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(p.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              ))
-            )}
-          </ScrollArea>
-          <DialogFooter>
-            <Button 
-              variant="outline"
-              className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
-              onClick={() => {
-                setOpen(false);
-                // Start a new project by clearing current state
-                setSelectedProject(null);
-                setDocumentPreview("");
-                setChatHistory([]);
-                toast.success("Started new project");
-              }}
-            >
-              + New Project
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </StepLayout>
   );
 }
