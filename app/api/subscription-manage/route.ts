@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 
 // Initialize Stripe client
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2023-10-16',
 }) : null;
 
 export async function POST(req: Request) {
