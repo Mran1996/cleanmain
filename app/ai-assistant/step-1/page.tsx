@@ -1407,7 +1407,7 @@ function AIAssistantStep1Content() {
           )}
         </div>
       </div>
-      <div className="overflow-y-auto px-6 py-0">
+      <div className="overflow-y-auto px-6 pt-4 pb-0">
         
         {/* Enhanced Chat Interface */}
         <EnhancedChatInterface
