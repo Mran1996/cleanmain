@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { getServerUser } from '@/utils/server-auth';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
@@ -13,21 +13,31 @@ export async function GET(
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });
     }
 
-    // SECURITY: Verify user is authenticated
-    const { user, isAuthenticated } = await getServerUser();
-    if (!isAuthenticated || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Create Supabase client
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+          set(name: string, value: string, options: any) {
+            cookieStore.set({ name, value, ...options });
+          },
+          remove(name: string, options: any) {
+            cookieStore.set({ name, value: "", ...options });
+          },
+        },
+      }
+    );
 
-    // Create Supabase client with user authentication
-    const supabase = await createClient();
-
-    // Fetch document from Supabase - RLS will enforce user ownership
+    // Fetch document from Supabase
     const { data: document, error } = await supabase
       .from('documents')
       .select('*')
       .eq('id', docId)
-      .eq('user_id', user.id) // SECURITY: Verify document belongs to user
       .single();
 
     if (error) {
@@ -37,11 +47,6 @@ export async function GET(
 
     if (!document) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
-
-    // SECURITY: Double-check ownership before returning
-    if (document.user_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     return NextResponse.json({

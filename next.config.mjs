@@ -20,44 +20,8 @@ const nextConfig = {
       },
     ],
   },
-  // Generate static sitemap and robots.txt
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-          },
-        ],
-      },
-    ];
-  },
+  // Security headers are now handled in middleware.ts to avoid duplication
+  // and allow for environment-specific configuration
   // Move serverComponentsExternalPackages to the correct location
   serverExternalPackages: ['canvas', 'pdfjs-dist', 'pdf-parse', 'mammoth'],
   webpack: (config, { isServer, webpack }) => {

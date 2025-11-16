@@ -67,7 +67,7 @@ export function isVercelPreview(): boolean {
  */
 export const config = {
   stripe: {
-    apiVersion: '2025-08-27.basil' as const,
+    apiVersion: '2024-11-20.acacia' as const,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     publicKey: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || '',
     secretKey: process.env.STRIPE_SECRET_KEY || '',

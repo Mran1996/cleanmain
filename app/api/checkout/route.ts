@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Always initialize Stripe client if secret key is present
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-11-20.acacia',
 }) : null;
 import { NextResponse } from 'next/server';
 import { PRICE_MAP, PRODUCTS } from '@/lib/stripe-config';
