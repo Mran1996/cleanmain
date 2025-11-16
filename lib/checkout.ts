@@ -1,10 +1,15 @@
 import { loadStripe } from '@stripe/stripe-js';
 import type { ProductName } from './stripe-config';
 
-// Check if the publishable key is available
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+// Resolve publishable key with fallback to older env var name
+const publishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY;
+
 if (!publishableKey) {
-  console.error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set');
+  console.error(
+    'Stripe publishable key missing. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (or NEXT_PUBLIC_STRIPE_PUBLIC_KEY).'
+  );
 }
 
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -18,7 +23,7 @@ export async function redirectToCheckout(plan: ProductName) {
     const stripe = await stripePromise;
 
     if (!stripe) {
-      throw new Error('Stripe failed to load');
+      throw new Error('Failed to load Stripe.js');
     }
 
     // Create checkout session
@@ -48,4 +53,4 @@ export async function redirectToCheckout(plan: ProductName) {
     console.error('Error in redirectToCheckout:', error);
     throw error;
   }
-} 
+}
