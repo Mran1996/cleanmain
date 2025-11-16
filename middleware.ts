@@ -58,6 +58,18 @@ export function middleware(req: NextRequest) {
   // Only set strict security/SEO headers in production to avoid interfering with local dev (e.g., HSTS on localhost)
   if (isProd) {
     response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+    
+    // Content Security Policy - adjust based on your external resources
+    response.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://*.amazonaws.com https://api.openai.com https://api.anthropic.com https://api.stripe.com https://r.stripe.com https://js.stripe.com; frame-src 'self' https://js.stripe.com https://checkout.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+    );
+    
     // Performance headers
     response.headers.set('X-Robots-Tag', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   }
@@ -74,4 +86,4 @@ export function middleware(req: NextRequest) {
   }
   
   return response;
-} 
+}
