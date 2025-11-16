@@ -1369,42 +1369,44 @@ function AIAssistantStep1Content() {
   // Chat content for left pane
   const chatContent = (
     <div className="min-h-full flex flex-col">
-      {/* Chat Header with Clear Conversation button */}
-      {chatHistory.length > 0 && (
-        <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between gap-4">
-          <div className="flex items-center space-x-3 flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <span className="font-semibold text-gray-900">Chat</span>
-              <p className="text-xs text-gray-500">AI Legal Assistant</p>
-            </div>
+      {/* Chat Header with Clear Conversation button - Always show to align with document header */}
+      <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between gap-4">
+        <div className="flex items-center space-x-3 flex-shrink-0">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 text-white" />
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              onClick={handleClearConversation}
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear Conversation
-            </Button>
-            {hasDocumentToClear() && (
-              <Button
-                onClick={handleClearDocument}
-                variant="outline"
-                size="sm"
-                className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-              >
-                <FileX className="h-4 w-4 mr-2" />
-                Clear Document
-              </Button>
-            )}
+          <div>
+            <span className="font-semibold text-gray-900">Chat</span>
+            <p className="text-xs text-gray-500">AI Legal Assistant</p>
           </div>
         </div>
-      )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {chatHistory.length > 0 && (
+            <>
+              <Button
+                onClick={handleClearConversation}
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Conversation
+              </Button>
+              {hasDocumentToClear() && (
+                <Button
+                  onClick={handleClearDocument}
+                  variant="outline"
+                  size="sm"
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                >
+                  <FileX className="h-4 w-4 mr-2" />
+                  Clear Document
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
       <div className="overflow-y-auto px-6 py-0">
         
         {/* Enhanced Chat Interface */}
