@@ -628,7 +628,7 @@ export default function AccountClient({
     <div className="max-w-4xl mx-auto px-2 md:px-4 py-4 md:py-10">
       <div className="bg-white rounded-2xl shadow border flex flex-col md:flex-row gap-4 md:gap-8 p-0">
         {/* Sidebar */}
-        <div className="w-full md:w-1/4 flex flex-col items-center border-b md:border-b-0 md:border-r md:pr-4 py-4 mb-0">
+        <div className="w-full md:w-1/4 flex flex-col items-center border-b md:border-b-0 md:border-r md:px-4 py-4 mb-0">
           <div className="relative group mb-2 flex flex-col items-center gap-2">
             <div
               className="w-20 h-20 mx-auto rounded-full border-2 border-gray-200 bg-white flex items-center justify-center mb-0 cursor-pointer"
