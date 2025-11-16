@@ -87,3 +87,33 @@ export function sanitizeObject(obj: any, maxDepth: number = 3): any {
   return null;
 }
 
+/**
+ * Sanitize HTML to prevent XSS attacks
+ * Only allows safe formatting tags (strong, em, code, br, p)
+ * Escapes all other HTML tags
+ */
+export function sanitizeHTML(html: string): string {
+  if (typeof html !== 'string') {
+    return '';
+  }
+
+  // First, escape all HTML tags
+  let sanitized = html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+
+  // Then, allow only safe formatting tags
+  // Convert markdown-style formatting to safe HTML
+  sanitized = sanitized
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+    .replace(/`(.*?)`/g, '<code>$1</code>') // Code
+    .replace(/\n/g, '<br>'); // Line breaks
+
+  return sanitized;
+}
+

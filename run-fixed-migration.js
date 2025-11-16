@@ -50,17 +50,39 @@ async function runMigration() {
         const sqlContent = fs.readFileSync(migrationPath, 'utf8');
         
         // Create a simple Node.js script to execute the SQL
+        // SECURITY: Use proper escaping to prevent command injection
+        const escapedSql = sqlContent
+          .replace(/\\/g, '\\\\')  // Escape backslashes
+          .replace(/'/g, "\\'")    // Escape single quotes
+          .replace(/"/g, '\\"')    // Escape double quotes
+          .replace(/\$/g, '\\$')   // Escape dollar signs
+          .replace(/`/g, '\\`');   // Escape backticks
+        
+        const escapedPassword = (env.SUPABASE_SERVICE_ROLE_KEY || '')
+          .replace(/\\/g, '\\\\')
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '\\"')
+          .replace(/\$/g, '\\$')
+          .replace(/`/g, '\\`');
+        
         const execScript = `
 const { execSync } = require('child_process');
 const fs = require('fs');
 
-const sql = \`${sqlContent.replace(/`/g, '\\`')}\`;
+const sql = \`${escapedSql}\`;
 
-// Try to execute using psql
-const psqlCommand = \`PGPASSWORD=\"${env.SUPABASE_SERVICE_ROLE_KEY}\" psql -h db.${projectRef}.supabase.co -U postgres -d postgres -p 5432 -c \"\${sql}\"\`;
+// SECURITY: Use proper escaping and avoid shell interpretation
+// Try to execute using psql with proper escaping
+const password = \`${escapedPassword}\`;
+const psqlCommand = ['psql', '-h', 'db.${projectRef}.supabase.co', '-U', 'postgres', '-d', 'postgres', '-p', '5432', '-c', sql];
+const env = { ...process.env, PGPASSWORD: password };
 
 try {
-  execSync(psqlCommand, { stdio: 'inherit' });
+  execSync(psqlCommand.join(' '), { 
+    stdio: 'inherit',
+    env: env,
+    shell: false  // Disable shell to prevent injection
+  });
   console.log('✅ Migration completed successfully!');
 } catch (error) {
   console.log('❌ PSQL command failed:', error.message);

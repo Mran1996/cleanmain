@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import { sanitizeHTML } from "@/lib/validation"
 import { Navigation } from "@/components/navigation"
 import { SubscriptionGuard } from "@/components/subscription-guard"
 import Footer from "@/components/footer"
@@ -519,11 +520,13 @@ function ChatBubble({
   const emojis = ["👍", "❤️", "😂", "😢", "😡", "👏"]
 
   const formatContent = (content: string) => {
-    // Simple formatting for bold, italic, and code
-    const formattedContent = content
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
-      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
-      .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
+    // Sanitize HTML to prevent XSS attacks
+    const sanitized = sanitizeHTML(content);
+    // Apply safe formatting with CSS classes
+    const formattedContent = sanitized
+      .replace(/<strong>(.*?)<\/strong>/g, '<strong class="font-semibold">$1</strong>') // Bold
+      .replace(/<em>(.*?)<\/em>/g, '<em class="italic">$1</em>') // Italic
+      .replace(/<code>(.*?)<\/code>/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
 
     return formattedContent
   }

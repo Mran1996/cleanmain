@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Mic, Send, Lock, User } from "lucide-react"
+import { sanitizeHTML } from "@/lib/validation"
 
 interface Message {
   id: string
@@ -263,7 +264,10 @@ function ChatBubble({ sender, text, time }: { sender: "khristian" | "user"; text
           </div>
         )}
         <div>
-          <div className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`} dangerouslySetInnerHTML={{ __html: text }}></div>
+          <div 
+            className={`rounded-xl px-4 py-2 text-sm ${bubbleClasses}`} 
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(text) }}
+          ></div>
           <div className="text-[10px] text-gray-400 mt-1 text-right">{time}</div>
         </div>
         {isUser && (

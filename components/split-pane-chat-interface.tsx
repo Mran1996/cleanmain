@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Paperclip, Loader2, MessageSquare, ChevronUp, ChevronDown } from 'lucide-react';
+import { sanitizeHTML } from '@/lib/validation';
 
 interface Message {
   id: string;
@@ -36,11 +37,13 @@ export function SplitPaneChatInterface({
   className = ""
 }: SplitPaneChatInterfaceProps) {
   const formatContent = (content: string) => {
-    // Simple formatting for bold, italic, and code
-    const formattedContent = content
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
-      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
-      .replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
+    // Sanitize HTML to prevent XSS attacks
+    const sanitized = sanitizeHTML(content);
+    // Apply safe formatting with CSS classes
+    const formattedContent = sanitized
+      .replace(/<strong>(.*?)<\/strong>/g, '<strong class="font-semibold">$1</strong>') // Bold
+      .replace(/<em>(.*?)<\/em>/g, '<em class="italic">$1</em>') // Italic
+      .replace(/<code>(.*?)<\/code>/g, '<code class="bg-gray-200 px-1 rounded text-gray-800">$1</code>') // Code
 
     return formattedContent
   }

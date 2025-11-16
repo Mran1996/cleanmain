@@ -24,7 +24,11 @@ export async function getMcpClient(): Promise<McpClient> {
   try {
     // Read configuration - prefer cloud n8n instance
     const n8nApiUrl = process.env.N8N_API_URL || "https://askailegal3.app.n8n.cloud/";
-    const n8nApiKey = process.env.N8N_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0YTAxYzEyMC1mN2ZhLTQwMTktOTExZS0zNzVhZGNiMzNmM2QiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYyMTMzOTg3LCJleHAiOjE3NjQ2NjI0MDB9.jwO9MPbhUwyZTX0Ff9q-ygV7L-Bpjcl4bgaKb6Zy8wM";
+    const n8nApiKey = process.env.N8N_API_KEY;
+    
+    if (!n8nApiKey) {
+      throw new Error("N8N_API_KEY environment variable is required. Please set it in your .env.local file.");
+    }
 
     // MCP client initialization (silent)
 
