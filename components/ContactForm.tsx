@@ -19,6 +19,7 @@ export default function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const isSubmittingRef = useRef(false)
+  const submissionIdRef = useRef<string | null>(null)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -32,25 +33,50 @@ export default function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     
-    // Prevent duplicate submissions using ref (works even in React Strict Mode)
-    if (isSubmittingRef.current || isSubmitting) {
-      console.log('Form submission already in progress, ignoring duplicate submit')
+    // CRITICAL: Prevent duplicate submissions - check ref FIRST (works even in React Strict Mode)
+    if (isSubmittingRef.current) {
+      console.log('❌ Form submission already in progress (ref check), ignoring duplicate submit')
       return
     }
     
-    // Prevent rapid-fire submissions
+    // CRITICAL: Also check state (double protection)
+    if (isSubmitting) {
+      console.log('❌ Form submission already in progress (state check), ignoring duplicate submit')
+      return
+    }
+    
+    // CRITICAL: Prevent if already submitted
+    if (isSubmitted) {
+      console.log('❌ Form already submitted, ignoring duplicate submit')
+      return
+    }
+    
+    // Prevent rapid-fire submissions (within 3 seconds)
     const now = Date.now()
-    if ((window as any).lastContactSubmitTime && now - (window as any).lastContactSubmitTime < 2000) {
-      console.log('Rapid-fire submission blocked')
+    const lastSubmitTime = (window as any).lastContactSubmitTime
+    if (lastSubmitTime && now - lastSubmitTime < 3000) {
+      console.log('❌ Rapid-fire submission blocked (too soon after last submit)')
       return
     }
     (window as any).lastContactSubmitTime = now
     
+    // Generate unique submission ID to track this specific submission
+    const submissionId = `submit-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    submissionIdRef.current = submissionId
+    
+    // Set flags IMMEDIATELY to prevent any duplicate submissions
     isSubmittingRef.current = true
     setIsSubmitting(true)
 
     try {
+      // Double-check we're still the active submission
+      if (submissionIdRef.current !== submissionId) {
+        console.log('❌ Submission ID mismatch, ignoring')
+        return
+      }
+      
       const submitData = new FormData()
       submitData.append('name', formData.name)
       submitData.append('email', formData.email)
@@ -61,24 +87,40 @@ export default function ContactForm() {
         submitData.append('file', file)
       }
 
+      console.log(`✅ Submitting form with ID: ${submissionId}`)
       const response = await fetch('/api/contact', {
         method: 'POST',
         body: submitData,
       })
 
+      // Double-check we're still the active submission before processing response
+      if (submissionIdRef.current !== submissionId) {
+        console.log('❌ Submission ID mismatch after fetch, ignoring response')
+        return
+      }
+
       if (response.ok) {
+        console.log(`✅ Form submitted successfully with ID: ${submissionId}`)
         setIsSubmitted(true)
         setFormData({ name: "", email: "", reason: "", message: "" })
         setFile(null)
+        submissionIdRef.current = null
       } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Form submission failed:', errorData)
         alert('Failed to send message. Please try again.')
+        // Reset flags on error so user can retry
+        isSubmittingRef.current = false
+        setIsSubmitting(false)
+        submissionIdRef.current = null
       }
     } catch (error) {
-      console.error('Error submitting form:', error)
+      console.error('❌ Error submitting form:', error)
       alert('Failed to send message. Please try again.')
-    } finally {
+      // Reset flags on error so user can retry
       isSubmittingRef.current = false
       setIsSubmitting(false)
+      submissionIdRef.current = null
     }
   }
 
@@ -113,7 +155,7 @@ export default function ContactForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2 text-gray-700">
@@ -213,8 +255,8 @@ export default function ContactForm() {
 
           <Button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base shadow-md hover:shadow-lg transition-all"
+            disabled={isSubmitting || isSubmitted}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

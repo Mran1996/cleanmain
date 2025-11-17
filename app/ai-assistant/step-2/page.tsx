@@ -943,26 +943,79 @@ function Step2Content() {
                  <div className="text-red-600">{caseAnalysis.error}</div>
                ) : (
                  <div className="prose max-w-none">
-                   <h2 className="text-2xl font-bold mb-2">{caseAnalysis.title || "Case Analysis"}</h2>
-                   <div className="mb-2"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
-                   <div className="mb-2"><b>Case Type:</b> {caseAnalysis.caseType}</div>
-                   <div className="mb-2"><b>Success Rate:</b> {caseAnalysis.successRate}%</div>
-                   <div className="mb-2"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
-                   <div className="mb-2"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
-                   <div className="mb-2"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
-                   <div className="mb-2"><b>Strengths:</b>
+                   <h2 className="text-2xl font-bold mb-4">{caseAnalysis.title || "Case Analysis"}</h2>
+                   
+                   {/* Success Rate with Explanation */}
+                   <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                     <div className="mb-2">
+                       <b className="text-lg">Success Rate: {caseAnalysis.successRate}%</b>
+                     </div>
+                     {caseAnalysis.successRateExplanation && (
+                       <div className="text-gray-700 mt-2">
+                         <b>What This Means:</b>
+                         <p className="mt-1">{caseAnalysis.successRateExplanation}</p>
+                       </div>
+                     )}
+                   </div>
+
+                   <div className="mb-4"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
+                   <div className="mb-4"><b>Case Type:</b> {caseAnalysis.caseType}</div>
+                   
+                   {/* Key Factors */}
+                   {caseAnalysis.keyFactors && (
+                     <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                       <b className="text-lg block mb-2">Key Factors That Will Determine Outcome:</b>
+                       <p className="text-gray-700">{caseAnalysis.keyFactors}</p>
+                     </div>
+                   )}
+
+                   {/* Comparison to Similar Cases */}
+                   {caseAnalysis.comparisonToSimilarCases && (
+                     <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                       <b className="text-lg block mb-2">Comparison to Similar Cases:</b>
+                       <p className="text-gray-700">{caseAnalysis.comparisonToSimilarCases}</p>
+                     </div>
+                   )}
+
+                   <div className="mb-4"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
+                   <div className="mb-4"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
+                   <div className="mb-4"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
+                   
+                   <div className="mb-4"><b>Strengths:</b>
                      <ul className="list-disc ml-6">
                        {Array.isArray(caseAnalysis.strengths) ? caseAnalysis.strengths.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.strengths}</li>}
                      </ul>
                    </div>
-                   <div className="mb-2"><b>Weaknesses:</b>
+                   
+                   <div className="mb-4"><b>Weaknesses:</b>
                      <ul className="list-disc ml-6">
                        {Array.isArray(caseAnalysis.weaknesses) ? caseAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>) : <li>{caseAnalysis.weaknesses}</li>}
                      </ul>
                    </div>
-                   <div className="mb-2"><b>Timeline:</b> {caseAnalysis.timeline}</div>
-                   <div className="mb-2"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
-                   <div className="mb-2"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
+
+                   {/* How to Improve - Highlighted Section */}
+                   {caseAnalysis.howToImprove && (
+                     <div className="mb-6 p-5 bg-green-50 rounded-lg border-2 border-green-300">
+                       <b className="text-xl text-green-800 block mb-3">🚀 How to Improve Your Chances of Success:</b>
+                       <p className="text-gray-800 leading-relaxed">{caseAnalysis.howToImprove}</p>
+                     </div>
+                   )}
+
+                   {/* Critical Next Steps */}
+                   {caseAnalysis.criticalNextSteps && Array.isArray(caseAnalysis.criticalNextSteps) && caseAnalysis.criticalNextSteps.length > 0 && (
+                     <div className="mb-6 p-5 bg-orange-50 rounded-lg border-2 border-orange-300">
+                       <b className="text-xl text-orange-800 block mb-3">📋 Critical Next Steps:</b>
+                       <ol className="list-decimal ml-6 space-y-2 text-gray-800">
+                         {caseAnalysis.criticalNextSteps.map((step: string, i: number) => (
+                           <li key={i}>{step}</li>
+                         ))}
+                       </ol>
+                     </div>
+                   )}
+
+                   <div className="mb-4"><b>Timeline:</b> {caseAnalysis.timeline}</div>
+                   <div className="mb-4"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
+                   <div className="mb-4"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
                  </div>
                )
              ) : (

@@ -10,15 +10,28 @@ export function ServiceBanner() {
 
   // Check localStorage for banner visibility preference
   useEffect(() => {
-    const bannerHidden = localStorage.getItem('service-banner-hidden')
-    if (bannerHidden === 'true') {
-      setIsVisible(false)
+    // Only run in browser environment
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const bannerHidden = localStorage.getItem('service-banner-hidden')
+      if (bannerHidden === 'true') {
+        setIsVisible(false)
+      }
+    } catch (error) {
+      console.error('Failed to access localStorage:', error)
     }
   }, [])
 
   const handleHide = () => {
     setIsVisible(false)
-    localStorage.setItem('service-banner-hidden', 'true')
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('service-banner-hidden', 'true')
+      } catch (error) {
+        console.error('Failed to save to localStorage:', error)
+      }
+    }
   }
 
   const handleToggle = () => {

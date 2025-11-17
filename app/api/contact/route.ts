@@ -1,33 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
-// Configure the email transporter for Brevo SMTP
+// Configure the email transporter for Outlook/Office 365 SMTP
 const createTransporter = () => {
   const smtpConfig = {
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false, // Brevo requires secure to be false for non-SSL ports
+    secure: false, // Use STARTTLS for port 587
     tls: {
+      ciphers: 'SSLv3',
       rejectUnauthorized: false
     },
     auth: {
-      user: process.env.SMTP_USER || '98ddc5001@smtp-brevo.com',
-      pass: process.env.SMTP_PASS || 'YwFEcpOACxdghZs3',
+      user: process.env.SMTP_USER || process.env.OUTLOOK_EMAIL, // Your Outlook email (e.g., support@askailegal.com)
+      pass: process.env.SMTP_PASS || process.env.OUTLOOK_PASSWORD, // Your Outlook password or app password
     },
     debug: true,
     logger: true
   };
 
-  console.log('SMTP Config:', {
-    ...smtpConfig,
+  console.log('SMTP Config (Outlook):', {
+    host: smtpConfig.host,
+    port: smtpConfig.port,
+    secure: smtpConfig.secure,
     auth: { user: smtpConfig.auth.user ? '***' : 'missing' }
   });
 
   if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
-    throw new Error('SMTP authentication credentials are missing. Please check your environment variables.');
+    throw new Error('Outlook SMTP authentication credentials are missing. Please set SMTP_USER/SMTP_PASS or OUTLOOK_EMAIL/OUTLOOK_PASSWORD environment variables.');
   }
 
   return nodemailer.createTransport(smtpConfig);
+}
+
+// In-memory cache to prevent duplicate submissions (clears after 5 seconds)
+const recentSubmissions = new Map<string, number>()
+
+// Clean up old entries every 10 seconds
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, timestamp] of recentSubmissions.entries()) {
+      if (now - timestamp > 5000) {
+        recentSubmissions.delete(key)
+      }
+    }
+  }, 10000)
 }
 
 export async function POST(request: NextRequest) {
@@ -47,21 +65,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create a unique key for this submission (email + message hash + timestamp)
+    const messageHash = message.substring(0, 50).replace(/\s/g, '')
+    const submissionKey = `${email}-${messageHash}-${Math.floor(Date.now() / 1000)}`
+    
+    // Check if this is a duplicate submission within the last 5 seconds
+    const now = Date.now()
+    for (const [key, timestamp] of recentSubmissions.entries()) {
+      if (key.startsWith(`${email}-${messageHash}`) && now - timestamp < 5000) {
+        console.log('❌ Duplicate submission detected on server side, ignoring')
+        return NextResponse.json(
+          { error: 'Duplicate submission detected. Please wait a moment before submitting again.' },
+          { status: 429 }
+        )
+      }
+    }
+    
+    // Record this submission
+    recentSubmissions.set(submissionKey, now)
+
     const transporter = createTransporter()
 
-    // Prepare email content
+    // Escape HTML to prevent XSS in email content
+    const escapeHtml = (text: string): string => {
+      if (!text) return ''
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
+    // Prepare email content with escaped user input
     let emailContent = `
       <h2>New Contact Form Submission</h2>
-      <p><strong>Name:</strong> ${name}</p>
-      <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Reason:</strong> ${reason}</p>
+      <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+      <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p><strong>Reason:</strong> ${escapeHtml(reason || 'Not specified')}</p>
       <p><strong>Message:</strong></p>
-      <p>${message}</p>
+      <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
     `
 
     if (file && file.size > 0) {
       emailContent += `
-        <p><strong>File Attached:</strong> ${file.name}</p>
+        <p><strong>File Attached:</strong> ${escapeHtml(file.name)}</p>
         <p><strong>File Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
       `
     }

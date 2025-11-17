@@ -37,25 +37,25 @@ export default function ContactPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-8 md:py-12">
           <div className="max-w-6xl mx-auto">
             {/* Header Section */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">Get In Touch</h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <div className="text-center mb-8 md:mb-12">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">Get In Touch</h1>
+              <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
                 We're here to help with all your legal questions and support needs. 
                 Reach out to us and we'll respond as soon as possible.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
               {/* Contact Form */}
-              <div>
+              <div className="order-2 lg:order-1">
                 <ContactForm />
               </div>
 
               {/* Contact Information */}
-              <div className="space-y-8">
+              <div className="space-y-6 md:space-y-8 order-1 lg:order-2">
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
                   <h2 className="text-2xl font-bold mb-6 text-gray-900">Contact Information</h2>
                   <div className="space-y-6">

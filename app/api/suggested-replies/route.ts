@@ -1,7 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+
+// Initialize OpenAI client if available
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 // Lightweight heuristic suggestions generator based on recent chat content and category.
 // Returns simple string suggestions consumed by Step 1 and split-pane pages.
+
+async function generateAISuggestions(messages: Array<{ sender: string; text: string }>, category?: string): Promise<string[]> {
+  // Get the last assistant message to understand what question was asked
+  const assistantMessages = messages.filter(m => m.sender === 'assistant');
+  const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+  
+  // Get recent conversation context (last 3 messages)
+  const recentMessages = messages.slice(-6);
+  const conversationContext = recentMessages
+    .map(m => `${m.sender === 'assistant' ? 'Assistant' : 'User'}: ${m.text}`)
+    .join('\n');
+
+  if (!lastAssistantMessage || !openai) {
+    // Fallback to keyword-based suggestions if no AI or no assistant message
+    return detectSuggestions(messages, category);
+  }
+
+  try {
+    const systemPrompt = `You are a legal assistant helping generate suggested responses for users. Based on the conversation context, generate 3-4 short, natural suggested responses that would be helpful for the user to answer the assistant's question or continue the conversation.
+
+Rules:
+- Keep each suggestion under 15 words
+- Make them sound natural and conversational
+- Base them on what the assistant just asked
+- If the assistant asked a specific question, provide answers that directly address it
+- If the assistant is gathering information, provide responses that help provide that information
+- Make suggestions relevant to the legal consultation context
+- Return a JSON object with a "suggestions" key containing an array of strings
+
+Example format: {"suggestions": ["Response 1", "Response 2", "Response 3", "Response 4"]}`;
+
+    const userPrompt = `Conversation context:
+${conversationContext}
+
+The assistant just asked: "${lastAssistantMessage.text}"
+
+Generate 3-4 suggested responses that would be helpful for the user to respond to this question or continue the conversation. Return as JSON object with "suggestions" array.`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini', // Use cheaper model for suggestions
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 200,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    
+    // Parse JSON response
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+        return parsed.suggestions.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+      }
+      // Fallback: if it's already an array
+      if (Array.isArray(parsed)) {
+        return parsed.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+      }
+    } catch {
+      // If not JSON, try to extract array from text
+      const arrayMatch = content.match(/\[(.*?)\]/s);
+      if (arrayMatch) {
+        try {
+          const suggestions = JSON.parse(arrayMatch[0]);
+          if (Array.isArray(suggestions)) {
+            return suggestions.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+          }
+        } catch {
+          // Fall through to keyword-based
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error generating AI suggestions:', error);
+    // Fallback to keyword-based suggestions
+  }
+
+  return detectSuggestions(messages, category);
+}
 
 function detectSuggestions(messages: Array<{ sender: string; text: string }>, category?: string): string[] {
   const MASTER = {
@@ -110,9 +198,12 @@ function detectSuggestions(messages: Array<{ sender: string; text: string }>, ca
 }
 
 export async function POST(req: NextRequest) {
+  let body: any = {};
+  let messages: Array<{ sender: string; text: string }> = [];
+  let category: string | undefined = undefined;
+
   try {
     // Be resilient to empty body or invalid JSON
-    let body: any = {};
     try {
       const raw = await req.text();
       body = raw && raw.trim().length > 0 ? JSON.parse(raw) : {};
@@ -121,15 +212,23 @@ export async function POST(req: NextRequest) {
       body = {};
     }
 
-    const messages = Array.isArray(body?.messages) ? body.messages : [];
-    const category = typeof body?.category === 'string' ? body.category : undefined;
+    messages = Array.isArray(body?.messages) ? body.messages : [];
+    category = typeof body?.category === 'string' ? body.category : undefined;
 
-    const suggestions = detectSuggestions(messages, category);
-    return NextResponse.json({ suggestions });
+    // Try AI-generated suggestions first, fallback to keyword-based
+    const suggestions = await generateAISuggestions(messages, category);
+    
+    // Ensure we always return at least some suggestions
+    const finalSuggestions = suggestions.length > 0 
+      ? suggestions 
+      : detectSuggestions(messages, category);
+    
+    return NextResponse.json({ suggestions: finalSuggestions });
   } catch (error) {
     console.error('Error in /api/suggested-replies:', error);
     // Always respond with a safe default to avoid client errors
-    return NextResponse.json({ suggestions: [] }, { status: 200 });
+    const fallbackSuggestions = detectSuggestions(messages, category);
+    return NextResponse.json({ suggestions: fallbackSuggestions.length > 0 ? fallbackSuggestions : ['I need help', 'Can you explain?', 'What should I do?'] }, { status: 200 });
   }
 }
 

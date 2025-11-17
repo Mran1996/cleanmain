@@ -150,6 +150,9 @@ function AIAssistantStep1SplitPaneContent() {
   const handleUserResponse = async (message: string) => {
     if (!message.trim() || isWaiting || isProcessing) return;
     
+    // Clear suggestions when user sends a message
+    setSuggestedResponses([]);
+    
     setIsWaiting(true);
     setIsProcessing(true);
 

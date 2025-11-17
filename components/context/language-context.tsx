@@ -39,22 +39,39 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   // Load saved language preference on initial render - using only localStorage, no Supabase
   useEffect(() => {
-    const savedLanguage = localStorage.getItem("preferredLanguage")
-    if (savedLanguage) {
-      try {
-        const parsedLanguage = JSON.parse(savedLanguage)
-        setCurrentLanguage(parsedLanguage)
-        document.documentElement.lang = parsedLanguage.value
-      } catch (error) {
-        console.error("Failed to parse saved language:", error)
+    // Check if we're in the browser environment
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const savedLanguage = localStorage.getItem("preferredLanguage")
+      if (savedLanguage) {
+        try {
+          const parsedLanguage = JSON.parse(savedLanguage)
+          setCurrentLanguage(parsedLanguage)
+          if (document.documentElement) {
+            document.documentElement.lang = parsedLanguage.value
+          }
+        } catch (error) {
+          console.error("Failed to parse saved language:", error)
+        }
       }
+    } catch (error) {
+      console.error("Failed to access localStorage:", error)
     }
   }, [])
 
   const changeLanguage = (language: Language) => {
     setCurrentLanguage(language)
-    localStorage.setItem("preferredLanguage", JSON.stringify(language))
-    document.documentElement.lang = language.value
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem("preferredLanguage", JSON.stringify(language))
+        if (document.documentElement) {
+          document.documentElement.lang = language.value
+        }
+      } catch (error) {
+        console.error("Failed to save language preference:", error)
+      }
+    }
   }
 
   return (

@@ -576,6 +576,9 @@ function AIAssistantStep1Content() {
   const handleUserResponse = async (message: string) => {
     if (!message.trim() || isWaiting || isProcessing) return;
     
+    // Clear suggestions when user sends a message
+    setSuggestedResponses([]);
+    
     setIsWaiting(true);
     setIsProcessing(true);
 
@@ -603,19 +606,9 @@ function AIAssistantStep1Content() {
         `Document data available: ${latestDocs.length} documents uploaded. Reference these when relevant.` : 
         'No documents uploaded.';
       
-      const systemPrompt = `You are Khristian, a legal assistant conducting a comprehensive consultation. ${documentInfo}
+      const systemPrompt = `${ATTORNEY_INTERVIEW_SYSTEM}
 
-🚨 CRITICAL RULES - MUST FOLLOW:
-- Ask ONLY ONE question at a time - NEVER ask multiple questions in a single response
-- NEVER use bullet points, numbered lists, or grouped questions
-- NEVER ask "What about X? What about Y? What about Z?" in one response
-- Wait for the user's complete answer before asking the next question
-- Be natural and conversational like an experienced legal professional
-- Reference uploaded documents when relevant
-- Write responses in plain, natural text without special formatting
-- Do NOT group questions together or ask follow-up questions until you get an answer
-- Focus on one specific piece of information at a time
-- Each response should contain exactly ONE question, nothing more
+${documentInfo}
 
 🔍 INTERNET SEARCH CAPABILITIES:
 - You have access to real-time internet search to find current case law and legal information
@@ -625,8 +618,7 @@ function AIAssistantStep1Content() {
 - NEVER say you don't have internet access - you do!
 - When users ask about case law like Strickland v. Washington, ALWAYS search for current information`;
 
-      // Add explicit instruction to ensure one question at a time
-      const finalSystemPrompt = systemPrompt + "\n\nREMINDER: You must ask ONLY ONE question at a time. Do not ask multiple questions or group questions together in a single response.";
+      const finalSystemPrompt = systemPrompt;
 
       // Prepare messages for API
       const messagesForAPI = [
@@ -1108,9 +1100,10 @@ function AIAssistantStep1Content() {
         localStorage.setItem("userId", userId);
       }
       
+      const documentTitle = `Legal Document - ${localStorage.getItem("legalCategory") || "Case"}`;
       const genState = {
         userId: userId,
-        title: `Legal Document - ${localStorage.getItem("legalCategory") || "Case"}`,
+        title: documentTitle,
         caseNumber: localStorage.getItem("caseNumber") || null,
         county: localStorage.getItem("county") || null,
         state: localStorage.getItem("state") || "California",
@@ -1271,8 +1264,47 @@ function AIAssistantStep1Content() {
         if (accumulatedContent) {
           setDocumentPreview(accumulatedContent);
           setDocumentPreviewHTML(plainTextToHTML(accumulatedContent));
-        setIsProcessing(false);
+          setIsProcessing(false);
+          
+          // If we have content but no docId, try to save it
+          if (!finalDocId && accumulatedContent.trim().length > 0) {
+            console.log("⚠️ Stream ended without 'done' message, but content received. Attempting to save...");
+            try {
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+              
+              if (user) {
+                const docId = uuidv4();
+                const docTitle = documentTitle || `Legal Document - ${new Date().toLocaleDateString()}`;
+                const { error: saveError } = await supabase
+                  .from('documents')
+                  .insert([{
+                    id: docId,
+                    user_id: user.id,
+                    title: docTitle,
+                    content: accumulatedContent,
+                    created_at: new Date().toISOString()
+                  }]);
+                
+                if (!saveError) {
+                  localStorage.setItem('currentDocumentId', docId);
+                  setGeneratedDocId(docId);
+                  finalDocId = docId;
+                  console.log("✅ Document saved successfully");
+                } else {
+                  console.error("❌ Error saving document:", saveError);
+                }
+              }
+            } catch (saveErr) {
+              console.error("❌ Error in save attempt:", saveErr);
+            }
+          }
+          
           return { docId: finalDocId, document: accumulatedContent };
+        } else {
+          // No content received - this is an error
+          setIsProcessing(false);
+          throw new Error("Document generation completed but no content was received");
         }
       } else {
         // FALLBACK: Non-streaming response (legacy support)
@@ -1579,26 +1611,79 @@ function AIAssistantStep1Content() {
               ) : null}
               {caseAnalysis ? (
                 <div className="prose max-w-none">
-                  <h2 className="text-2xl font-bold mb-2">{caseAnalysis.title || "Case Analysis"}</h2>
-                  <div className="mb-2"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
-                  <div className="mb-2"><b>Case Type:</b> {caseAnalysis.caseType}</div>
-                  <div className="mb-2"><b>Success Rate:</b> {caseAnalysis.successRate}%</div>
-                  <div className="mb-2"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
-                  <div className="mb-2"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
-                  <div className="mb-2"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
-                  <div className="mb-2"><b>Strengths:</b>
+                  <h2 className="text-2xl font-bold mb-4">{caseAnalysis.title || "Case Analysis"}</h2>
+                  
+                  {/* Success Rate with Explanation */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="mb-2">
+                      <b className="text-lg">Success Rate: {caseAnalysis.successRate}%</b>
+                    </div>
+                    {caseAnalysis.successRateExplanation && (
+                      <div className="text-gray-700 mt-2">
+                        <b>What This Means:</b>
+                        <p className="mt-1">{caseAnalysis.successRateExplanation}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
+                  <div className="mb-4"><b>Case Type:</b> {caseAnalysis.caseType}</div>
+                  
+                  {/* Key Factors */}
+                  {caseAnalysis.keyFactors && (
+                    <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <b className="text-lg block mb-2">Key Factors That Will Determine Outcome:</b>
+                      <p className="text-gray-700">{caseAnalysis.keyFactors}</p>
+                    </div>
+                  )}
+
+                  {/* Comparison to Similar Cases */}
+                  {caseAnalysis.comparisonToSimilarCases && (
+                    <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <b className="text-lg block mb-2">Comparison to Similar Cases:</b>
+                      <p className="text-gray-700">{caseAnalysis.comparisonToSimilarCases}</p>
+                    </div>
+                  )}
+
+                  <div className="mb-4"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
+                  <div className="mb-4"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
+                  <div className="mb-4"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
+                  
+                  <div className="mb-4"><b>Strengths:</b>
                     <ul className="list-disc ml-6">
                       {Array.isArray(caseAnalysis.strengths) ? caseAnalysis.strengths.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.strengths}</li>}
                     </ul>
                   </div>
-                  <div className="mb-2"><b>Weaknesses:</b>
+                  
+                  <div className="mb-4"><b>Weaknesses:</b>
                     <ul className="list-disc ml-6">
                       {Array.isArray(caseAnalysis.weaknesses) ? caseAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>) : <li>{caseAnalysis.weaknesses}</li>}
                     </ul>
                   </div>
-                  <div className="mb-2"><b>Timeline:</b> {caseAnalysis.timeline}</div>
-                  <div className="mb-2"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
-                  <div className="mb-2"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
+
+                  {/* How to Improve - Highlighted Section */}
+                  {caseAnalysis.howToImprove && (
+                    <div className="mb-6 p-5 bg-green-50 rounded-lg border-2 border-green-300">
+                      <b className="text-xl text-green-800 block mb-3">🚀 How to Improve Your Chances of Success:</b>
+                      <p className="text-gray-800 leading-relaxed">{caseAnalysis.howToImprove}</p>
+                    </div>
+                  )}
+
+                  {/* Critical Next Steps */}
+                  {caseAnalysis.criticalNextSteps && Array.isArray(caseAnalysis.criticalNextSteps) && caseAnalysis.criticalNextSteps.length > 0 && (
+                    <div className="mb-6 p-5 bg-orange-50 rounded-lg border-2 border-orange-300">
+                      <b className="text-xl text-orange-800 block mb-3">📋 Critical Next Steps:</b>
+                      <ol className="list-decimal ml-6 space-y-2 text-gray-800">
+                        {caseAnalysis.criticalNextSteps.map((step: string, i: number) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  <div className="mb-4"><b>Timeline:</b> {caseAnalysis.timeline}</div>
+                  <div className="mb-4"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
+                  <div className="mb-4"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
                 </div>
               ) : (
                 <div className="text-gray-500 mb-4">
