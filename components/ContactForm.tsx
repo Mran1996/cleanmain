@@ -1,13 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, Send, CheckCircle } from "lucide-react"
+import { Upload, Send, CheckCircle, ChevronDown } from "lucide-react"
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -19,8 +18,9 @@ export default function ContactForm() {
   const [file, setFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const isSubmittingRef = useRef(false)
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
@@ -32,6 +32,22 @@ export default function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Prevent duplicate submissions using ref (works even in React Strict Mode)
+    if (isSubmittingRef.current || isSubmitting) {
+      console.log('Form submission already in progress, ignoring duplicate submit')
+      return
+    }
+    
+    // Prevent rapid-fire submissions
+    const now = Date.now()
+    if ((window as any).lastContactSubmitTime && now - (window as any).lastContactSubmitTime < 2000) {
+      console.log('Rapid-fire submission blocked')
+      return
+    }
+    (window as any).lastContactSubmitTime = now
+    
+    isSubmittingRef.current = true
     setIsSubmitting(true)
 
     try {
@@ -61,13 +77,14 @@ export default function ContactForm() {
       console.error('Error submitting form:', error)
       alert('Failed to send message. Please try again.')
     } finally {
+      isSubmittingRef.current = false
       setIsSubmitting(false)
     }
   }
 
   if (isSubmitted) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card className="w-full max-w-2xl mx-auto shadow-lg">
         <CardContent className="pt-6">
           <div className="text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
@@ -88,18 +105,18 @@ export default function ContactForm() {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">Contact Us</CardTitle>
-        <CardDescription className="text-center">
+    <Card className="w-full max-w-2xl mx-auto shadow-lg border border-gray-200">
+      <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200">
+        <CardTitle className="text-2xl font-bold text-center text-gray-900">Contact Us</CardTitle>
+        <CardDescription className="text-center text-gray-600">
           Have a question or need assistance? Send us a message and we'll get back to you.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-2">
+              <label htmlFor="name" className="block text-sm font-medium mb-2 text-gray-700">
                 Full Name *
               </label>
               <Input
@@ -110,11 +127,11 @@ export default function ContactForm() {
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="w-full"
+                className="w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2">
+              <label htmlFor="email" className="block text-sm font-medium mb-2 text-gray-700">
                 Email Address *
               </label>
               <Input
@@ -125,32 +142,37 @@ export default function ContactForm() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full"
+                className="w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="reason" className="block text-sm font-medium mb-2">
+            <label htmlFor="reason" className="block text-sm font-medium mb-2 text-gray-700">
               Reason for Contact
             </label>
-            <Select onValueChange={(value) => setFormData(prev => ({ ...prev, reason: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a reason" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="general">General Inquiry</SelectItem>
-                <SelectItem value="technical">Technical Support</SelectItem>
-                <SelectItem value="billing">Billing Question</SelectItem>
-                <SelectItem value="feature">Feature Request</SelectItem>
-                <SelectItem value="bug">Bug Report</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <select
+                id="reason"
+                name="reason"
+                value={formData.reason}
+                onChange={handleInputChange}
+                className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none cursor-pointer pr-10"
+              >
+                <option value="">Select a reason</option>
+                <option value="general">General Inquiry</option>
+                <option value="technical">Technical Support</option>
+                <option value="billing">Billing Question</option>
+                <option value="feature">Feature Request</option>
+                <option value="bug">Bug Report</option>
+                <option value="other">Other</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
 
           <div>
-            <label htmlFor="message" className="block text-sm font-medium mb-2">
+            <label htmlFor="message" className="block text-sm font-medium mb-2 text-gray-700">
               Message *
             </label>
             <Textarea
@@ -161,12 +183,12 @@ export default function ContactForm() {
               onChange={handleInputChange}
               required
               rows={6}
-              className="w-full"
+              className="w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
             />
           </div>
 
           <div>
-            <label htmlFor="file" className="block text-sm font-medium mb-2">
+            <label htmlFor="file" className="block text-sm font-medium mb-2 text-gray-700">
               Attach Document (Optional)
             </label>
             <div className="flex items-center space-x-2">
@@ -175,7 +197,7 @@ export default function ContactForm() {
                 type="file"
                 onChange={handleFileChange}
                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                className="flex-1"
+                className="flex-1 border-gray-300"
               />
               <Upload className="h-4 w-4 text-gray-400" />
             </div>
@@ -183,8 +205,8 @@ export default function ContactForm() {
               Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB)
             </p>
             {file && (
-              <p className="text-sm text-green-600 mt-1">
-                Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              <p className="text-sm text-green-600 mt-1 font-medium">
+                ✓ Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
               </p>
             )}
           </div>
@@ -192,7 +214,7 @@ export default function ContactForm() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 text-base shadow-md hover:shadow-lg transition-all"
           >
             {isSubmitting ? (
               <>

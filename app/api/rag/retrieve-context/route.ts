@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { retrieveUserContextForRAG } from '@/lib/pinecone-memory';
+import { retrieveContextForRAG } from '@/lib/rag-system';
 
 /**
  * RAG Context Retrieval Endpoint
@@ -29,11 +29,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Retrieve context from Pinecone
-    const context = await retrieveUserContextForRAG(user.id, query, {
-      memoryLimit,
-      conversationLimit,
+    const context = await retrieveContextForRAG(user.id, query, {
+      limit: memoryLimit,
       minScore,
       memoryTypes: memoryTypes as any,
+      includeConversationHistory: conversationLimit > 0,
     });
 
     return NextResponse.json({

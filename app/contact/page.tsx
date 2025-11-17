@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/navigation"
 import Footer from "@/components/footer"
 import ContactForm from "@/components/ContactForm"
-import { Phone, Mail } from "lucide-react"
+import { Phone, Mail, Clock, MapPin } from "lucide-react"
 import type { Metadata } from 'next';
 
 // SEO metadata for contact page
@@ -33,13 +33,20 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navigation />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-12">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
+            {/* Header Section */}
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">Get In Touch</h1>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                We're here to help with all your legal questions and support needs. 
+                Reach out to us and we'll respond as soon as possible.
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               {/* Contact Form */}
@@ -49,23 +56,79 @@ export default function ContactPage() {
 
               {/* Contact Information */}
               <div className="space-y-8">
-                <div>
-                  <h2 className="text-xl font-semibold mb-6">Contact Information</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <Phone className="text-emerald-600 mr-3 flex-shrink-0" />
-                      <p>425-273-0871</p>
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8">
+                  <h2 className="text-2xl font-bold mb-6 text-gray-900">Contact Information</h2>
+                  <div className="space-y-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <Phone className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
+                        <a href="tel:425-273-0871" className="text-emerald-600 hover:text-emerald-700 font-medium text-lg">
+                          425-273-0871
+                        </a>
+                        <p className="text-sm text-gray-500 mt-1">Available 24/7</p>
+                      </div>
                     </div>
 
-                    <div className="flex items-center">
-                      <Mail className="text-emerald-600 mr-3 flex-shrink-0" />
-                      <a href="mailto:support@askailegal.com" className="text-emerald-600 hover:underline">
-                        support@askailegal.com
-                      </a>
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <Mail className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
+                        <a href="mailto:support@askailegal.com" className="text-emerald-600 hover:text-emerald-700 font-medium text-lg break-all">
+                          support@askailegal.com
+                        </a>
+                        <p className="text-sm text-gray-500 mt-1">We respond within 24 hours</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <Clock className="h-6 w-6 text-emerald-600" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-1">Response Time</h3>
+                        <p className="text-gray-700">Within 24 hours</p>
+                        <p className="text-sm text-gray-500 mt-1">Monday - Friday</p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg shadow-lg border border-emerald-200 p-8">
+                  <h3 className="text-xl font-bold mb-4 text-gray-900">Why Contact Us?</h3>
+                  <ul className="space-y-3 text-gray-700">
+                    <li className="flex items-start">
+                      <span className="text-emerald-600 mr-2">✓</span>
+                      <span>Get help with technical issues</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-emerald-600 mr-2">✓</span>
+                      <span>Ask questions about our services</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-emerald-600 mr-2">✓</span>
+                      <span>Request new features</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-emerald-600 mr-2">✓</span>
+                      <span>Report bugs or issues</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-emerald-600 mr-2">✓</span>
+                      <span>Get billing support</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>

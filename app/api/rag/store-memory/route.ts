@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { storeUserMemory } from '@/lib/pinecone-memory';
+import { storeMemory } from '@/lib/pinecone-memory';
 
 /**
  * Store User Memory Endpoint
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Store memory in Pinecone
-    const memoryId = await storeUserMemory(user.id, {
+    const memoryId = await storeMemory(user.id, {
       memoryType,
       category,
       keyText,
