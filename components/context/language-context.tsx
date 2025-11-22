@@ -43,17 +43,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return;
     
     try {
-      const savedLanguage = localStorage.getItem("preferredLanguage")
-      if (savedLanguage) {
-        try {
-          const parsedLanguage = JSON.parse(savedLanguage)
-          setCurrentLanguage(parsedLanguage)
+    const savedLanguage = localStorage.getItem("preferredLanguage")
+    if (savedLanguage) {
+      try {
+        const parsedLanguage = JSON.parse(savedLanguage)
+        setCurrentLanguage(parsedLanguage)
           if (document.documentElement) {
-            document.documentElement.lang = parsedLanguage.value
+        document.documentElement.lang = parsedLanguage.value
           }
-        } catch (error) {
-          console.error("Failed to parse saved language:", error)
-        }
+      } catch (error) {
+        console.error("Failed to parse saved language:", error)
+      }
       }
     } catch (error) {
       console.error("Failed to access localStorage:", error)
@@ -64,9 +64,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setCurrentLanguage(language)
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem("preferredLanguage", JSON.stringify(language))
+    localStorage.setItem("preferredLanguage", JSON.stringify(language))
         if (document.documentElement) {
-          document.documentElement.lang = language.value
+    document.documentElement.lang = language.value
         }
       } catch (error) {
         console.error("Failed to save language preference:", error)

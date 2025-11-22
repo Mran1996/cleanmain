@@ -14,9 +14,9 @@ export function ServiceBanner() {
     if (typeof window === 'undefined') return;
     
     try {
-      const bannerHidden = localStorage.getItem('service-banner-hidden')
-      if (bannerHidden === 'true') {
-        setIsVisible(false)
+    const bannerHidden = localStorage.getItem('service-banner-hidden')
+    if (bannerHidden === 'true') {
+      setIsVisible(false)
       }
     } catch (error) {
       console.error('Failed to access localStorage:', error)
@@ -27,7 +27,7 @@ export function ServiceBanner() {
     setIsVisible(false)
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('service-banner-hidden', 'true')
+    localStorage.setItem('service-banner-hidden', 'true')
       } catch (error) {
         console.error('Failed to save to localStorage:', error)
       }

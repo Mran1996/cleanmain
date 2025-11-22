@@ -916,7 +916,7 @@ function Step2Content() {
         
                 {/* New Case Analysis Box */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 pb-12">
-          <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
+          <div className="text-xl font-bold text-green-800 mb-4">AI-Powered Case Success Analysis</div>
           
           {/* Generate AI Case Analysis Buttons - Always visible at the top */}
           <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
@@ -945,77 +945,119 @@ function Step2Content() {
                  <div className="prose max-w-none">
                    <h2 className="text-2xl font-bold mb-4">{caseAnalysis.title || "Case Analysis"}</h2>
                    
+                   {/* Case Snapshot */}
+                   <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                     <div className="mb-2"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
+                     <div className="mb-2"><b>Case Type:</b> {caseAnalysis.caseType}</div>
+                   </div>
+
                    {/* Success Rate with Explanation */}
-                   <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                     <div className="mb-2">
+                   <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg">
+                     <div className="mb-3">
                        <b className="text-lg">Success Rate: {caseAnalysis.successRate}%</b>
                      </div>
                      {caseAnalysis.successRateExplanation && (
-                       <div className="text-gray-700 mt-2">
-                         <b>What This Means:</b>
-                         <p className="mt-1">{caseAnalysis.successRateExplanation}</p>
+                       <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                         {caseAnalysis.successRateExplanation}
                        </div>
                      )}
                    </div>
 
-                   <div className="mb-4"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
-                   <div className="mb-4"><b>Case Type:</b> {caseAnalysis.caseType}</div>
-                   
-                   {/* Key Factors */}
-                   {caseAnalysis.keyFactors && (
-                     <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                       <b className="text-lg block mb-2">Key Factors That Will Determine Outcome:</b>
-                       <p className="text-gray-700">{caseAnalysis.keyFactors}</p>
-                     </div>
-                   )}
+                   {/* Primary Issues */}
+                   <div className="mb-4">
+                     <b className="text-lg">Primary Legal Issues:</b>
+                     <ul className="list-disc ml-6 mt-2">
+                       {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.primaryIssues}</li>}
+                     </ul>
+                   </div>
 
-                   {/* Comparison to Similar Cases */}
-                   {caseAnalysis.comparisonToSimilarCases && (
-                     <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                       <b className="text-lg block mb-2">Comparison to Similar Cases:</b>
-                       <p className="text-gray-700">{caseAnalysis.comparisonToSimilarCases}</p>
-                     </div>
-                   )}
+                   {/* Statutes */}
+                   <div className="mb-4">
+                     <b className="text-lg">Relevant Statutes & Precedents:</b>
+                     <ul className="list-disc ml-6 mt-2">
+                       {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.statutes}</li>}
+                     </ul>
+                   </div>
 
-                   <div className="mb-4"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
-                   <div className="mb-4"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
-                   <div className="mb-4"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
-                   
-                   <div className="mb-4"><b>Strengths:</b>
-                     <ul className="list-disc ml-6">
+                   {/* Outcome Estimate */}
+                   <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                     <b className="text-lg">Outcome Estimate:</b>
+                     <div className="mt-2 text-gray-700">{caseAnalysis.outcomeEstimate}</div>
+                   </div>
+
+                   {/* Strengths */}
+                   <div className="mb-4">
+                     <b className="text-lg text-green-700">Strengths:</b>
+                     <ul className="list-disc ml-6 mt-2">
                        {Array.isArray(caseAnalysis.strengths) ? caseAnalysis.strengths.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.strengths}</li>}
                      </ul>
                    </div>
-                   
-                   <div className="mb-4"><b>Weaknesses:</b>
-                     <ul className="list-disc ml-6">
+
+                   {/* Weaknesses */}
+                   <div className="mb-4">
+                     <b className="text-lg text-red-700">Weaknesses:</b>
+                     <ul className="list-disc ml-6 mt-2">
                        {Array.isArray(caseAnalysis.weaknesses) ? caseAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>) : <li>{caseAnalysis.weaknesses}</li>}
                      </ul>
                    </div>
 
-                   {/* How to Improve - Highlighted Section */}
-                   {caseAnalysis.howToImprove && (
-                     <div className="mb-6 p-5 bg-green-50 rounded-lg border-2 border-green-300">
-                       <b className="text-xl text-green-800 block mb-3">🚀 How to Improve Your Chances of Success:</b>
-                       <p className="text-gray-800 leading-relaxed">{caseAnalysis.howToImprove}</p>
+                   {/* How to Improve - NEW SECTION */}
+                   {(caseAnalysis.improvementStrategies || caseAnalysis.keyRecommendations || caseAnalysis.criticalActions) && (
+                     <div className="mb-6 p-5 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-lg">
+                       <h3 className="text-xl font-bold text-orange-800 mb-4">🚀 How to Improve Your Chances</h3>
+                       
+                       {caseAnalysis.criticalActions && Array.isArray(caseAnalysis.criticalActions) && caseAnalysis.criticalActions.length > 0 && (
+                         <div className="mb-4">
+                           <b className="text-lg text-red-700">⚠️ Critical Actions (Must Do):</b>
+                           <ul className="list-disc ml-6 mt-2 space-y-2">
+                             {caseAnalysis.criticalActions.map((action: string, i: number) => (
+                               <li key={i} className="text-gray-800 font-medium">{action}</li>
+                             ))}
+                           </ul>
+                         </div>
+                       )}
+
+                       {caseAnalysis.keyRecommendations && Array.isArray(caseAnalysis.keyRecommendations) && caseAnalysis.keyRecommendations.length > 0 && (
+                         <div className="mb-4">
+                           <b className="text-lg text-blue-700">⭐ Key Recommendations (Priority Order):</b>
+                           <ol className="list-decimal ml-6 mt-2 space-y-2">
+                             {caseAnalysis.keyRecommendations.map((rec: string, i: number) => (
+                               <li key={i} className="text-gray-800">{rec}</li>
+                             ))}
+                           </ol>
+                         </div>
+                       )}
+
+                       {caseAnalysis.improvementStrategies && Array.isArray(caseAnalysis.improvementStrategies) && caseAnalysis.improvementStrategies.length > 0 && (
+                         <div className="mb-4">
+                           <b className="text-lg text-green-700">💡 Improvement Strategies:</b>
+                           <ul className="list-disc ml-6 mt-2 space-y-2">
+                             {caseAnalysis.improvementStrategies.map((strategy: string, i: number) => (
+                               <li key={i} className="text-gray-800">{strategy}</li>
+                             ))}
+                           </ul>
+                         </div>
+                       )}
                      </div>
                    )}
 
-                   {/* Critical Next Steps */}
-                   {caseAnalysis.criticalNextSteps && Array.isArray(caseAnalysis.criticalNextSteps) && caseAnalysis.criticalNextSteps.length > 0 && (
-                     <div className="mb-6 p-5 bg-orange-50 rounded-lg border-2 border-orange-300">
-                       <b className="text-xl text-orange-800 block mb-3">📋 Critical Next Steps:</b>
-                       <ol className="list-decimal ml-6 space-y-2 text-gray-800">
-                         {caseAnalysis.criticalNextSteps.map((step: string, i: number) => (
-                           <li key={i}>{step}</li>
-                         ))}
-                       </ol>
-                     </div>
-                   )}
+                   {/* Timeline */}
+                   <div className="mb-4 p-4 bg-purple-50 rounded-lg">
+                     <b className="text-lg">Timeline:</b>
+                     <div className="mt-2 text-gray-700">{caseAnalysis.timeline}</div>
+                   </div>
 
-                   <div className="mb-4"><b>Timeline:</b> {caseAnalysis.timeline}</div>
-                   <div className="mb-4"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
-                   <div className="mb-4"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
+                   {/* Action Plan */}
+                   <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
+                     <b className="text-lg">Action Plan:</b>
+                     <div className="mt-2 text-gray-700 whitespace-pre-line">{caseAnalysis.actionPlan}</div>
+                   </div>
+
+                   {/* Risk Strategy */}
+                   <div className="mb-4 p-4 bg-red-50 rounded-lg">
+                     <b className="text-lg">Risk Mitigation Strategy:</b>
+                     <div className="mt-2 text-gray-700 whitespace-pre-line">{caseAnalysis.riskStrategy}</div>
+                   </div>
                  </div>
                )
              ) : (

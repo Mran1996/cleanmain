@@ -52,39 +52,11 @@ export async function POST(req: NextRequest) {
     } = body;
     const chatHistory: ChatMessage[] = Array.isArray(body.chatHistory) ? (body.chatHistory as ChatMessage[]) : [];
 
+    // Allow generation even with minimal information - we'll draft what we can
+    // The AI will mention what's missing in the document itself
     if (!chatHistory || chatHistory.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No information provided. Please provide basic information about your case in the chat before generating a document.'
-      }, { status: 400 });
-    }
-
-    // Check if chat history contains actual case information (not just initial greeting)
-    const hasCaseInformation = chatHistory.some((msg: ChatMessage) => {
-      if (msg.role !== 'user') return false;
-      const content = (msg.content || '').toLowerCase();
-      // Filter out initial greetings and empty messages
-      const isGreeting = content.includes('hi') && content.length < 50;
-      const isEmpty = content.trim().length < 10;
-      // Check for actual case information indicators
-      const hasCaseInfo = content.includes('case') || 
-                         content.includes('court') || 
-                         content.includes('legal') ||
-                         content.includes('matter') ||
-                         content.includes('defendant') ||
-                         content.includes('plaintiff') ||
-                         content.includes('charge') ||
-                         content.includes('date') ||
-                         content.includes('name') ||
-                         content.length > 50; // Substantial user input
-      return !isGreeting && !isEmpty && hasCaseInfo;
-    });
-
-    if (!hasCaseInformation) {
-      return NextResponse.json({
-        success: false,
-        error: 'Insufficient information provided. Please provide basic information about your case in the chat (such as case type, parties involved, dates, or legal matter details) before generating a document.'
-      }, { status: 400 });
+      console.log('⚠️ [GENERATE DOC] No chat history, but proceeding with minimal document');
+      // Don't block - allow generation with empty history, AI will create a template
     }
 
     // Authenticate user using getServerUser
@@ -153,6 +125,13 @@ export async function POST(req: NextRequest) {
 
     // Create a comprehensive prompt for OpenAI using only real data
     const systemPrompt = `You are Khristian, a senior partner at a top 1% law firm with 25+ years of litigation experience. You have successfully argued before the Supreme Court and have a track record of winning complex, high-stakes cases. Every document you generate must be written with the strategic sophistication and persuasive power of an elite trial attorney.
+
+CRITICAL - GENERATE WITH AVAILABLE INFORMATION:
+- Generate the document with WHATEVER information is available, even if incomplete
+- If information is missing, draft the document anyway and naturally mention what would strengthen it
+- Speak like a qualified, experienced attorney in a human, conversational tone - professional but warm
+- Write as if you're a trusted advisor helping a client, not a robotic form-filler
+- If details are missing, acknowledge it naturally: "To further strengthen this motion, additional details regarding [specific info] would be beneficial. However, the arguments presented herein are sufficient to support the relief requested."
 
 CRITICAL - DOCUMENT TYPE REQUIREMENT:
 - You MUST generate ONLY the actual legal document for the client's case (motion, petition, brief, etc.)
@@ -317,14 +296,14 @@ CASE DETAILS:
 
 CRITICAL INSTRUCTIONS FOR DOCUMENT GENERATION:
 1. ANALYZE THE CONVERSATION HISTORY THOROUGHLY - Extract the specific legal issues, facts, and circumstances from the client's actual situation
-2. DO NOT GENERATE GENERIC DOCUMENTS - Create a document that directly addresses the client's specific legal matter
-3. USE ONLY THE ACTUAL INFORMATION PROVIDED - Do not invent facts, case numbers, or legal issues
-4. DETERMINE THE APPROPRIATE DOCUMENT TYPE based on the client's situation (motion, petition, brief, etc.) - This must be the ACTUAL legal document for the client's case, NOT a document about the consultation process
-5. ABSOLUTELY FORBIDDEN: Do NOT generate any documents about "attorney-client interview", "case information procedures", "comprehensive case information", or any meta-document about the consultation process
-6. You MUST generate the actual legal document the client needs (e.g., Motion to Vacate, Petition for Habeas Corpus, Motion to Dismiss, etc.)
-7. INCORPORATE ALL RELEVANT DETAILS from the conversation history
-8. If the client's situation involves specific legal issues (criminal, civil, family, etc.), address those specific issues
-9. If the client mentions specific charges, dates, locations, or circumstances, include those exact details
+2. GENERATE THE DOCUMENT WITH WHATEVER INFORMATION IS AVAILABLE - Even if information is incomplete, draft the document using what you have
+3. IF INFORMATION IS MISSING: Include a note in the document (in a natural, attorney-like way) mentioning what additional information would strengthen the document. For example: "To further strengthen this motion, additional details regarding [specific missing info] would be beneficial. However, the arguments presented herein are sufficient to support the relief requested."
+4. USE ONLY THE ACTUAL INFORMATION PROVIDED - Do not invent facts, case numbers, or legal issues. If something is not provided, use placeholders like "[Case Number to be provided]" or "[Date to be confirmed]" only when absolutely necessary
+5. DETERMINE THE APPROPRIATE DOCUMENT TYPE based on the client's situation (motion, petition, brief, etc.) - This must be the ACTUAL legal document for the client's case
+6. INCORPORATE ALL RELEVANT DETAILS from the conversation history
+7. If the client's situation involves specific legal issues (criminal, civil, family, etc.), address those specific issues
+8. If the client mentions specific charges, dates, locations, or circumstances, include those exact details
+9. Write in a professional, attorney-like tone - confident, clear, and persuasive
 10. If the client uploaded documents (mentioned in conversation), reference and analyze those documents in the legal document
 11. Generate a document that reflects the client's actual legal needs, not a template
 12. Ensure the document is comprehensive and addresses the full scope of the client's situation

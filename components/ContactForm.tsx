@@ -53,11 +53,12 @@ export default function ContactForm() {
       return
     }
     
-    // Prevent rapid-fire submissions (within 3 seconds)
+    // Prevent rapid-fire submissions (within 10 seconds - increased from 3)
     const now = Date.now()
     const lastSubmitTime = (window as any).lastContactSubmitTime
-    if (lastSubmitTime && now - lastSubmitTime < 3000) {
+    if (lastSubmitTime && now - lastSubmitTime < 10000) {
       console.log('❌ Rapid-fire submission blocked (too soon after last submit)')
+      alert('Please wait a moment before submitting again.')
       return
     }
     (window as any).lastContactSubmitTime = now

@@ -938,7 +938,7 @@ export function EnhancedChatInterface({
               className={`max-w-[80%] rounded-lg p-3 sm:p-4 text-sm sm:text-base ${
                 message.sender === "user"
                   ? "bg-emerald-500 text-white rounded-br-none"
-                  : "bg-gray-100 text-gray-800 rounded-bl-none"
+                  : "bg-gradient-to-br from-slate-50 to-gray-100/80 text-gray-800 rounded-bl-none border border-gray-200/50 shadow-sm"
               }`}
             >
               {message.sender === "assistant" && (
@@ -965,7 +965,7 @@ export function EnhancedChatInterface({
         {/* Typing indicator when waiting for response */}
         {isWaitingForResponse && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg p-3 rounded-bl-none">
+            <div className="bg-gradient-to-br from-slate-50 to-gray-100/80 rounded-lg p-3 rounded-bl-none border border-gray-200/50 shadow-sm">
               <div className="flex space-x-1">
                 <div
                   className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
@@ -1081,7 +1081,7 @@ export function EnhancedChatInterface({
                 console.log('📝 Textarea clicked');
               }}
               placeholder={searchModeEnabled ? "Type your search question (internet search enabled)..." : (currentQuestion ? "Type your answer..." : "Type a message...")}
-              className={`flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white focus:outline-none focus:ring-2 resize-none overflow-hidden placeholder:text-gray-500 ${
+              className={`flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none overflow-hidden placeholder:text-gray-500 shadow-sm ${
                 searchModeEnabled ? "focus:ring-blue-500 border-blue-300" : "focus:ring-emerald-500"
               }`}
               disabled={isWaitingForResponse || isUploading}
@@ -1178,7 +1178,7 @@ export function EnhancedChatInterface({
                       console.log("🔘 Suggested response clicked:", suggestion);
                       handleSuggestedResponse(suggestion);
                     }}
-                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-emerald-100 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:bg-emerald-200 transition flex items-center gap-1"
+                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 flex items-center gap-1 border border-emerald-200/50 shadow-sm hover:shadow-md"
                   >
                     <span>{suggestionEmojiMap[suggestion] || null}</span>
                     {suggestion}
@@ -1229,7 +1229,7 @@ export function EnhancedChatInterface({
                 zIndex: 1001,
                 position: 'relative'
               }}
-              className="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 active:from-emerald-700 active:to-emerald-800 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
               aria-label="Generate Document and Case Analysis"
             >
               {isGeneratingDocument ? (

@@ -65,7 +65,7 @@ export default function ContactPage() {
                           <Phone className="h-6 w-6 text-emerald-600" />
                         </div>
                       </div>
-                      <div>
+                <div>
                         <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
                         <a href="tel:425-273-0871" className="text-emerald-600 hover:text-emerald-700 font-medium text-lg">
                           425-273-0871
@@ -83,8 +83,8 @@ export default function ContactPage() {
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
                         <a href="mailto:support@askailegal.com" className="text-emerald-600 hover:text-emerald-700 font-medium text-lg break-all">
-                          support@askailegal.com
-                        </a>
+                        support@askailegal.com
+                      </a>
                         <p className="text-sm text-gray-500 mt-1">We respond within 24 hours</p>
                       </div>
                     </div>

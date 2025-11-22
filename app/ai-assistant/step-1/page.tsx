@@ -943,29 +943,73 @@ ${documentInfo}
     }
   };
 
-  // Auto-save current chat conversation
-  const autoSaveChat = async () => {
-    if (chatHistory.length < 2) return; // Don't save empty or single-message chats
+  // Auto-save current chat conversation to chat_conversations and chat_messages
+  const autoSaveChat = async (chatHistoryToSave: any[] = chatHistory) => {
+    if (chatHistoryToSave.length < 2) return; // Don't save empty or single-message chats
     
     try {
-      const title = generateChatTitle(chatHistory);
-      const response = await fetch('/api/chat-conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          messages: chatHistory,
-          legal_category: 'criminal' // Default category
-        })
-      });
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (response.ok) {
-        // Reload conversations to show the new one
-        loadChatConversations();
-      } else if (response.status === 401) {
-        // Handle authentication error silently
-        console.log('Authentication required for auto-saving chat');
+      if (!user) {
+        console.log('User not authenticated, skipping auto-save');
+        return;
       }
+
+      const title = generateChatTitle(chatHistoryToSave);
+      const legalCategory = getLegalCategory().toLowerCase() || 'general';
+      
+      // Create conversation
+      const { data: conversation, error: convError } = await supabase
+        .from('chat_conversations')
+        .insert({
+          user_id: user.id,
+          title,
+          legal_category: legalCategory,
+          metadata: {
+            document_generated: true,
+            message_count: chatHistoryToSave.length
+          }
+        })
+        .select()
+        .single();
+
+      if (convError) {
+        console.error('Error creating conversation:', convError);
+        return;
+      }
+
+      if (!conversation) {
+        console.error('Failed to create conversation');
+        return;
+      }
+
+      // Save all messages to chat_messages
+      const messagesToSave = chatHistoryToSave.map(msg => ({
+        conversation_id: conversation.id,
+        sender: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.text || '',
+        message_type: 'text',
+        metadata: {}
+      }));
+
+      // Insert messages in batches (to avoid hitting limits)
+      const batchSize = 50;
+      for (let i = 0; i < messagesToSave.length; i += batchSize) {
+        const batch = messagesToSave.slice(i, i + batchSize);
+        const { error: msgError } = await supabase
+          .from('chat_messages')
+          .insert(batch);
+
+        if (msgError) {
+          console.error('Error saving messages batch:', msgError);
+        }
+      }
+
+      console.log('✅ Chat conversation auto-saved successfully');
+      
+      // Reload conversations to show the new one in Prior Chats
+      await loadChatConversations();
     } catch (error) {
       console.error('Error auto-saving chat:', error);
     }
@@ -1248,6 +1292,9 @@ ${documentInfo}
                     console.error("❌ Error auto-saving project:", error);
                   }
                   
+                  // Auto-save chat conversation to Prior Chats when document is generated (chat completed)
+                  await autoSaveChat(finalChatHistory);
+                  
                   return { docId: finalDocId, document: accumulatedContent };
                 } else if (data.type === "error") {
                   throw new Error(data.error || "Stream error occurred");
@@ -1299,6 +1346,9 @@ ${documentInfo}
               console.error("❌ Error in save attempt:", saveErr);
             }
           }
+          
+          // Auto-save chat conversation to Prior Chats when document is generated (chat completed)
+          await autoSaveChat(finalChatHistory);
           
           return { docId: finalDocId, document: accumulatedContent };
         } else {
@@ -1357,6 +1407,9 @@ ${documentInfo}
         } catch (error) {
           console.error("❌ Error auto-saving project:", error);
         }
+        
+        // Auto-save chat conversation to Prior Chats when document is generated (chat completed)
+        await autoSaveChat(finalChatHistory);
         
         return { docId, document };
       }
@@ -1613,77 +1666,119 @@ ${documentInfo}
                 <div className="prose max-w-none">
                   <h2 className="text-2xl font-bold mb-4">{caseAnalysis.title || "Case Analysis"}</h2>
                   
+                  {/* Case Snapshot */}
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="mb-2"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
+                    <div className="mb-2"><b>Case Type:</b> {caseAnalysis.caseType}</div>
+                  </div>
+
                   {/* Success Rate with Explanation */}
-                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="mb-2">
+                  <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg">
+                    <div className="mb-3">
                       <b className="text-lg">Success Rate: {caseAnalysis.successRate}%</b>
                     </div>
                     {caseAnalysis.successRateExplanation && (
-                      <div className="text-gray-700 mt-2">
-                        <b>What This Means:</b>
-                        <p className="mt-1">{caseAnalysis.successRateExplanation}</p>
+                      <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                        {caseAnalysis.successRateExplanation}
                       </div>
                     )}
                   </div>
 
-                  <div className="mb-4"><b>Jurisdiction:</b> {caseAnalysis.jurisdiction}</div>
-                  <div className="mb-4"><b>Case Type:</b> {caseAnalysis.caseType}</div>
-                  
-                  {/* Key Factors */}
-                  {caseAnalysis.keyFactors && (
-                    <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <b className="text-lg block mb-2">Key Factors That Will Determine Outcome:</b>
-                      <p className="text-gray-700">{caseAnalysis.keyFactors}</p>
-                    </div>
-                  )}
+                  {/* Primary Issues */}
+                  <div className="mb-4">
+                    <b className="text-lg">Primary Legal Issues:</b>
+                    <ul className="list-disc ml-6 mt-2">
+                      {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.primaryIssues}</li>}
+                    </ul>
+                  </div>
 
-                  {/* Comparison to Similar Cases */}
-                  {caseAnalysis.comparisonToSimilarCases && (
-                    <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                      <b className="text-lg block mb-2">Comparison to Similar Cases:</b>
-                      <p className="text-gray-700">{caseAnalysis.comparisonToSimilarCases}</p>
-                    </div>
-                  )}
+                  {/* Statutes */}
+                  <div className="mb-4">
+                    <b className="text-lg">Relevant Statutes & Precedents:</b>
+                    <ul className="list-disc ml-6 mt-2">
+                      {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.statutes}</li>}
+                    </ul>
+                  </div>
 
-                  <div className="mb-4"><b>Primary Issues:</b> {Array.isArray(caseAnalysis.primaryIssues) ? caseAnalysis.primaryIssues.join(", ") : caseAnalysis.primaryIssues}</div>
-                  <div className="mb-4"><b>Statutes:</b> {Array.isArray(caseAnalysis.statutes) ? caseAnalysis.statutes.join(", ") : caseAnalysis.statutes}</div>
-                  <div className="mb-4"><b>Outcome Estimate:</b> {caseAnalysis.outcomeEstimate}</div>
-                  
-                  <div className="mb-4"><b>Strengths:</b>
-                    <ul className="list-disc ml-6">
+                  {/* Outcome Estimate */}
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <b className="text-lg">Outcome Estimate:</b>
+                    <div className="mt-2 text-gray-700">{caseAnalysis.outcomeEstimate}</div>
+                  </div>
+
+                  {/* Strengths */}
+                  <div className="mb-4">
+                    <b className="text-lg text-green-700">Strengths:</b>
+                    <ul className="list-disc ml-6 mt-2">
                       {Array.isArray(caseAnalysis.strengths) ? caseAnalysis.strengths.map((s: string, i: number) => <li key={i}>{s}</li>) : <li>{caseAnalysis.strengths}</li>}
                     </ul>
                   </div>
-                  
-                  <div className="mb-4"><b>Weaknesses:</b>
-                    <ul className="list-disc ml-6">
+
+                  {/* Weaknesses */}
+                  <div className="mb-4">
+                    <b className="text-lg text-red-700">Weaknesses:</b>
+                    <ul className="list-disc ml-6 mt-2">
                       {Array.isArray(caseAnalysis.weaknesses) ? caseAnalysis.weaknesses.map((w: string, i: number) => <li key={i}>{w}</li>) : <li>{caseAnalysis.weaknesses}</li>}
                     </ul>
                   </div>
 
-                  {/* How to Improve - Highlighted Section */}
-                  {caseAnalysis.howToImprove && (
-                    <div className="mb-6 p-5 bg-green-50 rounded-lg border-2 border-green-300">
-                      <b className="text-xl text-green-800 block mb-3">🚀 How to Improve Your Chances of Success:</b>
-                      <p className="text-gray-800 leading-relaxed">{caseAnalysis.howToImprove}</p>
+                  {/* How to Improve - NEW SECTION */}
+                  {(caseAnalysis.improvementStrategies || caseAnalysis.keyRecommendations || caseAnalysis.criticalActions) && (
+                    <div className="mb-6 p-5 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-lg">
+                      <h3 className="text-xl font-bold text-orange-800 mb-4">🚀 How to Improve Your Chances</h3>
+                      
+                      {caseAnalysis.criticalActions && Array.isArray(caseAnalysis.criticalActions) && caseAnalysis.criticalActions.length > 0 && (
+                        <div className="mb-4">
+                          <b className="text-lg text-red-700">⚠️ Critical Actions (Must Do):</b>
+                          <ul className="list-disc ml-6 mt-2 space-y-2">
+                            {caseAnalysis.criticalActions.map((action: string, i: number) => (
+                              <li key={i} className="text-gray-800 font-medium">{action}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {caseAnalysis.keyRecommendations && Array.isArray(caseAnalysis.keyRecommendations) && caseAnalysis.keyRecommendations.length > 0 && (
+                        <div className="mb-4">
+                          <b className="text-lg text-blue-700">⭐ Key Recommendations (Priority Order):</b>
+                          <ol className="list-decimal ml-6 mt-2 space-y-2">
+                            {caseAnalysis.keyRecommendations.map((rec: string, i: number) => (
+                              <li key={i} className="text-gray-800">{rec}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {caseAnalysis.improvementStrategies && Array.isArray(caseAnalysis.improvementStrategies) && caseAnalysis.improvementStrategies.length > 0 && (
+                        <div className="mb-4">
+                          <b className="text-lg text-green-700">💡 Improvement Strategies:</b>
+                          <ul className="list-disc ml-6 mt-2 space-y-2">
+                            {caseAnalysis.improvementStrategies.map((strategy: string, i: number) => (
+                              <li key={i} className="text-gray-800">{strategy}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Critical Next Steps */}
-                  {caseAnalysis.criticalNextSteps && Array.isArray(caseAnalysis.criticalNextSteps) && caseAnalysis.criticalNextSteps.length > 0 && (
-                    <div className="mb-6 p-5 bg-orange-50 rounded-lg border-2 border-orange-300">
-                      <b className="text-xl text-orange-800 block mb-3">📋 Critical Next Steps:</b>
-                      <ol className="list-decimal ml-6 space-y-2 text-gray-800">
-                        {caseAnalysis.criticalNextSteps.map((step: string, i: number) => (
-                          <li key={i}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
+                  {/* Timeline */}
+                  <div className="mb-4 p-4 bg-purple-50 rounded-lg">
+                    <b className="text-lg">Timeline:</b>
+                    <div className="mt-2 text-gray-700">{caseAnalysis.timeline}</div>
+                  </div>
 
-                  <div className="mb-4"><b>Timeline:</b> {caseAnalysis.timeline}</div>
-                  <div className="mb-4"><b>Action Plan:</b> {caseAnalysis.actionPlan}</div>
-                  <div className="mb-4"><b>Risk Strategy:</b> {caseAnalysis.riskStrategy}</div>
+                  {/* Action Plan */}
+                  <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
+                    <b className="text-lg">Action Plan:</b>
+                    <div className="mt-2 text-gray-700 whitespace-pre-line">{caseAnalysis.actionPlan}</div>
+                  </div>
+
+                  {/* Risk Strategy */}
+                  <div className="mb-4 p-4 bg-red-50 rounded-lg">
+                    <b className="text-lg">Risk Mitigation Strategy:</b>
+                    <div className="mt-2 text-gray-700 whitespace-pre-line">{caseAnalysis.riskStrategy}</div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-gray-500 mb-4">
@@ -1776,9 +1871,9 @@ ${documentInfo}
       headerSubtitle=""
     >
       <div className="max-w-7xl mx-auto py-6 px-4 md:px-8">
-        <div className="flex gap-6 h-[calc(100vh-200px)]">
+        <div className="flex gap-6 h-[calc(100vh-200px)] relative">
           {/* Sidebar for Prior Chats - same level as chat */}
-          <div className="w-80 bg-white border border-gray-200 rounded-xl p-4 flex flex-col h-full">
+          <div className="w-80 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 flex flex-col h-full shadow-lg shadow-gray-200/50">
             {/* Header with Prior Chats title and New Chat button */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Prior Chats</h3>
@@ -1805,7 +1900,7 @@ ${documentInfo}
                 </div>
               ) : (
                 priorChats.map((chat) => (
-                <div key={chat.id} className="group flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-200">
+                <div key={chat.id} className="group flex items-center p-3 rounded-lg hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/30 cursor-pointer border border-gray-200/60 bg-white/60 backdrop-blur-sm transition-all duration-200 shadow-sm hover:shadow-md">
                   {editingFolder === chat.id ? (
                     <div className="w-full">
                       <input
@@ -1888,50 +1983,42 @@ ${documentInfo}
           </div>
           
           {/* Main Chat Interface - use single card style from EnhancedChatInterface */}
-          <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 md:p-6 flex flex-col h-full">
+          <div className="flex-1 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 md:p-6 flex flex-col h-full shadow-lg shadow-gray-200/50">
         
         {/* Chat Controls */}
         {chatHistory.length > 0 && (
-          <div className="mb-4 flex justify-center gap-2">
-            <Button
-              onClick={handleClearConversation}
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear Conversation
-            </Button>
-            {hasDocumentToClear() && (
+          <div className="mb-4 pb-4 border-b border-gray-200/60 bg-gradient-to-r from-transparent via-gray-50/50 to-transparent -mx-4 md:-mx-6 px-4 md:px-6 pt-2">
+            <div className="flex justify-center gap-2 flex-wrap">
               <Button
-                onClick={handleClearDocument}
+                onClick={handleClearConversation}
                 variant="outline"
                 size="sm"
-                className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
-                <FileX className="h-4 w-4 mr-2" />
-                Clear Document
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Conversation
               </Button>
-            )}
-            <Button
-              onClick={() => setShowSplitPane(!showSplitPane)}
-              variant="outline"
-              size="sm"
-              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {showSplitPane ? "Hide Document Preview" : "Show Document Preview"}
-            </Button>
-            {documentPreview && (
+              {hasDocumentToClear() && (
+                <Button
+                  onClick={handleClearDocument}
+                  variant="outline"
+                  size="sm"
+                  className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                >
+                  <FileX className="h-4 w-4 mr-2" />
+                  Clear Document
+                </Button>
+              )}
               <Button
+                onClick={() => setShowSplitPane(!showSplitPane)}
                 variant="outline"
-                onClick={saveCurrentProject}
                 size="sm"
                 className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
               >
-                💾 Save Project
+                <FileText className="h-4 w-4 mr-2" />
+                {showSplitPane ? "Hide Document Preview" : "Show Document Preview"}
               </Button>
-            )}
+            </div>
           </div>
         )}
         

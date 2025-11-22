@@ -6,17 +6,19 @@ const createTransporter = () => {
   const smtpConfig = {
     host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false, // Use STARTTLS for port 587
+    secure: false, // Use STARTTLS for port 587 (not SSL/TLS)
+    requireTLS: true, // Require STARTTLS
     tls: {
-      ciphers: 'SSLv3',
-      rejectUnauthorized: false
+      rejectUnauthorized: false, // Allow self-signed certificates if needed
+      minVersion: 'TLSv1.2' // Use TLS 1.2 or higher
     },
     auth: {
       user: process.env.SMTP_USER || process.env.OUTLOOK_EMAIL, // Your Outlook email (e.g., support@askailegal.com)
-      pass: process.env.SMTP_PASS || process.env.OUTLOOK_PASSWORD, // Your Outlook password or app password
+      pass: process.env.SMTP_PASS || process.env.OUTLOOK_PASSWORD, // Your Outlook app password (NOT your regular password)
+      // To generate app password: Go to account.microsoft.com/security → Advanced security options → App passwords → Create new
     },
-    debug: true,
-    logger: true
+    debug: process.env.NODE_ENV === 'development',
+    logger: process.env.NODE_ENV === 'development'
   };
 
   console.log('SMTP Config (Outlook):', {
@@ -33,19 +35,24 @@ const createTransporter = () => {
   return nodemailer.createTransport(smtpConfig);
 }
 
-// In-memory cache to prevent duplicate submissions (clears after 5 seconds)
+// In-memory cache to prevent duplicate submissions (clears after 60 seconds)
 const recentSubmissions = new Map<string, number>()
 
-// Clean up old entries every 10 seconds
+// Clean up old entries every 30 seconds
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now()
+    let cleaned = 0
     for (const [key, timestamp] of recentSubmissions.entries()) {
-      if (now - timestamp > 5000) {
+      if (now - timestamp > 60000) { // Keep entries for 60 seconds
         recentSubmissions.delete(key)
+        cleaned++
       }
     }
-  }, 10000)
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned up ${cleaned} old submission entries`)
+    }
+  }, 30000) // Run cleanup every 30 seconds
 }
 
 export async function POST(request: NextRequest) {
@@ -65,23 +72,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create a unique key for this submission (email + message hash + timestamp)
-    const messageHash = message.substring(0, 50).replace(/\s/g, '')
-    const submissionKey = `${email}-${messageHash}-${Math.floor(Date.now() / 1000)}`
+    // Create a unique key for this submission (email + message hash)
+    // Use a more robust hash that includes the full message content
+    const messageHash = Buffer.from(message.trim().toLowerCase()).toString('base64').substring(0, 32)
+    const submissionKey = `${email.toLowerCase().trim()}-${messageHash}`
     
-    // Check if this is a duplicate submission within the last 5 seconds
+    // Check if this is a duplicate submission within the last 30 seconds (increased from 5)
     const now = Date.now()
-    for (const [key, timestamp] of recentSubmissions.entries()) {
-      if (key.startsWith(`${email}-${messageHash}`) && now - timestamp < 5000) {
-        console.log('❌ Duplicate submission detected on server side, ignoring')
-        return NextResponse.json(
-          { error: 'Duplicate submission detected. Please wait a moment before submitting again.' },
-          { status: 429 }
-        )
-      }
+    const existingTimestamp = recentSubmissions.get(submissionKey)
+    if (existingTimestamp && now - existingTimestamp < 30000) {
+      console.log('❌ Duplicate submission detected on server side (within 30s), ignoring')
+      console.log(`   Email: ${email}, Time since last: ${now - existingTimestamp}ms`)
+      return NextResponse.json(
+        { error: 'Duplicate submission detected. Please wait a moment before submitting again.' },
+        { status: 429 }
+      )
     }
     
-    // Record this submission
+    // Record this submission (overwrite if exists)
     recentSubmissions.set(submissionKey, now)
 
     const transporter = createTransporter()
@@ -115,8 +123,8 @@ export async function POST(request: NextRequest) {
     }
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || 'support@askailegal.com',
-      to: 'support@askailegal.com',
+      from: process.env.SMTP_FROM || process.env.SMTP_USER || 'support@askailegal.com',
+      to: process.env.SMTP_TO || process.env.SMTP_USER || 'support@askailegal.com',
       subject: `Contact Form: ${reason} - ${name}`,
       html: emailContent,
       attachments: file && file.size > 0 ? [{
@@ -126,7 +134,9 @@ export async function POST(request: NextRequest) {
     }
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Message sent: %s', info.messageId);
+    console.log('✅ Message sent successfully: %s', info.messageId);
+    console.log(`   Submission key: ${submissionKey}`);
+    console.log(`   Total recent submissions tracked: ${recentSubmissions.size}`);
 
     return NextResponse.json({ 
       success: true,

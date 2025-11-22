@@ -48,7 +48,7 @@ async function analyzeWithPerplexity(documentText: string, caseInfo: any, releva
     throw new Error('PERPLEXITY_API_KEY is not configured');
   }
 
-  const analysisPrompt = `You are an expert legal analyst with deep knowledge of case law, legal strategy, and realistic case outcome assessment. Analyze the following legal document and provide a comprehensive, REALISTIC case success analysis with detailed explanations and actionable improvement recommendations.
+  const analysisPrompt = `You are an expert legal analyst with deep knowledge of case law, legal strategy, and realistic case outcome assessment. Analyze the following legal document and provide a comprehensive, REALISTIC case success analysis with detailed explanations and actionable improvement strategies.
 
 CRITICAL: Be realistic and conservative in your success rate assessment. Do not inflate success rates. Base your assessment on:
 1. Actual document quality and legal arguments
@@ -72,38 +72,52 @@ Case Information:
 Relevant Case Law:
 ${relevantCaseLaw || 'No case law provided'}
 
-Analyze the document thoroughly and provide a REALISTIC assessment with detailed explanations. Return ONLY a valid JSON object with these exact fields:
+Analyze the document thoroughly and provide a COMPREHENSIVE, REALISTIC assessment with detailed explanations. Return ONLY a valid JSON object with these exact fields:
 
 {
   "successRate": number (0-100, be realistic and conservative),
+  "successRateExplanation": "A detailed 2-3 paragraph explanation of why the success rate is what it is. Explain the key factors that influenced this assessment, including document quality, evidence strength, legal arguments, and how similar cases have fared. Be specific and educational.",
   "title": "Case Title",
   "jurisdiction": "Court/Jurisdiction",
   "caseType": "Type of Case",
   "primaryIssues": ["issue1", "issue2", "issue3"],
   "statutes": ["statute1", "statute2"],
-  "outcomeEstimate": "Detailed, realistic outcome prediction based on actual case law and precedents. Explain WHY this outcome is likely, citing specific factors.",
+  "outcomeEstimate": "Detailed, realistic outcome prediction based on actual case law and precedents. Explain what is most likely to happen and why.",
   "strengths": ["strength1", "strength2", "strength3"],
   "weaknesses": ["weakness1", "weakness2", "weakness3"],
-  "timeline": "Estimated timeline based on similar cases",
-  "actionPlan": "Recommended next steps",
-  "riskStrategy": "Risk mitigation strategies",
-  "successRateExplanation": "A clear, detailed explanation of what the success rate means. Explain the factors that contribute to this assessment, what it means in practical terms, and what level of confidence this represents.",
-  "howToImprove": "Detailed, actionable recommendations on how to improve the chances of success. Include specific steps the user can take, additional evidence they should gather, arguments they should strengthen, and strategies they should consider. Be specific and practical.",
-  "keyFactors": "The 3-5 most important factors that will determine the outcome of this case. Explain each factor clearly.",
-  "comparisonToSimilarCases": "How this case compares to similar cases in this jurisdiction. Include success rates and outcomes of comparable cases if available.",
-  "criticalNextSteps": ["Specific action 1", "Specific action 2", "Specific action 3", "Specific action 4", "Specific action 5"]
+  "improvementStrategies": [
+    "Specific, actionable strategy 1 to improve success chances (e.g., 'Gather additional witness statements from [specific people] to strengthen your factual narrative')",
+    "Specific, actionable strategy 2 (e.g., 'Cite the recent case [Case Name] which supports your position on [specific legal point]')",
+    "Specific, actionable strategy 3 (e.g., 'Address the weakness in [specific area] by [specific action]')",
+    "Specific, actionable strategy 4 (e.g., 'Strengthen your argument on [specific issue] by [specific method]')"
+  ],
+  "keyRecommendations": [
+    "Priority recommendation 1 - most important action to take",
+    "Priority recommendation 2 - second most important action",
+    "Priority recommendation 3 - third most important action"
+  ],
+  "criticalActions": [
+    "Critical action 1 that must be done to improve chances (be specific)",
+    "Critical action 2 that must be done (be specific)",
+    "Critical action 3 that must be done (be specific)"
+  ],
+  "timeline": "Estimated timeline based on similar cases, with explanation of key milestones",
+  "actionPlan": "Comprehensive, step-by-step action plan with specific next steps the user should take",
+  "riskStrategy": "Detailed risk mitigation strategies with specific steps to address each major risk"
 }
 
-IMPORTANT: 
+IMPORTANT INSTRUCTIONS: 
 - Success rate should be realistic (typically 20-70% for most cases, only go higher if the case is exceptionally strong)
+- successRateExplanation must be detailed and educational - explain WHY the rate is what it is
+- improvementStrategies must be SPECIFIC and ACTIONABLE - tell the user exactly what to do, not just general advice
+- keyRecommendations should be prioritized (most important first)
+- criticalActions are things the user MUST do to improve their chances - be specific
 - Base your assessment on actual legal standards and precedents
 - Identify real weaknesses, not just strengths
 - Be honest about challenges the case may face
 - Consider jurisdiction-specific factors and recent case law trends
-- Provide EDUCATIONAL explanations that help the user understand their case better
-- Give SPECIFIC, ACTIONABLE recommendations for improvement
-- Explain the "why" behind the success rate, not just the number
-- Make recommendations practical and achievable`;
+- Make all recommendations practical and achievable
+- Explain how each improvement strategy will increase their success rate`;
 
   try {
     console.log('🔍 [PERPLEXITY] Analyzing document with Perplexity AI...');
@@ -263,28 +277,33 @@ export async function POST(req: Request) {
       // Fallback to structured response if Perplexity fails
       structuredAnalysis = {
         successRate: 45, // Conservative fallback
+        successRateExplanation: "Analysis service temporarily unavailable. A conservative estimate of 45% has been assigned. For a detailed assessment, please try generating the analysis again.",
         title: (userInfo?.firstName || 'Plaintiff') + ' v. ' + (caseInfo?.opposingParty || 'Defendant'),
         jurisdiction: (courtName || 'Court') + ', ' + (state || 'State'),
         caseType: legalCategory || "Legal Matter",
         primaryIssues: ["Document analysis required", "Evidence review needed"],
         statutes: ["Relevant statutes to be determined"],
-        outcomeEstimate: "Analysis pending document review - Perplexity analysis unavailable",
+        outcomeEstimate: "Analysis pending document review - Perplexity analysis service temporarily unavailable",
         strengths: ["Document submitted for review"],
         weaknesses: ["Requires detailed analysis", "Perplexity analysis service unavailable"],
+        improvementStrategies: [
+          "Try generating the analysis again when the service is available",
+          "Review your document for completeness and accuracy",
+          "Ensure all relevant evidence is included in your filing"
+        ],
+        keyRecommendations: [
+          "Retry the case analysis generation",
+          "Review document for any missing information",
+          "Consult with legal counsel for guidance"
+        ],
+        criticalActions: [
+          "Ensure document contains all necessary legal arguments",
+          "Verify all evidence is properly cited",
+          "Review document for completeness before filing"
+        ],
         timeline: "30-90 days",
-        actionPlan: "Complete document analysis and gather additional evidence",
-        riskStrategy: "Consult with legal counsel for specific guidance",
-        successRateExplanation: "This is a conservative estimate. A detailed analysis by Perplexity AI was unavailable. The actual success rate may vary based on case-specific factors, evidence strength, and legal arguments.",
-        howToImprove: "To improve your chances: 1) Ensure all evidence is properly documented and organized, 2) Strengthen legal arguments with relevant case law, 3) Address any weaknesses identified in your document, 4) Consider consulting with legal counsel for case-specific guidance, 5) Gather additional supporting documentation if available.",
-        keyFactors: "The outcome will depend on: 1) Strength of legal arguments, 2) Quality and completeness of evidence, 3) Jurisdiction-specific case law and precedents, 4) Court's interpretation of facts, 5) Opposing party's response and counterarguments.",
-        comparisonToSimilarCases: "Unable to compare to similar cases - Perplexity analysis service unavailable. Generally, cases with strong evidence, clear legal arguments, and favorable precedents have higher success rates.",
-        criticalNextSteps: [
-          "Review the document for completeness and accuracy",
-          "Gather any missing evidence or documentation",
-          "Strengthen weak arguments with additional case law",
-          "Consider professional legal review",
-          "Prepare for potential counterarguments"
-        ]
+        actionPlan: "Complete document analysis and gather additional evidence. Retry analysis generation when service is available.",
+        riskStrategy: "Consult with legal counsel for specific guidance. Ensure all documentation is complete before proceeding."
       };
     }
 
