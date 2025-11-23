@@ -41,23 +41,23 @@ export function ServiceBanner() {
   if (!isVisible) return null
 
   return (
-    <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white relative overflow-hidden">
+    <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white relative overflow-hidden max-w-full">
       {/* Subtle pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-transparent to-amber-500/10"></div>
       
       <div className="relative z-10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-2 md:px-4 py-3 max-w-full">
+          <div className="flex items-center justify-between gap-2">
             {/* Main content */}
-            <div className="flex-1 text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <span className="text-amber-300 font-bold text-lg">✨</span>
-                <span className="font-bold text-lg">Let us handle it for you!</span>
-                <span className="text-amber-300 font-bold text-lg">✨</span>
+            <div className="flex-1 text-center min-w-0">
+              <div className="flex items-center justify-center gap-1 md:gap-2 mb-1 flex-wrap">
+                <span className="text-amber-300 font-bold text-sm md:text-lg">✨</span>
+                <span className="font-bold text-sm md:text-lg">Let us handle it for you!</span>
+                <span className="text-amber-300 font-bold text-sm md:text-lg">✨</span>
               </div>
               
               {!isCollapsed && (
-                <div className="text-sm text-slate-200">
+                <div className="text-xs md:text-sm text-slate-200 px-1">
                   We now offer a <span className="font-semibold text-amber-300">full service option</span> - 
                   document preparation, legal analysis, and more - 
                   <span className="font-bold text-amber-300"> starting at $499</span>
@@ -66,10 +66,10 @@ export function ServiceBanner() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
               {!isCollapsed && (
                 <Link href="/learn-more">
-                  <button className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-4 py-2 rounded-lg text-sm transition-colors">
+                  <button className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2 md:px-4 py-1 md:py-2 rounded-lg text-xs md:text-sm transition-colors whitespace-nowrap">
                     Learn More
                   </button>
                 </Link>
@@ -78,7 +78,7 @@ export function ServiceBanner() {
               {/* Toggle collapse button */}
               <button
                 onClick={handleToggle}
-                className="p-1 hover:bg-slate-600 rounded transition-colors"
+                className="p-1 hover:bg-slate-600 rounded transition-colors flex-shrink-0"
                 aria-label={isCollapsed ? "Expand banner" : "Collapse banner"}
               >
                 {isCollapsed ? (
@@ -91,7 +91,7 @@ export function ServiceBanner() {
               {/* Close button */}
               <button
                 onClick={handleHide}
-                className="p-1 hover:bg-slate-600 rounded transition-colors"
+                className="p-1 hover:bg-slate-600 rounded transition-colors flex-shrink-0"
                 aria-label="Hide banner"
               >
                 <X className="h-4 w-4" />

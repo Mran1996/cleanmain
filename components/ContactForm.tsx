@@ -89,10 +89,16 @@ export default function ContactForm() {
       }
 
       console.log(`✅ Submitting form with ID: ${submissionId}`)
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      
       const response = await fetch('/api/contact', {
         method: 'POST',
         body: submitData,
-      })
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId))
 
       // Double-check we're still the active submission before processing response
       if (submissionIdRef.current !== submissionId) {
@@ -107,17 +113,37 @@ export default function ContactForm() {
         setFile(null)
         submissionIdRef.current = null
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Form submission failed:', errorData)
-        alert('Failed to send message. Please try again.')
+        let errorMessage = 'Failed to send message. Please try again.'
+        try {
+          const errorData = await response.json()
+          console.error('❌ Form submission failed:', errorData)
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch (e) {
+          const text = await response.text().catch(() => '')
+          console.error('❌ Form submission failed - non-JSON response:', text, 'Status:', response.status)
+          if (text) {
+            errorMessage = text
+          }
+        }
+        alert(errorMessage)
         // Reset flags on error so user can retry
         isSubmittingRef.current = false
         setIsSubmitting(false)
         submissionIdRef.current = null
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error submitting form:', error)
-      alert('Failed to send message. Please try again.')
+      let errorMessage = 'Failed to send message. Please try again.'
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timed out. Please check your internet connection and try again.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      alert(errorMessage)
       // Reset flags on error so user can retry
       isSubmittingRef.current = false
       setIsSubmitting(false)
@@ -170,7 +196,7 @@ export default function ContactForm() {
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                className="w-full border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
             <div>
@@ -185,7 +211,7 @@ export default function ContactForm() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                className="w-full border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -200,7 +226,7 @@ export default function ContactForm() {
                 name="reason"
                 value={formData.reason}
                 onChange={handleInputChange}
-                className="w-full h-10 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none cursor-pointer pr-10"
+                className="w-full h-10 px-3 py-2 text-sm border border-emerald-500 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none cursor-pointer pr-10"
               >
                 <option value="">Select a reason</option>
                 <option value="general">General Inquiry</option>
@@ -240,7 +266,7 @@ export default function ContactForm() {
                 type="file"
                 onChange={handleFileChange}
                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                className="flex-1 border-gray-300"
+                className="flex-1 border-emerald-500"
               />
               <Upload className="h-4 w-4 text-gray-400" />
             </div>

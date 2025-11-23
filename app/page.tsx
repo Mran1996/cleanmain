@@ -135,7 +135,7 @@ export default function Home() {
         <ServiceBanner />
         
         {/* Main content area with responsive padding */}
-        <main className="flex-grow w-full max-w-5xl mx-auto p-8 flex flex-col gap-y-8">
+        <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8 md:p-8 flex flex-col gap-y-8 overflow-x-hidden">
           {/* Value proposition banner */}
           <div className="bg-white py-6 px-4 text-center">
             <h1 className="text-xl font-semibold">

@@ -54,15 +54,15 @@ export function Navigation() {
   }
 
   return (
-    <header className="border-b border-gray-200 sticky top-0 bg-white z-50">
-      <div className="container mx-auto px-4 py-4 flex flex-row items-center justify-between">
+    <header className="border-b border-gray-200 sticky top-0 bg-white z-50 overflow-x-hidden">
+      <div className="container mx-auto px-4 py-4 flex flex-row items-center justify-between max-w-full">
         {/* Logo */}
-        <div className="flex items-center w-auto">
+        <div className="flex items-center w-auto flex-shrink-0">
           <Logo size="lg" variant="soft" />
         </div>
         
-        {/* Navigation - always visible like desktop */}
-        <nav className="flex items-center gap-x-8 flex-1 justify-center">
+        {/* Navigation - hidden on mobile, visible on desktop */}
+        <nav className="hidden md:flex items-center gap-x-8 flex-1 justify-center">
           {NAVIGATION_LINKS.map(({ href, label }) => (
             <div key={href}>
               {renderNavLink(href, label)}
@@ -70,8 +70,8 @@ export function Navigation() {
           ))}
         </nav>
         
-        {/* Authentication and language controls - always visible like desktop */}
-        <div className="flex items-center gap-x-4">
+        {/* Authentication and language controls */}
+        <div className="flex items-center gap-x-2 md:gap-x-4 flex-shrink-0">
           <AuthButton />
           <LanguageSelector />
         </div>
