@@ -127,15 +127,15 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="flex flex-col bg-white">
         {/* Main navigation header */}
         <Navigation />
         
         {/* Service banner */}
         <ServiceBanner />
         
-        {/* Main content area with responsive padding and max width */}
-        <main className="flex-grow w-full max-w-screen-sm mx-auto p-4 md:p-8 flex flex-col gap-y-8">
+        {/* Main content area with responsive padding */}
+        <main className="flex-grow w-full max-w-5xl mx-auto p-8 flex flex-col gap-y-8">
           {/* Value proposition banner */}
           <div className="bg-white py-6 px-4 text-center">
             <h1 className="text-xl font-semibold">

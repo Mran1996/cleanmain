@@ -3,11 +3,10 @@ import nodemailer from 'nodemailer'
 
 // Configure the email transporter for Outlook/Office 365 SMTP
 const createTransporter = () => {
-  const smtpConfig = {
+  const smtpConfig: any = {
     host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     secure: false, // Use STARTTLS for port 587 (not SSL/TLS)
-    requireTLS: true, // Require STARTTLS
     tls: {
       rejectUnauthorized: false, // Allow self-signed certificates if needed
       minVersion: 'TLSv1.2' // Use TLS 1.2 or higher
@@ -32,7 +31,7 @@ const createTransporter = () => {
     throw new Error('Outlook SMTP authentication credentials are missing. Please set SMTP_USER/SMTP_PASS or OUTLOOK_EMAIL/OUTLOOK_PASSWORD environment variables.');
   }
 
-  return nodemailer.createTransport(smtpConfig);
+  return nodemailer.createTransport(smtpConfig as any);
 }
 
 // In-memory cache to prevent duplicate submissions (clears after 60 seconds)

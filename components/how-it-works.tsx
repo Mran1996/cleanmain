@@ -1,13 +1,13 @@
 export function HowItWorks() {
   return (
-    <section className="bg-white py-12 sm:py-16 md:py-20">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-10 sm:mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">How Ask AI Legal Works</h2>
+    <section className="bg-white py-20">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold mb-2">How Ask AI Legal Works</h2>
           <p className="text-lg text-gray-600">Three Easy Steps to Legal Help</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 max-w-5xl mx-auto">
+        <div className="grid grid-cols-3 gap-12 max-w-5xl mx-auto">
           <div className="text-center flex flex-col items-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
               <span role="img" aria-label="Document" className="text-4xl">

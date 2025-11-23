@@ -1,9 +1,9 @@
 export function SuccessStories() {
   return (
-    <section className="py-12 sm:py-16 bg-white">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-8 sm:mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Real People. Real Legal Wins.</h2>
+    <section className="py-16 bg-white">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-10">
+          <h2 className="text-4xl font-bold mb-4">Real People. Real Legal Wins.</h2>
           <p className="text-lg text-gray-600 mb-1">Families and self-represented clients across the U.S. use Ask AI Legal to fight back — and win.</p>
         </div>
         <div className="bg-white py-2 text-center">
@@ -11,7 +11,7 @@ export function SuccessStories() {
             We're not your attorney. We don't overcharge. We don't pass your case off to a paralegal. We're here to help you win—and bring your loved one home.
           </p>
         </div>
-        <div className="flex flex-col md:flex-row gap-6 max-w-5xl mx-auto">
+        <div className="flex flex-row gap-6 max-w-5xl mx-auto">
           {/* Testimonial 1 */}
           <div className="flex-1 border-2 border-blue-300 rounded-2xl p-8 bg-white flex flex-col items-center shadow-sm">
             <img
