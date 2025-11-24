@@ -64,9 +64,17 @@ export function Navigation() {
     <header className="border-b border-gray-200 sticky top-0 bg-white z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="flex flex-row items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center w-auto">
+          {/* Logo with Tagline */}
+          <div className="flex items-center gap-3 w-auto">
             <Logo size="lg" variant="soft" />
+            <div className="hidden sm:flex flex-col">
+              <span className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+                Ask AI Legal<sup className="text-xs">™</sup>
+              </span>
+              <span className="text-xs sm:text-sm text-gray-600 font-medium leading-tight -mt-0.5">
+                Where Law Meets Intelligence
+              </span>
+            </div>
           </div>
           
           {/* Desktop Navigation - hidden on mobile */}
@@ -103,7 +111,17 @@ export function Navigation() {
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <div className="flex flex-col h-full">
                   <div className="mb-6">
-                    <Logo size="lg" variant="soft" />
+                    <div className="flex items-center gap-3">
+                      <Logo size="lg" variant="soft" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900 leading-tight">
+                          Ask AI Legal<sup className="text-xs">™</sup>
+                        </span>
+                        <span className="text-xs text-gray-600 font-medium leading-tight -mt-0.5">
+                          Where Law Meets Intelligence
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <nav className="flex flex-col space-y-1 flex-1">
                     {NAVIGATION_LINKS.map(({ href, label }) => (
