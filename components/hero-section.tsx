@@ -38,9 +38,9 @@ const FEATURE_HIGHLIGHTS = [
 
 export function HeroSection() {
   return (
-    <section className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white py-12 sm:py-16 md:py-20">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center">
+    <section className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white py-12 sm:py-16 md:py-20 w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 w-full">
+        <div className="text-center w-full">
           {/* Logo - responsive sizing */}
           <div className="flex justify-center mb-4 sm:mb-6">
             <div className="relative">

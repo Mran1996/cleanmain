@@ -1,8 +1,8 @@
 export function KeyFeatures() {
   return (
-    <section className="bg-white py-12 sm:py-16 md:py-20">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8 sm:mb-12 md:mb-16">
+    <section className="bg-white py-12 sm:py-16 md:py-20 w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16 w-full">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">Ask AI Legal's Key Features</h2>
         </div>
 

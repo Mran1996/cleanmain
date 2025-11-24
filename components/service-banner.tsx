@@ -45,9 +45,9 @@ export function ServiceBanner() {
       {/* Subtle pattern overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-transparent to-amber-500/10"></div>
       
-      <div className="relative z-10">
-        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-2">
+      <div className="relative z-10 w-full">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2 w-full">
             {/* Main content */}
             <div className="flex-1 text-center min-w-0">
               <div className="flex items-center justify-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">

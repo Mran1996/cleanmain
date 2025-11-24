@@ -187,7 +187,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="bg-white text-sm md:text-base m-0 p-0 h-full flex flex-col">
+      <body className="bg-white text-sm md:text-base m-0 p-0 h-full w-full flex flex-col min-w-0 overflow-x-hidden">
         {/* ClientLayout provides context providers and client-side functionality */}
         <ClientLayout>
           {children}
