@@ -67,7 +67,7 @@ export function Navigation() {
         <div className="flex flex-row items-center justify-between h-20">
           {/* Logo with text and tagline */}
           <div className="flex items-center gap-3">
-            <div className="h-16 w-16 bg-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0 my-2">
+            <div className="h-16 w-16 rounded-lg flex items-center justify-center flex-shrink-0 my-2">
               <Image src="/logo/logo.png" alt="Logo" width={48} height={48} className="object-contain" />
             </div>
             <div className="flex flex-col">
