@@ -5,21 +5,18 @@ import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { PRODUCTS } from "@/lib/stripe-config";
 
 export function PricingSection({ isHomePage = false }: { isHomePage?: boolean }) {
-
-
-  console.log(PRODUCTS,"PRODUCTS")
   return (
-    <section className="bg-gray-50 py-12 sm:py-16">
+    <section className="bg-gray-50 py-12 sm:py-16 md:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 px-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
             "Justice Shouldn't Be Out of Reach<br className="hidden sm:block" />
             <span className="sm:hidden"> </span>— Let AI Level the Playing Field."
           </h1>
           {!isHomePage && (
-            <div className="mt-6">
-              <p className="text-xl font-bold text-gray-900 mb-2">Real Results. Real Justice. No Lawyer Required.</p>
-              <p className="text-lg text-gray-600">Artificial Intelligence</p>
+            <div className="mt-4 sm:mt-6">
+              <p className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Real Results. Real Justice. No Lawyer Required.</p>
+              <p className="text-base sm:text-lg text-gray-600">Artificial Intelligence</p>
             </div>
           )}
         </div>
@@ -28,15 +25,15 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           {/* Full Service Card - Only show on pricing page */}
           {!isHomePage && (
             <Card className="w-full border-emerald-500 border-2 shadow-lg relative flex flex-col ml-auto">
-              <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 z-10">
-                <span className="bg-emerald-500 text-white px-8 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
+              <div className="absolute -top-4 sm:-top-5 left-1/2 transform -translate-x-1/2 z-10">
+                <span className="bg-emerald-500 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
                   MOST POPULAR
                 </span>
               </div>
-              <CardHeader className="text-center space-y-3 pt-12">
-                <div className="text-2xl font-bold text-gray-900">🏆 Full Service Legal Support</div>
-                <div className="text-4xl font-bold text-emerald-600">$499</div>
-                <p className="text-gray-600 text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
+              <CardHeader className="text-center space-y-2 sm:space-y-3 pt-8 sm:pt-12 px-4 sm:px-6">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">🏆 Full Service Legal Support</div>
+                <div className="text-3xl sm:text-4xl font-bold text-emerald-600">$499</div>
+                <p className="text-gray-600 text-xs sm:text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
               </CardHeader>
               <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
                 <ul className="space-y-2 text-sm text-left text-gray-700">
@@ -76,11 +73,11 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
 
           {/* AI Legal Premium Card */}
           <Card className="w-full border-green-500 border shadow-lg flex flex-col">
-            <CardHeader className="text-center space-y-3 pt-6">
-              <div className="text-2xl font-bold text-gray-900">📚 AI Legal Pro</div>
-              <div className="text-4xl font-bold text-green-600">$199</div>
-              <div className="text-sm text-gray-500 font-medium">$199 monthly cancel anytime</div>
-              <p className="text-gray-600 text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
+            <CardHeader className="text-center space-y-2 sm:space-y-3 pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">📚 AI Legal Pro</div>
+              <div className="text-3xl sm:text-4xl font-bold text-green-600">$199</div>
+              <div className="text-xs sm:text-sm text-gray-500 font-medium">$199 monthly cancel anytime</div>
+              <p className="text-gray-600 text-xs sm:text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
             </CardHeader>
             <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
               <ul className="space-y-2 text-sm text-left text-gray-700">

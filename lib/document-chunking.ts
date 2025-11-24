@@ -1,20 +1,10 @@
 import OpenAI from 'openai';
 import { supabase } from './supabaseClient';
 
-// Initialize OpenAI client (lazy initialization to avoid build-time errors)
-let openai: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
-    }
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return openai;
-}
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Token counting function (rough approximation)
 function countTokens(text: string): number {
@@ -55,13 +45,17 @@ export function splitIntoChunks(text: string, targetTokenCount: number = 1000): 
 
 // Generate embeddings for text using OpenAI
 export async function generateEmbedding(text: string): Promise<number[]> {
+  // Check if OpenAI client is available
+  if (!openai) {
+    throw new Error('OpenAI client not available');
+  }
+  
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
   }
 
   try {
-    const client = getOpenAIClient();
-    const response = await client.embeddings.create({
+    const response = await openai.embeddings.create({
       model: 'text-embedding-ada-002',
       input: text,
     });
@@ -69,13 +63,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     const embedding = response.data[0]?.embedding;
     
     if (!embedding) {
-      console.error('No embedding returned from OpenAI');
       throw new Error('No embedding returned from OpenAI');
     }
 
     return embedding;
-  } catch (error) {
-    console.error(`🚨 [CHUNK DEBUG] ERROR in generateEmbedding:`, error);
+  } catch (error: any) {
+    console.error('Error generating embedding:', error);
     throw new Error(`Embedding generation failed: ${error?.message || error}`);
   }
 }
@@ -88,7 +81,6 @@ export async function storeDocumentChunks(
   metadata?: { pageNumber?: number; title?: string }
 ): Promise<void> {
   try {
-    console.log(`[storeDocumentChunks] Storing ${chunks.length} chunks for document ${documentId}`);
     const chunkPromises = chunks.map(async (chunk, index) => {
       try {
         const embedding = await generateEmbedding(chunk);
@@ -230,21 +222,43 @@ export async function processUploadedDocument(
   metadata?: { filename?: string; pageNumber?: number }
 ): Promise<void> {
   try {
+    console.log(`🚨 [CHUNK DEBUG] === PROCESS UPLOADED DOCUMENT START ===`);
+    console.log(`🚨 [CHUNK DEBUG] Processing document:`, {
+      userId,
+      documentId,
+      textLength: documentText.length,
+      filename: metadata?.filename,
+      pageNumber: metadata?.pageNumber
+    });
+
     if (!documentText || documentText.trim().length === 0) {
+      console.error(`🚨 [CHUNK DEBUG] ERROR: Document text is empty`);
       throw new Error('Document text is empty');
     }
 
     // Chunk the document
+    console.log(`🚨 [CHUNK DEBUG] Starting document chunking`);
     const chunks = splitIntoChunks(documentText);
+    console.log(`🚨 [CHUNK DEBUG] Document chunked into ${chunks.length} chunks`);
 
     if (chunks.length === 0) {
+      console.error(`🚨 [CHUNK DEBUG] ERROR: No chunks generated from document`);
       throw new Error('No chunks generated from document');
     }
 
+    // Log first few chunks for debugging
+    chunks.slice(0, 3).forEach((chunk, index) => {
+      console.log(`🚨 [CHUNK DEBUG] Chunk ${index + 1} preview:`, chunk.substring(0, 100) + '...');
+    });
+
     // Store chunks in database
+    console.log(`🚨 [CHUNK DEBUG] Starting to store ${chunks.length} chunks in database`);
     await storeDocumentChunks(userId, documentId, chunks, metadata);
+    console.log(`🚨 [CHUNK DEBUG] Successfully stored all chunks in database`);
+
+    console.log(`🚨 [CHUNK DEBUG] === PROCESS UPLOADED DOCUMENT END ===`);
   } catch (error) {
-    console.error('Error in processUploadedDocument:', error);
+    console.error(`🚨 [CHUNK DEBUG] ERROR in processUploadedDocument:`, error);
     throw new Error(`[processUploadedDocument] ${error?.message || error}`);
   }
 }

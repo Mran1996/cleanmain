@@ -429,6 +429,11 @@ ALWAYS REMEMBER:
       generatedDocSection,
     ].join("\n\n");
     
+    console.log('🔍 [API DEBUG] Document data received:', {
+      hasDocumentData: !!documentData,
+      documentLength: documentData?.length || 0,
+      documentPreview: documentData?.substring(0, 100) || 'No document data'
+    });
 
     // Enhanced logging for large documents
     if (documentData && documentData.length > 100000) {

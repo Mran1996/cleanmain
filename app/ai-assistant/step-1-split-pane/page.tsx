@@ -212,15 +212,28 @@ ${documentInfo}
 
       // Get uploaded document data for analysis
       const uploadedDocumentText = getUploadedParsedText();
+      console.log('🔍 [STEP1 DEBUG] Document data length:', uploadedDocumentText.length);
+      console.log('🔍 [STEP1 DEBUG] Document data preview:', uploadedDocumentText.substring(0, 200));
       
       // Pass documents array if available, otherwise fall back to text
       let documentDataToSend = uploadedDocumentText;
       if (latestDocs && latestDocs.length > 0) {
         documentDataToSend = JSON.stringify(latestDocs);
+        console.log('🔍 [STEP1 DEBUG] Sending documents array with', latestDocs.length, 'documents');
       }
       
       // Include generated document in chat context so chat is aware of it
       const generatedDocumentContent = documentContent?.trim() || "";
+      
+      console.log('🔍 [SPLIT-PANE DEBUG] Sending request to API:', {
+        messagesCount: messagesForAPI.length,
+        hasDocumentData: !!documentDataToSend,
+        documentDataLength: documentDataToSend?.length || 0,
+        hasGeneratedDocument: !!generatedDocumentContent,
+        generatedDocumentLength: generatedDocumentContent?.length || 0,
+        systemPrompt: systemPrompt.substring(0, 200) + '...',
+        lastMessage: messagesForAPI[messagesForAPI.length - 1]
+      });
 
       const response = await fetch('/api/step1-chat', {
         method: 'POST',
@@ -232,18 +245,23 @@ ${documentInfo}
         }),
       });
 
+      console.log('🔍 [SPLIT-PANE DEBUG] API Response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Chat API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('🔍 [SPLIT-PANE DEBUG] API Response:', data);
       
       const assistantResponse = data.choices?.[0]?.message?.content || 
                                data.message?.content || 
                                data.content || 
                                data.reply || 
                                "I apologize, but I'm having trouble processing your request right now.";
+      
+      console.log('🔍 [SPLIT-PANE DEBUG] Extracted response:', assistantResponse);
       
       // Add assistant response to chat history
       const assistantMessage = { sender: "assistant", text: assistantResponse };

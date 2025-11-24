@@ -77,10 +77,34 @@ export async function POST(req: NextRequest) {
     // Declare finalUid at function scope
     // ... (rest of the original logic remains unchanged)
 
-    // Validate required parameters
-    if (!chatHistory || chatHistory.length === 0) {
-      return NextResponse.json({ error: 'Chat history is required' }, { status: 400 });
-    }
+    // Debug logging to track what data we're receiving
+    console.log(' Document Generation Debug:', {
+      chatHistoryLength: chatHistory.length,
+      state: state,
+      county: county,
+      caseNumber: caseNumber,
+      opposingParty: opposingParty,
+      courtName: courtName,
+      includeCaseLaw: includeCaseLaw,
+      title: title
+    });
+
+    // Log the actual conversation content for debugging
+    console.log(' Conversation History Content:', chatHistory.map((msg: ChatMessage, index: number) => ({
+      index: index + 1,
+      role: msg.role,
+      contentLength: msg.content?.length || 0,
+      contentPreview: msg.content?.substring(0, 200) + '...' || 'No content'
+    })));
+
+    // Log specific details that should be used
+    console.log(' Key Details to Extract:', {
+      hasSpecificNames: chatHistory.some((msg: ChatMessage) => msg.content?.includes('name') || msg.content?.includes('Name')),
+      hasSpecificDates: chatHistory.some((msg: ChatMessage) => msg.content?.includes('date') || msg.content?.includes('Date')),
+      hasSpecificLocations: chatHistory.some((msg: ChatMessage) => msg.content?.includes('address') || msg.content?.includes('location')),
+      hasSpecificCaseNumbers: chatHistory.some((msg: ChatMessage) => msg.content?.includes('case') || msg.content?.includes('Case')),
+      hasUploadedDocuments: chatHistory.some((msg: ChatMessage) => msg.content?.includes('upload') || msg.content?.includes('document'))
+    });
 
     // Generate unique document ID using UUID
     const docId = uuidv4();

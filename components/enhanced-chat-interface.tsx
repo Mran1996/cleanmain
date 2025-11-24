@@ -416,17 +416,12 @@ export function EnhancedChatInterface({
   }, [inputValue]);
 
   const handleSendMessage = (message: string) => {
-    console.log("💬 handleSendMessage called with:", message);
-    console.log("📊 onSendMessage function:", typeof onSendMessage);
-    
     // HARD-CODED SAFEGUARDS TO PREVENT DUPLICATE SUBMISSIONS
     if (!message || !message.trim()) {
-      console.log("❌ Empty message, not sending");
       return;
     }
     
     if (isWaitingForResponse) {
-      console.log("❌ Already waiting for response, not sending");
       return;
     }
     
@@ -434,7 +429,6 @@ export function EnhancedChatInterface({
     if (messages && messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage && lastMessage.sender === "user" && lastMessage.text === message) {
-        console.log("❌ Duplicate message detected, not sending");
         return
       }
     }
@@ -442,7 +436,6 @@ export function EnhancedChatInterface({
     // Prevent rapid-fire submissions
     const now = Date.now();
     if (window.lastMessageTime && now - window.lastMessageTime < 1000) {
-      console.log("❌ Rapid-fire submission blocked");
       return;
     }
     window.lastMessageTime = now;
@@ -454,7 +447,6 @@ export function EnhancedChatInterface({
       setSearchModeEnabled(false); // Reset after use
     }
 
-    console.log("✅ Calling onSendMessage with:", finalMessage);
     onSendMessage(finalMessage)
   }
 
@@ -643,14 +635,8 @@ export function EnhancedChatInterface({
 
   // Updated to send the message immediately when suggested response is clicked
   const handleSuggestedResponse = (text: string) => {
-    console.log("💬 handleSuggestedResponse called with:", text);
-    console.log("📊 onSendMessage function:", typeof onSendMessage);
-    
     if (onSendMessage && text.trim()) {
-      console.log("✅ Sending suggested response:", text);
       onSendMessage(text.trim());
-    } else {
-      console.log("❌ onSendMessage not available or empty text");
     }
   }
 
@@ -739,7 +725,6 @@ export function EnhancedChatInterface({
     }, 120000); // Increased to 2 minutes for very large documents (200+ pages)
     
     try {
-      
       const ext = file.name.split('.').pop()?.toLowerCase();
       const fileSize = file.size;
       
@@ -837,8 +822,8 @@ export function EnhancedChatInterface({
           // Don't fail the upload if parent handler fails
         }
       }
-
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Error processing file:', error);
       
       // Send error message to user
@@ -879,7 +864,6 @@ export function EnhancedChatInterface({
         setIsUploading(false);
       }
     } else {
-      console.error('File input ref is null');
       // Reset upload state if file input is not found
       setIsUploading(false);
     }
@@ -1032,7 +1016,6 @@ export function EnhancedChatInterface({
               ref={inputRef}
               value={inputValue}
               onChange={(e) => {
-                console.log('📝 Textarea onChange triggered, value:', e.target.value);
                 setInputValue(e.target.value);
               }}
               onKeyDown={(e) => {
@@ -1040,14 +1023,6 @@ export function EnhancedChatInterface({
                   e.preventDefault();
                   handleSubmit(e);
                 }
-              }}
-              onFocus={() => {
-                console.log('📝 Textarea focused');
-                console.log('📊 isWaitingForResponse:', isWaitingForResponse);
-                console.log('📊 isUploading:', isUploading);
-              }}
-              onClick={() => {
-                console.log('📝 Textarea clicked');
               }}
               placeholder={searchModeEnabled ? "Type your search question (internet search enabled)..." : (currentQuestion ? "Type your answer..." : "Type a message...")}
               className={`flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none overflow-hidden placeholder:text-gray-500 shadow-sm ${
@@ -1105,18 +1080,9 @@ export function EnhancedChatInterface({
               className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white h-9 w-9 sm:h-10 sm:w-10"
               disabled={isWaitingForResponse || !inputValue.trim() || isUploading}
               onClick={() => {
-                console.log("🔘 Send button clicked!");
-                console.log("📊 inputValue:", inputValue);
-                console.log("📊 isWaitingForResponse:", isWaitingForResponse);
-                console.log("📊 isUploading:", isUploading);
-                console.log("📊 onSendMessage:", typeof onSendMessage);
-                
                 if (!isWaitingForResponse && inputValue.trim() && !isUploading) {
-                  console.log("✅ Sending message:", inputValue.trim());
                   handleSendMessage(inputValue.trim());
                   setInputValue("");
-                } else {
-                  console.log("❌ Message blocked by conditions");
                 }
               }}
             >
@@ -1144,7 +1110,6 @@ export function EnhancedChatInterface({
                     key={idx}
                     type="button"
                     onClick={() => {
-                      console.log("🔘 Suggested response clicked:", suggestion);
                       handleSuggestedResponse(suggestion);
                     }}
                     className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 flex items-center gap-1 border border-emerald-200/50 shadow-sm hover:shadow-md"
@@ -1162,34 +1127,23 @@ export function EnhancedChatInterface({
             <button
               type="button"
               onClick={async (e) => {
-                console.log('🔘 Generate Document button clicked!');
-                
                 e.preventDefault();
                 e.stopPropagation();
                 
                 // Test if handler exists
                 if (!onGenerateDocument) {
-                  console.error('❌ onGenerateDocument handler is not defined');
                   alert('Document generation handler is not available. Please refresh the page.');
                   return;
                 }
                 
                 // Call handler with error handling
                 try {
-                  console.log('✅ Calling onGenerateDocument...');
                   await onGenerateDocument();
-                  console.log('✅ onGenerateDocument completed');
                 } catch (error) {
-                  console.error('❌ Error in document generation button:', error);
+                  console.error('Error in document generation button:', error);
                   const errorMsg = error instanceof Error ? error.message : 'Unknown error';
                   alert(`Document generation failed: ${errorMsg}`);
                 }
-              }}
-              onMouseDown={(e) => {
-                console.log('🖱️ Button mouse down event');
-              }}
-              onMouseUp={(e) => {
-                console.log('🖱️ Button mouse up event');
               }}
               disabled={isGeneratingDocument}
               style={{
