@@ -48,8 +48,6 @@ export async function POST(req: Request) {
     // This avoids checkout failing when the exact env name expected by older code
     // isn't present.
   const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP];
-      vercel: process.env.VERCEL,
-    });
 
     // Validate priceId format
     if (!priceId || !/^price_/.test(priceId)) {
