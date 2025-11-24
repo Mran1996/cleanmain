@@ -48,20 +48,6 @@ export async function POST(req: Request) {
     // This avoids checkout failing when the exact env name expected by older code
     // isn't present.
   const priceId = PRICE_MAP[plan as keyof typeof PRICE_MAP];
-    console.log('💳 Resolved price ID:', priceId)
-    // Stripe debug log for runtime diagnosis
-    console.log('[STRIPE DEBUG]', {
-      stripeKey: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '...' : 'undefined',
-      priceId,
-      env: process.env.NODE_ENV,
-      vercel: process.env.VERCEL,
-    });
-
-    // Debug log: print Stripe key and price ID (redacted)
-    console.log('[STRIPE DEBUG]', {
-      stripeKey: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '...' : 'undefined',
-      priceId,
-      env: process.env.NODE_ENV,
       vercel: process.env.VERCEL,
     });
 

@@ -31,7 +31,7 @@ const FEATURE_HIGHLIGHTS = [
   },
   {
     icon: "⚖️",
-    label: "Advanced legal Analysis", 
+    label: "Attorney-Style AI", 
     ariaLabel: "Scale"
   }
 ] as const;
@@ -53,11 +53,6 @@ export function HeroSection() {
           <h1 className="text-5xl font-bold mb-4 leading-tight">
             Powerful Legal Help — When You Need It Most
           </h1>
-          
-          {/* Data points tagline */}
-          <p className="text-lg mb-4 text-white/90 font-medium">
-            Backed by millions of legal data points for smarter analysis
-          </p>
           
           {/* Value proposition */}
           <p className="text-xl mb-4 max-w-3xl mx-auto px-2">

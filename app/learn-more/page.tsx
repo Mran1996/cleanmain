@@ -133,7 +133,7 @@ export default function LearnMorePage() {
             
             {/* Subheadline */}
             <p className="text-xl md:text-2xl text-gray-700 leading-relaxed max-w-3xl mx-auto">
-              We prepare your <strong>motion, response, appeal, or post-conviction filing</strong> in the <strong>correct court format</strong>, backed by <strong>real case law</strong> and delivered within <strong>7 business days</strong> — so you can fight your case with confidence.
+              We prepare your motion, response, appeal, or post-conviction filing in the correct court format, backed by real case law and delivered within 7 business days — so you can fight your case with confidence.
             </p>
 
             {/* Price Box */}

@@ -287,7 +287,6 @@ export function EnhancedChatInterface({
   // PDF.js completely disabled to prevent object property errors
   useEffect(() => {
     setPdfjsLib(null);
-    console.log('🚨 [PDF DEBUG] PDF.js disabled to prevent object property errors');
   }, []);
 
   // Emoji mapping for common legal suggestions
@@ -657,32 +656,25 @@ export function EnhancedChatInterface({
 
   // Handle file input change (support multiple files)
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('🚨 [FILE INPUT DEBUG] File input change triggered');
     const files = event.target.files;
-    console.log('🚨 [FILE INPUT DEBUG] Files selected:', files?.length || 0);
     
     // Prevent processing if already uploading
     if (isUploading) {
-      console.log('🚨 [FILE INPUT DEBUG] Upload already in progress, ignoring file selection');
       return;
     }
     
     // Prevent processing if waiting for AI response
     if (isWaitingForResponse) {
-      console.log('🚨 [FILE INPUT DEBUG] Waiting for AI response, ignoring file selection');
       return;
     }
     
     if (files && files.length > 0) {
       // Validate that all files exist
       const validFiles = Array.from(files).filter(file => file && file.name);
-      console.log('🚨 [FILE INPUT DEBUG] Valid files:', validFiles.length);
       
       if (validFiles.length === 0) {
-        console.log('🚨 [FILE INPUT DEBUG] No valid files found');
         return;
       }
-      console.log('🚨 [FILE INPUT DEBUG] Processing files...');
       
       // Process files sequentially to avoid conflicts
       const processFiles = async () => {
@@ -693,11 +685,10 @@ export function EnhancedChatInterface({
           const file = validFiles[i];
           
           try {
-            console.log(`🚨 [FILE INPUT DEBUG] Processing file ${i + 1}:`, file.name);
             await handleFileUpload(file);
             processedFiles.push(file.name);
           } catch (error) {
-            console.error(`🚨 [FILE INPUT DEBUG] Error processing file ${file.name}:`, error);
+            console.error(`Error processing file ${file.name}:`, error);
             failedFiles.push(file.name);
           }
         }
@@ -710,7 +701,7 @@ export function EnhancedChatInterface({
             try {
               handleSendMessage(summaryMessage);
             } catch (messageError) {
-              console.error('🚨 [UPLOAD DEBUG] Error sending summary message:', messageError);
+              console.error('Error sending summary message:', messageError);
             }
           }
         }
@@ -721,15 +712,13 @@ export function EnhancedChatInterface({
             try {
               handleSendMessage(errorMessage);
             } catch (messageError) {
-              console.error('🚨 [UPLOAD DEBUG] Error sending error message:', messageError);
+              console.error('Error sending error message:', messageError);
             }
           }
         }
       };
       
       processFiles();
-    } else {
-      console.log('🚨 [FILE INPUT DEBUG] No files selected');
     }
     
     // Reset the input value so the same file can be selected again
@@ -742,17 +731,14 @@ export function EnhancedChatInterface({
 
     // Enhanced file upload handler with Step 3 parsing logic
   const handleFileUpload = useCallback(async (file: File) => {
-    console.log('🚨 [UPLOAD DEBUG] Starting file upload process for:', file.name);
     setIsUploading(true);
     
     // Add a safety timeout to prevent infinite loading
     const safetyTimeout = setTimeout(() => {
-      console.log('🚨 [UPLOAD DEBUG] Safety timeout triggered - resetting upload state');
       setIsUploading(false);
     }, 120000); // Increased to 2 minutes for very large documents (200+ pages)
     
     try {
-      console.log('🚨 [UPLOAD DEBUG] Processing file:', file.name);
       
       const ext = file.name.split('.').pop()?.toLowerCase();
       const fileSize = file.size;
@@ -780,17 +766,14 @@ export function EnhancedChatInterface({
         throw new Error(`Unsupported file type: ${ext}. Supported types: PDF, DOCX, TXT, DOC, RTF, ODT, JPG, PNG, MP4, MP3, CSV, XLSX, PPT, ZIP, and more.`);
       }
       
-      console.log('🚨 [UPLOAD DEBUG] File validation passed');
-      
       // Extract text content from the file using enhanced legal document extractor
       let documentData;
       try {
         // Use the new legal document extractor
         const { extractLegalDocumentText } = await import('@/utils/legalDocumentExtractor');
         documentData = await extractLegalDocumentText(file);
-        console.log('🚨 [UPLOAD DEBUG] Legal document extracted, length:', documentData.content.length, 'pages:', documentData.pageCount);
       } catch (textError) {
-        console.error('🚨 [UPLOAD DEBUG] Error extracting legal document:', textError);
+        console.error('Error extracting legal document:', textError);
         // Fallback to basic extraction
         const { extractText } = await import('@/utils/extractText');
         const documentText = await extractText(file);
@@ -838,10 +821,8 @@ export function EnhancedChatInterface({
           // Use the new centralized function
           const { saveUploadedParsedText } = await import('@/lib/uploadedDoc');
           saveUploadedParsedText(documentData.content);
-          
-          console.log('🚨 [UPLOAD DEBUG] File data stored in localStorage');
         } catch (storageError) {
-          console.error('🚨 [UPLOAD DEBUG] Error storing file data:', storageError);
+          console.error('Error storing file data:', storageError);
           // Don't fail the upload if localStorage fails
         }
       }
@@ -851,17 +832,14 @@ export function EnhancedChatInterface({
         try {
           const fileInfo = `File: ${file.name} (${ext?.toUpperCase()}, ${(fileSize / 1024).toFixed(1)}KB, ${documentData.pageCount || 1} pages)\n\nDocument Content:\n${documentData.content.substring(0, 500)}${documentData.content.length > 500 ? '...' : ''}`;
           onDocumentUpload(fileInfo, file.name);
-          console.log('🚨 [UPLOAD DEBUG] Parent document upload handler called with content');
         } catch (parentError) {
-          console.error('🚨 [UPLOAD DEBUG] Error calling parent upload handler:', parentError);
+          console.error('Error calling parent upload handler:', parentError);
           // Don't fail the upload if parent handler fails
         }
       }
 
-      console.log('🚨 [UPLOAD DEBUG] File processing completed successfully');
-      
     } catch (error) {
-      console.error('🚨 [UPLOAD DEBUG] Error processing file:', error);
+      console.error('Error processing file:', error);
       
       // Send error message to user
       const errorMessage = `❌ Upload failed: ${error.message || 'Unknown error occurred'}`;
@@ -869,11 +847,10 @@ export function EnhancedChatInterface({
         try {
           handleSendMessage(errorMessage);
         } catch (messageError) {
-          console.error('🚨 [UPLOAD DEBUG] Error sending error message:', messageError);
+          console.error('Error sending error message:', messageError);
         }
       }
     } finally {
-      console.log('🚨 [UPLOAD DEBUG] Cleaning up upload state');
       clearTimeout(safetyTimeout);
       setIsUploading(false);
     }
@@ -881,35 +858,28 @@ export function EnhancedChatInterface({
 
   // Trigger file input click
   const handleUploadClick = () => {
-    console.log('🚨 [UPLOAD BUTTON DEBUG] Upload button clicked');
-    
     // Prevent multiple clicks while uploading
     if (isUploading) {
-      console.log('🚨 [UPLOAD BUTTON DEBUG] Upload already in progress, ignoring click');
       return;
     }
     
     // Prevent upload while waiting for AI response
     if (isWaitingForResponse) {
-      console.log('🚨 [UPLOAD BUTTON DEBUG] Waiting for AI response, ignoring click');
       return;
     }
-    
-    console.log('🚨 [UPLOAD BUTTON DEBUG] File input ref:', fileInputRef.current);
     
     if (fileInputRef.current) {
       try {
         // Reset the file input value to ensure the change event fires
         fileInputRef.current.value = '';
         fileInputRef.current.click();
-        console.log('🚨 [UPLOAD BUTTON DEBUG] File input click triggered successfully');
       } catch (error) {
-        console.error('🚨 [UPLOAD BUTTON DEBUG] Error triggering file input click:', error);
+        console.error('Error triggering file input click:', error);
         // Reset upload state if there's an error
         setIsUploading(false);
       }
     } else {
-      console.error('🚨 [UPLOAD BUTTON DEBUG] File input ref is null');
+      console.error('File input ref is null');
       // Reset upload state if file input is not found
       setIsUploading(false);
     }
@@ -917,7 +887,6 @@ export function EnhancedChatInterface({
 
   // Manual reset function for stuck uploads
   const handleUploadReset = () => {
-    console.log('🚨 [UPLOAD DEBUG] Manual reset triggered');
     setIsUploading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';

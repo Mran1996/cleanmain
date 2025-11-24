@@ -1,6 +1,6 @@
 export default function Sitemap() {
   return (
-    <main className="max-w-4xl mx-auto px-6 pt-16 pb-32">
+    <main className="max-w-4xl mx-auto px-6 py-16">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">Sitemap</h1>
       <p className="text-gray-600 mb-10">
         This sitemap outlines the publicly accessible pages and legal assistance services provided by Ask AI Legal™. Use
@@ -118,7 +118,7 @@ export default function Sitemap() {
             </li>
           </ul>
         </div>
-        <div className="space-y-4 mb-8">
+        <div className="space-y-4">
           <h3 className="text-2xl font-bold">Settings & Preferences</h3>
           <ul className="list-disc list-inside space-y-2">
             <li>

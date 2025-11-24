@@ -64,7 +64,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-white mt-12 text-gray-700 mb-0 pb-8 flex flex-col">
+    <footer className="border-t bg-white mt-12 text-gray-700 mb-0 pb-0 flex flex-col">
       {/* Main footer content */}
       <div className="max-w-5xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm">
         {/* Company information */}
@@ -138,7 +138,7 @@ export default function Footer() {
       </div>
       
       {/* Footer bottom with copyright and legal links - positioned at bottom */}
-      <div className="border-t text-center text-xs text-gray-500 py-4 bg-gray-50 mt-4 mb-0 pb-6">
+      <div className="border-t text-center text-xs text-gray-500 py-4 bg-gray-50 mt-4 mb-0 pb-0">
         {/* Copyright notice */}
         <div className="mb-1">
           © {currentYear} Ask AI Legal. All rights reserved.

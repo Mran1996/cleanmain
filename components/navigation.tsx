@@ -60,12 +60,8 @@ export function Navigation() {
         <div className="flex items-center w-auto gap-3">
           <Logo size="lg" variant="soft" />
           <div className="flex flex-col">
-            <span className="font-bold text-lg text-black">
-              Ask AI Legal<sup className="text-xs">™</sup>
-            </span>
-            <span className="text-sm text-black">
-              Where Law Meets Intelligence
-            </span>
+            <span className="text-xl font-bold text-gray-800">Ask AI Legal™</span>
+            <span className="text-sm font-normal text-gray-600">Where Law Meets Intelligence.</span>
           </div>
         </div>
         

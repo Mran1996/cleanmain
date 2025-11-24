@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
       }, { status: 429 });
     }
 
-    console.log('🚨 [CHUNK DEBUG] === CHUNK DOCUMENT API DEBUG START ===');
     const body = await req.json();
     
     // Check subscription status for non-localhost requests
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest) {
     if (!isLocalhost && body.userId) {
       const subscriptionStatus = await checkSubscriptionStatusServerEnhanced(body.userId);
       if (subscriptionStatus.shouldRedirect) {
-        console.log("🚨 [CHUNK DOCUMENT] Access denied - user does not have active subscription");
         return NextResponse.json(
           { error: 'Access denied. Please upgrade your subscription to continue.' },
           { status: 403 }
@@ -35,36 +33,20 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    console.log('🚨 [CHUNK DEBUG] Received body:', {
-      userId: body.userId,
-      documentId: body.documentId,
-      hasDocumentText: !!body.documentText,
-      documentTextLength: body.documentText?.length,
-      metadata: body.metadata
-    });
-    
     const { userId, documentId, documentText, metadata } = body;
     if (!userId || !documentId || !documentText) {
-      console.error('🚨 [CHUNK DEBUG] ERROR: Missing required fields:', { userId, documentId, hasDocumentText: !!documentText });
+      console.error('Missing required fields:', { userId, documentId, hasDocumentText: !!documentText });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Check file type/extension
     const filename = metadata?.filename || metadata?.title || 'unknown';
     const fileExtension = filename.split('.').pop()?.toLowerCase();
-    console.log('🚨 [CHUNK DEBUG] File info:', {
-      filename,
-      fileExtension,
-      metadataKeys: Object.keys(metadata || {}),
-      isPDF: fileExtension === 'pdf',
-      isDOCX: fileExtension === 'docx',
-      isTXT: fileExtension === 'txt'
-    });
 
     // Validate file type
     const allowedExtensions = ['pdf', 'docx', 'txt'];
     if (!allowedExtensions.includes(fileExtension)) {
-      console.error('🚨 [CHUNK DEBUG] ERROR: Unsupported file type:', fileExtension);
+      console.error('Unsupported file type:', fileExtension);
       return NextResponse.json({ 
         error: 'Unsupported file type. Please upload PDF, DOCX, or TXT files only.',
         fileType: fileExtension 
@@ -73,8 +55,6 @@ export async function POST(req: NextRequest) {
 
     try {
       // First, create the document record in the documents table
-      console.log('🚨 [CHUNK DEBUG] Creating document record in database');
-      
       let docError = null;
       
       // Use different approach for anonymous users vs authenticated users
@@ -108,21 +88,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (docError) {
-        console.error('🚨 [CHUNK DEBUG] ERROR creating document record:', docError);
+        console.error('Error creating document record:', docError);
         // Don't fail the upload if database isn't set up - the document text is still available for chat
-        console.log('🚨 [CHUNK DEBUG] Document record creation failed, but continuing with document processing...');
-      } else {
-        console.log('🚨 [CHUNK DEBUG] Document record created successfully');
       }
 
       // Then process the document chunks (only if database is available)
       try {
-        console.log('🚨 [CHUNK DEBUG] Starting document chunking process');
         await processUploadedDocument(userId, documentId, documentText, metadata);
-        console.log('🚨 [CHUNK DEBUG] Document processed successfully');
       } catch (chunkError) {
-        console.error('🚨 [CHUNK DEBUG] ERROR in chunking process:', chunkError);
-        console.log('🚨 [CHUNK DEBUG] Chunking failed, but document text is available for chat');
+        console.error('Error in chunking process:', chunkError);
+        // Chunking failed, but document text is still available for chat
       }
       
       // Verify chunks were created (only if database is available)
@@ -133,18 +108,11 @@ export async function POST(req: NextRequest) {
           .eq('document_id', documentId);
 
         if (countError) {
-          console.error('🚨 [CHUNK DEBUG] ERROR checking chunk count:', countError);
-        } else {
-          console.log('🚨 [CHUNK DEBUG] Chunks created successfully:', {
-            documentId,
-            chunkCount: chunkCount?.length || 0
-          });
+          console.error('Error checking chunk count:', countError);
         }
       } catch (countError) {
-        console.log('🚨 [CHUNK DEBUG] Could not verify chunks (database not available)');
+        // Could not verify chunks (database not available)
       }
-
-      console.log('🚨 [CHUNK DEBUG] === CHUNK DOCUMENT API DEBUG END ===');
       return NextResponse.json({ 
         success: true,
         chunkCount: 0, // Will be 0 if database not set up
