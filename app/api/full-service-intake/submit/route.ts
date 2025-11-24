@@ -34,14 +34,16 @@ function createTransporter() {
 // Ensure Node runtime for libraries like nodemailer
 export const runtime = 'nodejs';
 
-// AWS S3 client configuration
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-});
+// Lazy-initialize AWS S3 client to avoid build-time errors
+function getS3Client() {
+  return new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    },
+  });
+}
 const s3Bucket = process.env.AWS_S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || '';
 const s3Region = process.env.AWS_REGION || 'us-east-1';
 
@@ -149,7 +151,7 @@ let publicReadApplied: boolean = false;
       const safeName = `${user.id}/${Date.now()}-${(uploaded.name || 'upload').replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
       try {
-        await s3Client.send(new PutObjectCommand({
+        await getS3Client().send(new PutObjectCommand({
           Bucket: s3Bucket,
           Key: safeName,
           Body: fileBuffer,
@@ -160,7 +162,7 @@ let publicReadApplied: boolean = false;
       } catch (uploadErr: any) {
         // Fallback for buckets that enforce object ownership and disallow ACLs
         try {
-          await s3Client.send(new PutObjectCommand({
+          await getS3Client().send(new PutObjectCommand({
             Bucket: s3Bucket,
             Key: safeName,
             Body: fileBuffer,
@@ -290,7 +292,7 @@ const finalViewUrl = publicReadApplied ? fileUrl : appViewUrl;
       // Attach file if it was uploaded
       if (storedFilePath && uploaded) {
         try {
-          const obj = await s3Client.send(new GetObjectCommand({
+          const obj = await getS3Client().send(new GetObjectCommand({
             Bucket: s3Bucket,
             Key: storedFilePath,
           }));
