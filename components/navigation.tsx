@@ -64,21 +64,21 @@ export function Navigation() {
   return (
     <header className="border-b border-gray-200 sticky top-0 bg-white z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-row items-center justify-between h-20">
+        <div className="flex flex-row items-center justify-between h-16 sm:h-20">
           {/* Logo with text and tagline */}
-          <div className="flex items-center gap-3">
-            <div className="h-16 w-16 flex items-center justify-center flex-shrink-0 my-2">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 flex items-center justify-center flex-shrink-0">
               <Image src="/logo/logo.png" alt="Logo" width={64} height={64} className="w-full h-full object-contain" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-base text-gray-900 leading-tight">
+              <span className="font-bold text-sm sm:text-base text-gray-900 leading-tight">
                 Ask AI Legal<sup className="text-xs">™</sup>
               </span>
-              <span className="text-xs text-gray-600 -mt-0.5 leading-tight">
+              <span className="text-[10px] sm:text-xs text-gray-600 -mt-0.5 leading-tight hidden sm:block">
                 Where Law Meets Intelligence.
               </span>
             </div>
-          </div>
+          </Link>
           
           {/* Desktop Navigation - hidden on mobile */}
           <nav className="hidden md:flex items-center gap-x-6 lg:gap-x-8 flex-1 justify-center">

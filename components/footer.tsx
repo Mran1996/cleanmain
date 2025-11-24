@@ -66,13 +66,13 @@ export default function Footer() {
   return (
     <footer className="border-t bg-white text-gray-700 flex flex-col mt-auto">
       {/* Main footer content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-sm">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-sm">
         {/* Company information */}
-        <div>
-          <div className="mb-1">
+        <div className="mb-4 sm:mb-0">
+          <div className="mb-2 sm:mb-1">
             <Logo size="sm" />
           </div>
-          <p className="leading-tight">
+          <p className="leading-relaxed text-xs sm:text-sm">
             Your AI-powered legal assistant, helping you navigate 
             legal matters with confidence.
           </p>
@@ -138,7 +138,7 @@ export default function Footer() {
       </div>
       
       {/* Footer bottom with copyright and legal links - positioned at bottom */}
-      <div className="border-t text-center text-xs text-gray-500 py-1 bg-gray-50">
+      <div className="border-t text-center text-xs text-gray-500 py-4 sm:py-3 bg-gray-50">
         {/* Copyright notice */}
         <div>
           © {currentYear} Ask AI Legal. All rights reserved.

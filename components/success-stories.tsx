@@ -11,9 +11,9 @@ export function SuccessStories() {
             We're not your attorney. We don't overcharge. We don't pass your case off to a paralegal. We're here to help you win—and bring your loved one home.
           </p>
         </div>
-        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row gap-6 sm:gap-8 max-w-5xl mx-auto">
           {/* Testimonial 1 */}
-          <div className="flex-1 border-2 border-blue-300 rounded-2xl p-6 sm:p-8 bg-white flex flex-col items-center shadow-sm">
+          <div className="flex-1 border-2 border-blue-300 rounded-2xl p-6 sm:p-8 md:p-10 bg-white flex flex-col items-center shadow-sm">
             <img
               src="https://randomuser.me/api/portraits/men/64.jpg"
               alt="Michael T., African American male, smiling in a suit"
@@ -29,7 +29,7 @@ export function SuccessStories() {
             </div>
           </div>
           {/* Testimonial 2 */}
-          <div className="flex-1 border-2 border-purple-300 rounded-2xl p-6 sm:p-8 bg-white flex flex-col items-center shadow-sm">
+          <div className="flex-1 border-2 border-purple-300 rounded-2xl p-6 sm:p-8 md:p-10 bg-white flex flex-col items-center shadow-sm">
             <img
               src="https://randomuser.me/api/portraits/women/44.jpg"
               alt="Sarah J. smiling with long hair"
@@ -45,7 +45,7 @@ export function SuccessStories() {
             </div>
           </div>
           {/* Testimonial 3 */}
-          <div className="flex-1 border-2 border-green-300 rounded-2xl p-6 sm:p-8 bg-white flex flex-col items-center shadow-sm">
+          <div className="flex-1 border-2 border-green-300 rounded-2xl p-6 sm:p-8 md:p-10 bg-white flex flex-col items-center shadow-sm">
             <img
               src="https://randomuser.me/api/portraits/men/54.jpg"
               alt="Marcus L., Black male, friendly and approachable"

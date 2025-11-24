@@ -42,7 +42,7 @@ export function HeroSection() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           {/* Logo - enlarged per request */}
-          <div className="flex justify-center mb-4 sm:mb-6">
+          <div className="flex justify-center mb-6 sm:mb-8 md:mb-10">
             <div className="relative">
               <Logo size="xxl" variant="white" className="drop-shadow-2xl" />
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 to-emerald-600/20 rounded-full blur-xl"></div>
