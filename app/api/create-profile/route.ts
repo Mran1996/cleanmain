@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // must use service role key to bypass RLS
-);
+// Lazy-initialize Supabase client to avoid build-time errors
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY // must use service role key to bypass RLS
+  
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables')
+  }
+  
+  return createClient(url, key)
+}
 
 export async function POST(req: Request) {
   console.log('Route triggered');
@@ -35,6 +41,7 @@ export async function POST(req: Request) {
 
     console.log('Attempting to insert profile:', { id, email, first_name, last_name, full_name, state, legal_category, plan });
 
+    const supabase = getSupabaseClient()
     const { error } = await supabase.from('profiles').insert([
       { 
         id, 
