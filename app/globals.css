@@ -61,9 +61,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: auto;
-  overflow-x: hidden;
-  max-width: 100vw;
+  height: 100%;
 }
 
 body {
@@ -223,19 +221,6 @@ section {
   }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
-  
-  /* Prevent horizontal overflow on all elements */
-  * {
-    max-width: 100%;
-  }
-  
-  /* Ensure images and media don't overflow */
-  img, video, iframe, embed, object {
-    max-width: 100%;
-    height: auto;
   }
 }
 
@@ -303,6 +288,28 @@ div:has-text("Ask AI Legal") {
 * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Custom resize handle styling for document textarea */
+textarea[style*="resize: both"] {
+  resize: both !important;
+}
+
+textarea[style*="resize: both"]::-webkit-resizer {
+  background: linear-gradient(
+    -45deg,
+    transparent 30%,
+    #9ca3af 30%,
+    #9ca3af 35%,
+    transparent 35%,
+    transparent 65%,
+    #9ca3af 65%,
+    #9ca3af 70%,
+    transparent 70%
+  );
+  background-size: 12px 12px;
+  background-position: bottom right;
+  background-repeat: no-repeat;
 }
 
 /* Ensure text inputs are always visible */

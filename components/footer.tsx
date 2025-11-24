@@ -64,15 +64,15 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-white mt-12 text-gray-700 mb-0 pb-0 flex flex-col overflow-x-hidden max-w-full">
+    <footer className="border-t bg-white text-gray-700 flex flex-col mt-auto">
       {/* Main footer content */}
-      <div className="max-w-5xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-sm">
         {/* Company information */}
         <div>
-          <div className="mb-4">
+          <div className="mb-1">
             <Logo size="sm" />
           </div>
-          <p>
+          <p className="leading-tight">
             Your AI-powered legal assistant, helping you navigate 
             legal matters with confidence.
           </p>
@@ -80,11 +80,11 @@ export default function Footer() {
         
         {/* Quick navigation links */}
         <div>
-          <h3 className="font-bold mb-2">QUICK LINKS</h3>
-          <ul className="space-y-1">
+          <h3 className="font-bold mb-0.5 text-xs">QUICK LINKS</h3>
+          <ul className="space-y-0.5">
             {QUICK_LINKS.map(({ href, label }) => (
               <li key={href}>
-                <Link href={href} className="hover:underline">
+                <Link href={href} className="hover:underline text-xs">
                   {label}
                 </Link>
               </li>
@@ -94,41 +94,41 @@ export default function Footer() {
         
         {/* Support contact information */}
         <div>
-          <h3 className="font-bold mb-2">SUPPORT</h3>
+          <h3 className="font-bold mb-0.5 text-xs">SUPPORT</h3>
           <a 
             href={`mailto:${SUPPORT_EMAIL}`} 
-            className="flex items-center gap-2 hover:underline mb-2"
+            className="flex items-center gap-1 hover:underline mb-0.5 text-xs"
             aria-label={`Send email to ${SUPPORT_EMAIL}`}
           >
-            <Mail className="w-4 h-4" /> 
+            <Mail className="w-3 h-3" /> 
             {SUPPORT_EMAIL}
           </a>
           <a 
             href="https://g.page/r/CZFB3qxa_b-gEBM/review" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:underline"
+            className="flex items-center gap-1 hover:underline text-xs"
             aria-label="Leave us a review on Google"
           >
-            <Star className="w-4 h-4 text-yellow-500" /> 
+            <Star className="w-3 h-3 text-yellow-500" /> 
             Leave a Review
           </a>
         </div>
         
         {/* Social media links */}
         <div>
-          <h3 className="font-bold mb-2">SOCIAL MEDIA</h3>
-          <ul className="space-y-1">
+          <h3 className="font-bold mb-0.5 text-xs">SOCIAL MEDIA</h3>
+          <ul className="space-y-0.5">
             {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
               <li key={href}>
                 <a 
                   href={href} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="flex items-center gap-2 hover:underline"
+                  className="flex items-center gap-1 hover:underline text-xs"
                   aria-label={`Visit our ${label} page`}
                 >
-                  <Icon className="w-4 h-4" /> 
+                  <Icon className="w-3 h-3" /> 
                   {label}
                 </a>
               </li>
@@ -138,14 +138,14 @@ export default function Footer() {
       </div>
       
       {/* Footer bottom with copyright and legal links - positioned at bottom */}
-      <div className="border-t text-center text-xs text-gray-500 py-4 bg-gray-50 mt-4 mb-0 pb-0">
+      <div className="border-t text-center text-xs text-gray-500 py-1 bg-gray-50">
         {/* Copyright notice */}
-        <div className="mb-1">
+        <div>
           © {currentYear} Ask AI Legal. All rights reserved.
         </div>
         
         {/* Legal and accessibility links */}
-        <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 mt-0.5">
           {/* Accessibility statement */}
           <span className="flex items-center gap-1">
             <span className="text-green-600 text-lg" aria-hidden="true">●</span>

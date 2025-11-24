@@ -127,7 +127,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <div className="flex flex-col bg-white">
+      <div className="flex flex-col bg-white flex-1">
         {/* Main navigation header */}
         <Navigation />
         
@@ -135,10 +135,10 @@ export default function Home() {
         <ServiceBanner />
         
         {/* Main content area with responsive padding */}
-        <main className="flex-grow w-full max-w-5xl mx-auto px-4 py-8 md:p-8 flex flex-col gap-y-8 overflow-x-hidden">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-y-6 sm:gap-y-8">
           {/* Value proposition banner */}
-          <div className="bg-white py-6 px-4 text-center">
-            <h1 className="text-xl font-semibold">
+          <div className="bg-white py-4 sm:py-6 px-4 sm:px-6 text-center">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-semibold">
               We don't bill by the hour. We don't cut corners. We help you take back control of your legal case — fast.
             </h1>
           </div>
@@ -151,7 +151,7 @@ export default function Home() {
           <SuccessStories />
         </main>
         
-        {/* Footer with links and legal information */}
+        {/* Footer with links and legal information - positioned at bottom */}
         <Footer />
       </div>
     </>

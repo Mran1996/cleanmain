@@ -1229,7 +1229,7 @@ export function EnhancedChatInterface({
                 zIndex: 1001,
                 position: 'relative'
               }}
-              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 active:from-emerald-700 active:to-emerald-800 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-full"
               aria-label="Generate Document and Case Analysis"
             >
               {isGeneratingDocument ? (
@@ -1242,7 +1242,7 @@ export function EnhancedChatInterface({
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Generate Document and Case Analysis
+                  <span className="text-center">Generate Document and Case Analysis</span>
                 </>
               )}
             </button>

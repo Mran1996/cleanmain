@@ -893,17 +893,43 @@ function Step2Content() {
           
           {/* Document should be loaded from Step 1 - no generation needed */}
           
-          <Textarea
-            className="w-full min-h-[300px] font-mono text-base"
-            value={documentText}
-            onChange={e => setDocumentText(e.target.value)}
-            disabled={generating || loadingDocument}
-            placeholder={
-              loadingDocument ? "Loading document..." : 
-              !checkForRealUserData() ? "Complete Step 1 first to generate your legal document..." :
-              "Your generated legal document will appear here..."
-            }
-          />
+          <div className="relative w-full">
+            <Textarea
+              className="w-full min-h-[300px] font-mono text-base pr-8 pb-8"
+              style={{ 
+                resize: 'both', 
+                overflow: 'auto',
+                minWidth: '100%',
+                minHeight: '300px'
+              }}
+              value={documentText}
+              onChange={e => setDocumentText(e.target.value)}
+              disabled={generating || loadingDocument}
+              placeholder={
+                loadingDocument ? "Loading document..." : 
+                !checkForRealUserData() ? "Complete Step 1 first to generate your legal document..." :
+                "Your generated legal document will appear here..."
+              }
+            />
+            {/* Visible resize handle indicator - three diagonal lines */}
+            <div 
+              className="absolute bottom-1 right-1 pointer-events-none z-10"
+              style={{
+                width: '20px',
+                height: '20px',
+                backgroundImage: `
+                  repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 2px,
+                    #6b7280 2px,
+                    #6b7280 4px
+                  )
+                `,
+                opacity: 0.6
+              }}
+            />
+          </div>
           {generating && <div className="flex items-center mt-2 text-gray-500"><Loader2 className="animate-spin mr-2" /> Generating document...</div>}
           {loadingDocument && <div className="flex items-center mt-2 text-blue-500"><Loader2 className="animate-spin mr-2" /> Loading document...</div>}
           {processingLargeDocument && (

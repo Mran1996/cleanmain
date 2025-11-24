@@ -267,22 +267,22 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
     : messages
 
   return (
-    <div className="w-full max-w-5xl mx-auto bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden flex flex-col" style={{ maxHeight: '80vh', minHeight: '600px' }}>
-      {/* Header - Enhanced */}
-      <div className="border-b bg-gradient-to-r from-emerald-50 to-green-50 p-4 sm:p-6">
+    <div className="w-full mx-auto bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden flex flex-col" style={{ maxHeight: '85vh', minHeight: '650px' }}>
+      {/* Header - Redesigned */}
+      <div className="border-b-2 border-gray-200 bg-gradient-to-r from-emerald-500 to-emerald-600 p-5 sm:p-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12 sm:h-14 sm:w-14 bg-emerald-500 text-white shadow-md ring-2 ring-emerald-200">
-              <AvatarFallback className="text-lg sm:text-xl font-bold">K</AvatarFallback>
+          <div className="flex items-center gap-4">
+            <Avatar className="h-14 w-14 sm:h-16 sm:w-16 bg-white text-emerald-600 shadow-lg ring-4 ring-white/50">
+              <AvatarFallback className="text-xl sm:text-2xl font-bold">K</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Khristian AI</h1>
-              <p className="text-xs sm:text-sm text-gray-600">Your Legal Assistant</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white">Khristian AI</h1>
+              <p className="text-xs sm:text-sm text-emerald-50">Your Legal Assistant</p>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full shadow-sm">
-              <Lock className="w-3.5 h-3.5 text-emerald-600" /> 
+            <div className="text-xs sm:text-sm text-white flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
+              <Lock className="w-4 h-4" /> 
               <span className="hidden sm:inline">Secure & Confidential</span>
               <span className="sm:hidden">Secure</span>
             </div>
@@ -319,8 +319,8 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
         </div>
       )}
 
-      {/* Messages - Enhanced */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-gradient-to-b from-gray-50 to-white scroll-smooth">
+      {/* Messages - Redesigned */}
+      <div className="flex-1 p-5 sm:p-6 overflow-y-auto bg-gray-50 scroll-smooth">
         {filteredMessages.length === 0 && searchQuery && (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 py-12">
             <Search className="h-12 w-12 mb-4 text-gray-400" />
@@ -384,15 +384,18 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
         </div>
       </div>
 
-      {/* Suggested Responses - Enhanced */}
+      {/* Suggested Responses - Redesigned */}
       {suggestedResponses.length > 0 && !isTyping && (
-        <div className="border-t bg-gradient-to-r from-emerald-50 to-green-50 p-3 sm:p-4">
-          <p className="text-xs sm:text-sm font-medium text-gray-700 mb-3 px-1">💡 Suggested responses:</p>
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="border-t-2 border-gray-200 bg-white p-4 sm:p-5">
+          <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <span className="text-emerald-600">💡</span>
+            Suggested responses:
+          </p>
+          <div className="flex flex-wrap gap-2.5 sm:gap-3">
             {suggestedResponses.map((response, index) => (
               <button
                 key={index}
-                className="px-4 py-2.5 rounded-full bg-white text-emerald-700 hover:bg-emerald-50 text-sm sm:text-base flex items-center border-2 border-emerald-200 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-200 font-medium"
+                className="px-5 py-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm sm:text-base flex items-center border-2 border-emerald-200 hover:border-emerald-400 shadow-sm hover:shadow-md transition-all duration-200 font-semibold"
                 onClick={() => handleSendMessage(response.text)}
               >
                 <span className="mr-2 text-lg">{response.emoji}</span> 
@@ -403,11 +406,11 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
         </div>
       )}
 
-      {/* Input Area - Enhanced */}
-      <div className="border-t bg-white p-4 sm:p-6">
+      {/* Input Area - Redesigned */}
+      <div className="border-t-2 border-gray-200 bg-white p-5 sm:p-6">
         <div className="relative max-w-4xl mx-auto">
           {/* Action Buttons Row */}
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-2.5 mb-4 flex-wrap">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -511,8 +514,8 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
             </div>
           )}
 
-          {/* Input Field - Enhanced */}
-          <div className="flex items-center gap-2 bg-gray-50 rounded-2xl border-2 border-gray-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-200 transition-all">
+          {/* Input Field - Redesigned */}
+          <div className="flex items-center gap-3 bg-white rounded-2xl border-2 border-gray-300 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-100 transition-all shadow-sm">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -523,14 +526,14 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
                 }
               }}
               placeholder="Type your message or question here..."
-              className="border-0 bg-transparent focus-visible:ring-0 text-sm sm:text-base py-4 px-4 sm:px-6 placeholder:text-gray-400"
+              className="border-0 bg-transparent focus-visible:ring-0 text-sm sm:text-base py-5 px-5 sm:px-6 placeholder:text-gray-400"
             />
             <Button
               onClick={() => handleSendMessage(inputValue)}
               disabled={!inputValue.trim() || isTyping}
-              className="rounded-full h-10 w-10 sm:h-12 sm:w-12 bg-emerald-500 hover:bg-emerald-600 text-white mr-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all"
+              className="rounded-full h-11 w-11 sm:h-12 sm:w-12 bg-emerald-600 hover:bg-emerald-700 text-white mr-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all"
             >
-              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Send className="h-5 w-5" />
             </Button>
           </div>
 
@@ -572,8 +575,8 @@ function ChatBubble({
   const [showReactions, setShowReactions] = useState(false)
   const isUser = message.sender === "user"
   const bubbleClasses = isUser
-    ? "bg-emerald-500 text-white rounded-2xl rounded-br-md shadow-md"
-    : "bg-white text-gray-900 rounded-2xl rounded-bl-md shadow-sm border border-gray-200"
+    ? "bg-emerald-600 text-white rounded-2xl rounded-br-md shadow-lg"
+    : "bg-white text-gray-900 rounded-2xl rounded-bl-md shadow-md border-2 border-gray-200"
 
   const emojis = ["👍", "❤️", "😂", "😢", "😡", "👏"]
 
@@ -709,92 +712,108 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
       <Navigation />
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span>Back</span>
-                </Button>
-                <h1 className="text-2xl font-bold">Your Legal Assistant</h1>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={searchOpen ? "default" : "outline"}
-                  size="sm"
-                  className="flex items-center gap-1"
-                  onClick={() => setSearchOpen(!searchOpen)}
-                >
-                  <Search className="h-4 w-4" />
-                  <span>Search</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <FileUp className="h-4 w-4" />
-                  <span>Upload Document</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Save className="h-4 w-4" />
-                  <span>Save Chat</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Download className="h-4 w-4" />
-                  <span>Export</span>
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </Button>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Header Section - Redesigned */}
+            <div className="mb-6 sm:mb-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1.5 hover:bg-emerald-50 hover:text-emerald-600"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Back</span>
+                  </Button>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Legal Assistant Chat</h1>
+                    <p className="text-sm text-gray-600 mt-1">Get instant legal guidance and document help</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={searchOpen ? "default" : "outline"}
+                    size="sm"
+                    className="flex items-center gap-1.5 bg-white hover:bg-emerald-50 hover:border-emerald-300"
+                    onClick={() => setSearchOpen(!searchOpen)}
+                  >
+                    <Search className="h-4 w-4" />
+                    <span className="hidden sm:inline">Search</span>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1.5 bg-white hover:bg-emerald-50 hover:border-emerald-300">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="hidden sm:inline">More</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem>
+                        <FileUp className="h-4 w-4 mr-2" />
+                        Upload Document
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Chat
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              {/* Sidebar - Enhanced */}
-              <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
-                  <h2 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
-                    <div className="h-2 w-2 bg-emerald-500 rounded-full"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+              {/* Sidebar - Redesigned */}
+              <div className="lg:col-span-1 space-y-4">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-md p-5 hover:shadow-lg transition-shadow">
+                  <h2 className="font-bold text-base mb-4 text-gray-900 flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
                     Case Information
                   </h2>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Category:</span>
-                      <span className="font-semibold text-gray-900">Housing</span>
+                    <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium">Category:</span>
+                      <span className="font-semibold text-gray-900 bg-emerald-50 px-2 py-1 rounded">Housing</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Issue:</span>
+                    <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium">Issue:</span>
                       <span className="font-semibold text-gray-900">Eviction Notice</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-gray-600">State:</span>
+                    <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+                      <span className="text-gray-600 font-medium">State:</span>
                       <span className="font-semibold text-gray-900">Washington</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600">Started:</span>
+                    <div className="flex justify-between items-center py-2.5">
+                      <span className="text-gray-600 font-medium">Started:</span>
                       <span className="font-semibold text-gray-900">Apr 28, 2025</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
-                  <h2 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
-                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                    Uploaded Documents
+                <div className="bg-white rounded-xl border border-gray-200 shadow-md p-5 hover:shadow-lg transition-shadow">
+                  <h2 className="font-bold text-base mb-4 text-gray-900 flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 bg-blue-500 rounded-full"></div>
+                    Documents
                   </h2>
                   <div className="text-sm">
-                    <p className="text-gray-500 italic mb-3">No documents uploaded yet.</p>
+                    <p className="text-gray-500 italic mb-4 text-xs">No documents uploaded yet.</p>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="w-full text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 font-medium"
+                      className="w-full text-emerald-600 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 font-medium shadow-sm"
                       onClick={() => sidebarFileInputRef.current?.click()}
                     >
                       <FileUp className="h-4 w-4 mr-2" />
@@ -805,8 +824,8 @@ function ChatPageContent() {
                 </div>
               </div>
 
-              {/* Chat Interface */}
-              <div className="lg:col-span-2">
+              {/* Chat Interface - Full Width */}
+              <div className="lg:col-span-3">
                 <ChatInterface searchOpen={searchOpen} />
               </div>
             </div>

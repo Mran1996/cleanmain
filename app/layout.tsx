@@ -155,8 +155,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html 
       lang="en" 
-      className="light bg-white text-sm md:text-base overflow-x-hidden"
-      style={{ colorScheme: "light", maxWidth: "100vw" }}
+      className="light bg-white text-sm md:text-base h-full"
+      style={{ colorScheme: "light" }}
       suppressHydrationWarning
     >
       <head>
@@ -186,7 +186,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="bg-white text-sm md:text-base m-0 p-0 overflow-x-hidden max-w-full">
+      <body className="bg-white text-sm md:text-base m-0 p-0 h-full flex flex-col">
         {/* ClientLayout provides context providers and client-side functionality */}
         <ClientLayout>
           {children}

@@ -3,20 +3,11 @@ import nodemailer from 'nodemailer'
 
 // Configure the email transporter for Outlook/Office 365 SMTP
 const createTransporter = () => {
-  // Try alternative SMTP hosts if primary fails
-  const defaultHosts = [
-    process.env.SMTP_HOST || 'smtp.office365.com', // Primary: office365.com (more reliable)
-    'smtp-mail.outlook.com', // Fallback: outlook.com
-  ];
-  
-  const host = defaultHosts[0]; // Use the first one (or env override)
-  const smtpConfig: any = {
-    host: host,
+  const smtpConfig = {
+    host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
     secure: false, // Use STARTTLS for port 587 (not SSL/TLS)
-    connectionTimeout: 10000, // 10 second timeout for connection
-    greetingTimeout: 10000, // 10 second timeout for greeting
-    socketTimeout: 10000, // 10 second timeout for socket operations
+    requireTLS: true, // Require STARTTLS
     tls: {
       rejectUnauthorized: false, // Allow self-signed certificates if needed
       minVersion: 'TLSv1.2' // Use TLS 1.2 or higher
@@ -41,7 +32,7 @@ const createTransporter = () => {
     throw new Error('Outlook SMTP authentication credentials are missing. Please set SMTP_USER/SMTP_PASS or OUTLOOK_EMAIL/OUTLOOK_PASSWORD environment variables.');
   }
 
-  return nodemailer.createTransport(smtpConfig as any);
+  return nodemailer.createTransport(smtpConfig);
 }
 
 // In-memory cache to prevent duplicate submissions (clears after 60 seconds)
@@ -158,9 +149,15 @@ export async function POST(request: NextRequest) {
     let errorMessage = error?.message || 'Failed to send message'
     let errorCode = error?.code || 'UNKNOWN_ERROR'
     
+    // Handle SMTP authentication errors
+    if (errorCode === 'EAUTH' || errorCode === 535 || errorMessage.includes('authentication') || errorMessage.includes('credentials were incorrect')) {
+      errorMessage = 'SMTP authentication failed. Please verify your SMTP credentials in .env.local. For Outlook, you MUST use an App Password (not your regular password). To create an App Password: Go to account.microsoft.com/security → Advanced security options → App passwords → Create new. Note: Two-factor authentication must be enabled first.'
+      errorCode = 'AUTH_ERROR'
+    }
+    
     // Handle DNS resolution errors
     if (errorCode === 'ENOTFOUND' || errorMessage.includes('ENOTFOUND') || errorMessage.includes('getaddrinfo')) {
-      errorMessage = 'SMTP server hostname could not be resolved. Please check your network connection and SMTP_HOST configuration. Try using "smtp.office365.com" instead of "smtp-mail.outlook.com".'
+      errorMessage = 'SMTP server hostname could not be resolved. Please check your network connection and SMTP_HOST configuration.'
       errorCode = 'DNS_RESOLUTION_ERROR'
     }
     
@@ -168,12 +165,6 @@ export async function POST(request: NextRequest) {
     if (errorCode === 'ETIMEDOUT' || errorCode === 'ECONNREFUSED' || errorMessage.includes('timeout')) {
       errorMessage = 'Connection to SMTP server timed out. Please check your network connection and firewall settings.'
       errorCode = 'CONNECTION_TIMEOUT'
-    }
-    
-    // Handle authentication errors
-    if (errorCode === 'EAUTH' || errorMessage.includes('Invalid login') || errorMessage.includes('authentication')) {
-      errorMessage = 'SMTP authentication failed. Please verify your SMTP_USER and SMTP_PASS credentials. For Outlook, make sure you are using an App Password, not your regular password.'
-      errorCode = 'AUTH_ERROR'
     }
 
     return NextResponse.json(
@@ -184,7 +175,8 @@ export async function POST(request: NextRequest) {
         troubleshooting: process.env.NODE_ENV === 'development' ? {
           smtpHost: process.env.SMTP_HOST || 'smtp.office365.com',
           smtpPort: process.env.SMTP_PORT || '587',
-          hasCredentials: !!(process.env.SMTP_USER || process.env.OUTLOOK_EMAIL) && !!(process.env.SMTP_PASS || process.env.OUTLOOK_PASSWORD)
+          hasCredentials: !!(process.env.SMTP_USER || process.env.OUTLOOK_EMAIL) && !!(process.env.SMTP_PASS || process.env.OUTLOOK_PASSWORD),
+          emailUsed: process.env.SMTP_USER || process.env.OUTLOOK_EMAIL || 'NOT SET'
         } : undefined
       },
       { status: 500 }

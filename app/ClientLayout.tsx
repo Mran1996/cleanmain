@@ -33,7 +33,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         <LanguageProvider>
           <LegalAssistantProvider>
             <ThemeProvider>
-              {children}
+              <div className="flex flex-col h-full flex-1">
+                {children}
+              </div>
               <Toaster position="top-right" className="mt-[220px]" />
             </ThemeProvider>
           </LegalAssistantProvider>

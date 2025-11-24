@@ -132,9 +132,9 @@ export default function FeaturesPage() {
             <p className="text-sm text-gray-600 mb-6 max-w-2xl mx-auto">
               Join thousands of Americans who've successfully defended their rights, filed winning motions, and navigated the legal system confidently with AI-powered legal document preparation.
             </p>
-            <Link href="/pricing">
-              <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold">Generate Document</Button>
-            </Link>
+            <Button asChild className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-md text-lg font-semibold">
+              <Link href="/pricing">Generate Document</Link>
+            </Button>
           </div>
         </div>
       </main>
