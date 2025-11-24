@@ -29,6 +29,7 @@ export const viewport: Viewport = {
   ],
 };
 
+
 // Application metadata for SEO and browser configuration
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.askailegal.com'),
