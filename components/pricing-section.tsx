@@ -9,12 +9,12 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
 
   console.log(PRODUCTS,"PRODUCTS")
   return (
-    <section className="bg-gray-50 py-16">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            "Justice Shouldn't Be Out of Reach<br />
-            — Let AI Level the Playing Field."
+    <section className="bg-gray-50 py-12 sm:py-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 px-2">
+            "Justice Shouldn't Be Out of Reach<br className="hidden sm:block" />
+            <span className="sm:hidden"> </span>— Let AI Level the Playing Field."
           </h1>
           {!isHomePage && (
             <div className="mt-6">
@@ -24,7 +24,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           )}
         </div>
         
-        <div className={`grid ${isHomePage ? 'grid-cols-1' : 'grid-cols-2'} gap-8 max-w-5xl mx-auto px-4 ${!isHomePage ? 'items-stretch' : ''}`}>
+        <div className={`grid ${isHomePage ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-6 sm:gap-8 max-w-5xl mx-auto ${!isHomePage ? 'items-stretch' : ''}`}>
           {/* Full Service Card - Only show on pricing page */}
           {!isHomePage && (
             <Card className="w-full border-emerald-500 border-2 shadow-lg relative flex flex-col ml-auto">
