@@ -62,13 +62,14 @@ export function Navigation() {
 
   return (
     <header className="border-b border-gray-200 sticky top-0 bg-white z-50 w-full">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between gap-2">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3 md:py-4 flex flex-row items-center justify-between gap-2">
         {/* Logo - responsive sizing */}
-        <div className="flex items-center flex-shrink-0 gap-2 sm:gap-3 min-w-0">
-          <Logo size="lg" variant="soft" className="hidden sm:block flex-shrink-0" />
-          <Logo size="md" variant="soft" className="block sm:hidden flex-shrink-0" />
+        <div className="flex items-center flex-shrink-0 gap-1.5 sm:gap-2 md:gap-3 min-w-0">
+          <Logo size="sm" variant="soft" className="block sm:hidden flex-shrink-0" />
+          <Logo size="md" variant="soft" className="hidden sm:block md:hidden flex-shrink-0" />
+          <Logo size="lg" variant="soft" className="hidden md:block flex-shrink-0" />
           <div className="flex flex-col min-w-0">
-            <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-800 truncate">Ask AI Legal™</span>
+            <span className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold text-gray-800 truncate">Ask AI Legal™</span>
             <span className="text-xs sm:text-sm font-normal text-gray-600 hidden sm:block">Where Law Meets Intelligence.</span>
           </div>
         </div>

@@ -135,10 +135,10 @@ export default function Home() {
         <ServiceBanner />
         
         {/* Main content area with responsive padding */}
-        <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-y-6 sm:gap-y-8 min-w-0">
+        <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8 flex flex-col gap-y-4 sm:gap-y-6 md:gap-y-8 min-w-0">
           {/* Value proposition banner */}
-          <div className="bg-white py-4 sm:py-6 px-4 sm:px-6 text-center w-full">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-center mx-auto max-w-4xl">
+          <div className="bg-white py-3 sm:py-4 md:py-6 px-4 sm:px-6 text-center w-full">
+            <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-center mx-auto max-w-4xl">
               We don't bill by the hour. We don't cut corners. We help you take back control of your legal case — fast.
             </h1>
           </div>

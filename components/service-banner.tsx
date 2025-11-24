@@ -46,14 +46,14 @@ export function ServiceBanner() {
       <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-transparent to-amber-500/10"></div>
       
       <div className="relative z-10 w-full">
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
-          <div className="flex items-center justify-between gap-2 w-full">
+        <div className="w-full max-w-7xl mx-auto px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-3">
+          <div className="flex items-center justify-between gap-1 sm:gap-2 w-full">
             {/* Main content */}
             <div className="flex-1 text-center min-w-0">
               <div className="flex items-center justify-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <span className="text-amber-300 font-bold text-base sm:text-lg">✨</span>
-                <span className="font-bold text-sm sm:text-base md:text-lg truncate">Let us handle it for you!</span>
-                <span className="text-amber-300 font-bold text-base sm:text-lg">✨</span>
+                <span className="text-amber-300 font-bold text-sm sm:text-base md:text-lg">✨</span>
+                <span className="font-bold text-xs sm:text-sm md:text-base lg:text-lg truncate">Let us handle it for you!</span>
+                <span className="text-amber-300 font-bold text-sm sm:text-base md:text-lg">✨</span>
               </div>
               
               {!isCollapsed && (

@@ -1,12 +1,12 @@
 export function KeyFeatures() {
   return (
-    <section className="bg-white py-12 sm:py-16 md:py-20 w-full">
+    <section className="bg-white py-8 sm:py-12 md:py-16 lg:py-20 w-full">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="text-center mb-8 sm:mb-12 md:mb-16 w-full">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">Ask AI Legal's Key Features</h2>
+        <div className="text-center mb-6 sm:mb-8 md:mb-12 lg:mb-16 w-full">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 md:mb-6">Ask AI Legal's Key Features</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 md:gap-x-16 md:gap-y-12 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-x-16 lg:gap-y-12 max-w-5xl mx-auto">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-full flex items-center justify-center">
               <span role="img" aria-label="Scale" className="text-xl sm:text-2xl">

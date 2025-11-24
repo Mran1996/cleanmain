@@ -64,9 +64,9 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-white mt-12 text-gray-700 mb-0 pb-0 flex flex-col w-full">
+    <footer className="border-t bg-white mt-8 sm:mt-10 md:mt-12 text-gray-700 mb-0 pb-0 flex flex-col w-full">
       {/* Main footer content */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm w-full">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8 text-sm w-full">
         {/* Company information */}
         <div>
           <div className="mb-4">
