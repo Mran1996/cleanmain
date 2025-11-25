@@ -86,19 +86,18 @@ export default function Footer() {
             <Logo size="sm" />
           </div>
           <p className="text-xs sm:text-sm">
-            Your AI-powered legal assistant, helping you navigate 
-            legal matters with confidence.
+            {t("footer_desc")}
           </p>
         </div>
         
         {/* Quick navigation links */}
         <div className="col-span-1">
-          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">QUICK LINKS</h3>
+          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">{t("footer_quick_links")}</h3>
           <ul className="space-y-0.5 sm:space-y-1">
             {QUICK_LINKS.map(({ href, label }) => (
               <li key={href}>
                 <Link href={href} className="hover:underline text-xs sm:text-sm">
-                  {label}
+                  {t(quickKeyMap[label] || label)}
                 </Link>
               </li>
             ))}
@@ -107,7 +106,7 @@ export default function Footer() {
         
         {/* Support contact information */}
         <div className="col-span-1">
-          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">SUPPORT</h3>
+          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">{t("footer_support_title")}</h3>
           <a 
             href={`mailto:${SUPPORT_EMAIL}`} 
             className="flex items-center gap-1.5 sm:gap-2 hover:underline mb-1.5 sm:mb-2 text-xs sm:text-sm"
@@ -124,13 +123,13 @@ export default function Footer() {
             aria-label="Leave us a review on Google"
           >
             <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 flex-shrink-0" /> 
-            Leave a Review
+            {t("footer_leave_review")}
           </a>
         </div>
         
         {/* Social media links */}
         <div className="col-span-2 sm:col-span-2 md:col-span-1">
-          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">SOCIAL MEDIA</h3>
+          <h3 className="font-bold mb-1.5 sm:mb-2 text-xs sm:text-sm">{t("footer_social_media_title")}</h3>
           <ul className="space-y-0.5 sm:space-y-1">
             {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
               <li key={href}>
@@ -162,7 +161,7 @@ export default function Footer() {
           {/* Accessibility statement */}
           <span className="flex items-center gap-1 text-xs">
             <span className="text-green-600 text-sm sm:text-lg" aria-hidden="true">●</span>
-            <span className="leading-tight">This site aims to meet WCAG 2.1 Level AA accessibility standards.</span>
+            <span className="leading-tight">{t("footer_accessibility_text")}</span>
           </span>
           
           {/* Legal links */}
@@ -170,7 +169,7 @@ export default function Footer() {
             {LEGAL_LINKS.map(({ href, label }, index) => (
               <div key={href} className="flex items-center">
                 <Link href={href} className="hover:underline text-xs">
-                  {label}
+                  {t(legalKeyMap[label] || label)}
                 </Link>
                 {index < LEGAL_LINKS.length - 1 && (
                   <span className="hidden md:inline ml-3 md:ml-4" aria-hidden="true">|</span>

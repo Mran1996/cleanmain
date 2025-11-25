@@ -7,12 +7,12 @@ export function SuccessStories() {
     <section className="py-8 sm:py-12 md:py-16 bg-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-6 sm:mb-8 md:mb-10">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">Real People. Real Legal Wins.</h2>
-          <p className="text-base sm:text-lg text-gray-600 mb-1">Families and self-represented clients across the U.S. use Ask AI Legal to fight back — and win.</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">{t("stories_title")}</h2>
+          <p className="text-base sm:text-lg text-gray-600 mb-1">{t("stories_subtitle")}</p>
         </div>
         <div className="bg-white py-2 text-center mb-4 sm:mb-6">
           <p className="text-xs sm:text-sm font-medium italic text-muted-foreground px-2 sm:px-4">
-            We're not your attorney. We don't overcharge. We don't pass your case off to a paralegal. We're here to help you win—and bring your loved one home.
+            {t("stories_disclaimer")}
           </p>
         </div>
         <div className="flex flex-col md:flex-row gap-4 sm:gap-5 md:gap-6 max-w-5xl mx-auto">
@@ -24,7 +24,7 @@ export function SuccessStories() {
               className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full mb-4 sm:mb-5 md:mb-6 object-cover border-4 border-blue-100"
             />
             <p className="text-gray-900 text-sm sm:text-base md:text-lg text-center mb-4 sm:mb-5 md:mb-6 leading-relaxed">
-              "While on a jail call, my wife and I walked through the Ask AI Legal steps together. We used it to file a post-conviction motion — and for the first time, it feels like we actually have a shot. It gave us hope, fast."
+              {t("stories_michael_quote")}
             </p>
             <div className="text-center mt-auto">
               <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_michael_name")}</div>
@@ -39,7 +39,7 @@ export function SuccessStories() {
               className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full mb-4 sm:mb-5 md:mb-6 object-cover border-4 border-purple-100"
             />
             <p className="text-gray-900 text-sm sm:text-base md:text-lg text-center mb-4 sm:mb-5 md:mb-6 leading-relaxed">
-              "My brother needed to respond to a motion and we didn't know where to start. Ask AI Legal gave us a full draft with citations. It saved us thousands — and gave us control when everything felt stacked against us."
+              {t("stories_sarah_quote")}
             </p>
             <div className="text-center mt-auto">
               <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_sarah_name")}</div>
@@ -54,7 +54,7 @@ export function SuccessStories() {
               className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full mb-4 sm:mb-5 md:mb-6 object-cover border-4 border-green-100"
             />
             <p className="text-gray-900 text-sm sm:text-base md:text-lg text-center mb-4 sm:mb-5 md:mb-6 leading-relaxed">
-              "I told my sister what to upload and what to say. She used Ask AI Legal to file for early release. The motion actually went through — and I finally feel like something's moving forward."
+              {t("stories_marcus_quote")}
             </p>
             <div className="text-center mt-auto">
               <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_marcus_name")}</div>

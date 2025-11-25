@@ -7,6 +7,7 @@ import { PRODUCTS } from "@/lib/stripe-config";
 import { useTranslation } from "@/utils/translations"
 
 export function PricingSection({ isHomePage = false }: { isHomePage?: boolean }) {
+  const { t } = useTranslation()
   return (
     <section className="bg-gray-50 py-12 sm:py-16 md:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,36 +29,36 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
             <Card className="w-full border-emerald-500 border-2 shadow-lg relative flex flex-col ml-auto">
               <div className="absolute -top-4 sm:-top-5 left-1/2 transform -translate-x-1/2 z-10">
                 <span className="bg-emerald-500 text-white px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-bold uppercase tracking-wider shadow-xl border-2 border-white">
-                  MOST POPULAR
+                  {t("pricing_most_popular_badge")}
                 </span>
               </div>
               <CardHeader className="text-center space-y-2 sm:space-y-3 pt-8 sm:pt-12 px-4 sm:px-6">
-                <div className="text-xl sm:text-2xl font-bold text-gray-900">🏆 Full Service Legal Support</div>
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">🏆 {t("pricing_fullservice_title")}</div>
                 <div className="text-3xl sm:text-4xl font-bold text-emerald-600">$499</div>
-                <p className="text-gray-600 text-xs sm:text-sm">Complete legal document preparation with white-glove service — we handle everything for you.</p>
+                <p className="text-gray-600 text-xs sm:text-sm">{t("pricing_fullservice_desc")}</p>
               </CardHeader>
               <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
                 <ul className="space-y-2 text-sm text-left text-gray-700">
-                  <li>✅ Complete legal document drafting (up to 150 pages)</li>
-                  <li>✅ AI + human review for accuracy and formatting</li>
-                  <li>✅ State-specific case law research included</li>
-                  <li>✅ Case Success Analysis — legal strategy + projection</li>
-                  <li>✅ Up to 3 free revisions within 14 days</li>
-                  <li>✅ Email + Phone Support</li>
-                  <li>✅ Email or physical mail delivery</li>
-                  <li>✅ 7 business day turnaround</li>
-                  <li>✅ Your own hearing prep script — exactly what to say in court for a winning edge</li>
-                  <li>✅ Professional legal document support</li>
+                  <li>✅ {t("pricing_fullservice_b1")}</li>
+                  <li>✅ {t("pricing_fullservice_b2")}</li>
+                  <li>✅ {t("pricing_fullservice_b3")}</li>
+                  <li>✅ {t("pricing_fullservice_b4")}</li>
+                  <li>✅ {t("pricing_fullservice_b5")}</li>
+                  <li>✅ {t("pricing_fullservice_b6")}</li>
+                  <li>✅ {t("pricing_fullservice_b7")}</li>
+                  <li>✅ {t("pricing_fullservice_b8")}</li>
+                  <li>✅ {t("pricing_fullservice_b9")}</li>
+                  <li>✅ {t("pricing_fullservice_b10")}</li>
                 </ul>
 
                 <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
-                  <p className="mb-2">🎯 <strong>Perfect for complex cases</strong> — we gather all documents and handle the entire process.</p>
-                  <p className="mb-2">⚖️ <strong>Court-ready documents</strong> with professional formatting and legal citations.</p>
-                  <p className="text-emerald-600 font-semibold pt-2">🟢 Best for: Criminal defense, civil litigation, family law, and cases requiring expert preparation.</p>
+                  <p className="mb-2">🎯 <strong>{t("pricing_fullservice_p1_strong")}</strong> — {t("pricing_fullservice_p1_rest")}</p>
+                  <p className="mb-2">⚖️ <strong>{t("pricing_fullservice_p2_strong")}</strong> {t("pricing_fullservice_p2_rest")}</p>
+                  <p className="text-emerald-600 font-semibold pt-2">🟢 {t("pricing_fullservice_best_for")}</p>
                 </div>
 
                 <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
-                  <p className="text-center font-semibold">🧠 We're not a law firm — we're faster, always available, and built to get you results.</p>
+                  <p className="text-center font-semibold">🧠 {t("pricing_not_law_firm")}</p>
                 </div>
 
                 <div className="flex-grow"></div>
@@ -75,26 +76,26 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
           {/* AI Legal Premium Card */}
           <Card className="w-full border-green-500 border shadow-lg flex flex-col">
             <CardHeader className="text-center space-y-2 sm:space-y-3 pt-4 sm:pt-6 px-4 sm:px-6">
-              <div className="text-xl sm:text-2xl font-bold text-gray-900">📚 AI Legal Pro</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">📚 {t("pricing_pro_title")}</div>
               <div className="text-3xl sm:text-4xl font-bold text-green-600">$199</div>
-              <div className="text-xs sm:text-sm text-gray-500 font-medium">$199 monthly cancel anytime</div>
-              <p className="text-gray-600 text-xs sm:text-sm">Unlimited access to legal documents, case strategy, and real legal support — powered by AI trained on millions of real cases.</p>
+              <div className="text-xs sm:text-sm text-gray-500 font-medium">{t("pricing_pro_price_note")}</div>
+              <p className="text-gray-600 text-xs sm:text-sm">{t("pricing_pro_desc")}</p>
             </CardHeader>
             <CardContent className="space-y-3 px-6 pb-6 flex flex-col flex-grow">
               <ul className="space-y-2 text-sm text-left text-gray-700">
-                <li>✅ Unlimited legal documents (up to 150 pages each)</li>
-                <li>✅ Unlimited AI-powered revisions — update anytime</li>
-                <li>✅ Detailed legal response built around your facts</li>
-                <li>✅ Real case law embedded to strengthen your draft</li>
-                <li>✅ Case Success Analysis — legal strategy + projection</li>
-                <li>✅ Delivered in PDF + DOCX formats</li>
-                <li>✅ Email + Phone Support for platform and AI help</li>
+                <li>✅ {t("pricing_pro_b1")}</li>
+                <li>✅ {t("pricing_pro_b2")}</li>
+                <li>✅ {t("pricing_pro_b3")}</li>
+                <li>✅ {t("pricing_pro_b4")}</li>
+                <li>✅ {t("pricing_pro_b5")}</li>
+                <li>✅ {t("pricing_pro_b6")}</li>
+                <li>✅ {t("pricing_pro_b7")}</li>
               </ul>
 
               <div className="text-sm text-gray-700 pt-4 border-t border-gray-200">
-                <p className="mb-2">🧠 <strong>We're not a law firm</strong> — we're faster, always available, and built to get you results.</p>
-                <p className="mb-2">📄 You'll receive a full legal draft with citations, ready to review, edit, and file on your terms.</p>
-                <p className="text-green-600 font-semibold pt-2">🟢 Best for post-conviction relief, criminal motions, civil filings, and people fighting without a lawyer.</p>
+                <p className="mb-2">🧠 <strong>{t("pricing_not_law_firm_strong")}</strong> — {t("pricing_not_law_firm_rest")}</p>
+                <p className="mb-2">📄 {t("pricing_pro_p2")}</p>
+                <p className="text-green-600 font-semibold pt-2">🟢 {t("pricing_pro_best_for")}</p>
               </div>
 
               <div className="flex-grow"></div>

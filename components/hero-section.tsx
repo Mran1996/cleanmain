@@ -58,12 +58,12 @@ export function HeroSection() {
           
           {/* Value proposition */}
           <p className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 max-w-3xl mx-auto px-2 sm:px-4">
-            Get court-ready legal documents, outcome strategy, and expert-level support — 100% AI-powered and always on your side.
+            {t("hero_value")}
           </p>
           
           {/* Service coverage */}
           <p className="mt-2 text-xs sm:text-sm text-white font-semibold text-center px-2">
-            Covers criminal motions, civil claims, post-conviction filings, and more.
+            {t("hero_coverage")}
           </p>
           
           {/* Call-to-action buttons */}
@@ -75,7 +75,7 @@ export function HeroSection() {
             </Link>
             <Link href="/learn-more" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full sm:w-auto text-emerald-500 bg-white border-white hover:text-white hover:bg-emerald-500 px-6 py-2.5 sm:py-2 text-sm sm:text-base">
-                Learn More
+                {t("cta_learn_more")}
               </Button>
             </Link>
           </div>
