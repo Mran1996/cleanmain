@@ -115,65 +115,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleMicrosoftSignIn = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    
-    try {
-      // Clear any existing session and local storage first
-      await supabase.auth.signOut();
-      
-      // Clear any existing OAuth state
-      localStorage.removeItem('sb-auth-token');
-      localStorage.removeItem('sb-uqvgyxrjatjrtzscgdgv-auth-token');
-      sessionStorage.clear();
-      
-      console.log('Starting Microsoft OAuth sign-in...');
-      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-      console.log('Redirect URL:', `${window.location.origin}/auth/callback`);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'azure',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('OAuth error:', error);
-        setErrorMsg(`Sign-in failed: ${error.message}`);
-        toast({
-          title: "Sign-in failed",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      console.log('OAuth response:', data);
-      
-      if (data?.url) {
-        console.log('Redirecting to:', data.url);
-        // Use window.location.replace to prevent back button issues
-        window.location.replace(data.url);
-      } else {
-        console.error('No redirect URL received');
-        setErrorMsg('No redirect URL received from OAuth provider. Please try again.');
-      }
-    } catch (err) {
-      console.error('Sign-in error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      setErrorMsg(`Sign-in error: ${errorMessage}`);
-      toast({
-        title: "Sign-in failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRetrySignIn = async () => {
     setErrorMsg('');
     setLoading(true);
@@ -246,27 +187,6 @@ export default function LoginPage() {
                 />
               </svg>
               Continue with Google
-            </>
-          )}
-        </button>
-
-        {/* Microsoft Sign In Button */}
-        <button
-          onClick={handleMicrosoftSignIn}
-          disabled={loading}
-          className="w-full py-3 px-4 bg-[#0078d4] text-white rounded-md font-semibold hover:bg-[#006cbe] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Connecting...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" viewBox="0 0 23 23" fill="currentColor">
-                <path d="M0 0h11.377v11.372H0zm11.377 0H23v11.372H11.377zm0 11.628H0V23h11.377zm11.623 0H23V23h-11.377z"/>
-              </svg>
-              Continue with Microsoft
             </>
           )}
         </button>
