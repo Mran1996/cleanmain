@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Mic, Send, Lock, User } from "lucide-react"
 import { sanitizeHTML } from "@/lib/validation"
+import { useTranslation } from "@/utils/translations"
 
 interface Message {
   id: string
@@ -12,6 +13,7 @@ interface Message {
 }
 
 export function ChatInterface() {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -39,9 +41,9 @@ export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const suggestedResponses = [
-    { emoji: "📄", text: "I need help with a contract dispute" },
-    { emoji: "📁", text: "I'm dealing with a legal notice I received" },
-    { emoji: "✍️", text: "I need to file a legal document" },
+    { emoji: "📄", text: t('suggestion_contract_dispute') },
+    { emoji: "📁", text: t('suggestion_legal_notice_received') },
+    { emoji: "✍️", text: t('suggestion_file_legal_document') },
   ]
 
   const scrollToBottom = () => {
@@ -95,7 +97,9 @@ export function ChatInterface() {
         try { 
           const errorData = await response.json();
           serverErr = errorData?.error ?? ""; 
-        } catch {}
+        } catch {
+          // Error parsing JSON response, continue with empty serverErr
+        }
         
         // Handle rate limit errors specifically
         if (response.status === 429) {
@@ -149,12 +153,12 @@ export function ChatInterface() {
       {/* Header */}
       <div className="border-b pb-4 mb-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Chat with Khristian — Your AI Legal Guide</h1>
+          <h1 className="text-xl font-bold">{t('chat_with_khristian_header')}</h1>
           <div className="text-xs text-gray-500 flex items-center gap-1">
-            <Lock className="w-3 h-3" /> Secure & Confidential
+            <Lock className="w-3 h-3" /> {t('secure_confidential')}
           </div>
         </div>
-        <p className="text-sm text-gray-500 mt-1">Asking strategic legal questions to prepare your document</p>
+        <p className="text-sm text-gray-500 mt-1">{t('chat_strategy_subtext')}</p>
       </div>
 
       {/* Messages */}
@@ -199,7 +203,7 @@ export function ChatInterface() {
 
       {/* Suggested Responses */}
       <div className="mb-4">
-        <p className="text-sm text-gray-500 mb-2">Suggested responses:</p>
+        <p className="text-sm text-gray-500 mb-2">{t('suggested_responses_label')}</p>
         <div className="flex flex-wrap gap-2">
           {suggestedResponses.map((response, index) => (
             <button
@@ -225,7 +229,7 @@ export function ChatInterface() {
               handleSendMessage(inputValue)
             }
           }}
-          placeholder="Describe your legal issue here..."
+          placeholder={t('input_placeholder_describe_issue')}
           className="w-full border rounded-full px-4 py-3 pr-24 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-500"
           style={{
             color: '#111827 !important',
@@ -240,7 +244,7 @@ export function ChatInterface() {
           >
             <Send className="h-5 w-5" />
           </button>
-          <button className="rounded-full w-10 h-10 flex items-center justify-center bg-emerald-500 text-white">
+          <button className="rounded-full w-10 h-10 flex items-center justify-center bg-emerald-500 text-white" aria-label={t('start_voice_input_title')} title={t('start_voice_input_title')}>
             <Mic className="h-5 w-5" />
           </button>
         </div>

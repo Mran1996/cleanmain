@@ -1,31 +1,33 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation"; // Commented out for now
 import { Button } from "@/components/ui/button";
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
 import { ProgressSteps } from "@/components/ProgressSteps";
 import { StepLayout } from "@/components/step-layout";
 import { useLegalAssistant } from "@/components/context/legal-assistant-context";
 import { ATTORNEY_INTERVIEW_SYSTEM, ATTORNEY_INTERVIEW_PROMPTS } from "../step-1/prompts/attorney-interview";
-import { Loader2, FileText, Trash2, Save, Download, ArrowLeft, FileX } from "lucide-react";
-import { DocumentData as UploadedDocumentData } from "@/lib/documentFormatter";
+import { FileText, Trash2, Save, Download, FileX } from "lucide-react";
+// import { DocumentData as UploadedDocumentData } from "@/lib/documentFormatter"; // Commented out for now
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 import { getUploadedParsedText } from '@/lib/uploadedDoc';
 import { SubscriptionGuard } from "@/components/subscription-guard";
 import { SplitPaneLayout } from "@/components/split-pane-layout";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "@/utils/translations";
 
 function AIAssistantStep1SplitPaneContent() {
-  const router = useRouter();
+  const { t } = useTranslation();
+  // const router = useRouter(); // Commented out for now
   const [isWaiting, setIsWaiting] = useState(false);
   const [suggestedResponses, setSuggestedResponses] = useState<string[]>([]);
-  const [allDocuments, setAllDocuments] = useState<UploadedDocumentData[]>([]);
+  // const [allDocuments, setAllDocuments] = useState<UploadedDocumentData[]>([]); // Commented out for now
   const [isProcessing, setIsProcessing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showClearDocumentModal, setShowClearDocumentModal] = useState(false);
-  const [isGeneratingDocument, setIsGeneratingDocument] = useState(false);
+  // const [isGeneratingDocument, setIsGeneratingDocument] = useState(false); // Commented out for now
  
   const { 
     chatHistory, 
@@ -48,14 +50,14 @@ function AIAssistantStep1SplitPaneContent() {
       const docsRaw = localStorage.getItem('uploaded_documents');
       if (docsRaw) {
         try {
-          const docs = JSON.parse(docsRaw);
-          setAllDocuments(docs);
+          // const docs = JSON.parse(docsRaw); // Commented out for now
+          // setAllDocuments(docs); // Commented out for now
         } catch (error) {
           console.error('Error parsing uploaded documents:', error);
-          setAllDocuments([]);
+          // setAllDocuments([]); // Commented out for now
         }
       } else {
-        setAllDocuments([]);
+        // setAllDocuments([]); // Commented out for now
       }
     }
   }, [isProcessing]);
@@ -97,10 +99,10 @@ function AIAssistantStep1SplitPaneContent() {
       
       // Initialize with greeting if no saved history
       if (!isProcessing) {
-        const firstName = localStorage.getItem("firstName") || "there";
-        const hasDocument = getUploadedParsedText().trim().length > 0;
+        // const firstName = localStorage.getItem("firstName") || "there"; // Commented out for now
+        // const hasDocument = getUploadedParsedText().trim().length > 0; // Commented out for now
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive consultation** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        const initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive consultation** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
         
         setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -130,11 +132,25 @@ function AIAssistantStep1SplitPaneContent() {
       if (!lastMsg || lastMsg.sender !== "assistant" || isProcessing || isWaiting) return;
       
       const selectedCategory = getLegalCategory();
+      let lang: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem('preferredLanguage');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed.value === 'string') {
+              lang = parsed.value;
+            }
+          }
+        } catch {
+          // Error parsing language preference, continue without language
+        }
+      }
       try {
         const res = await fetch("/api/suggested-replies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: chatHistory, category: selectedCategory }),
+          body: JSON.stringify({ messages: chatHistory, category: selectedCategory, language: lang }),
         });
         const data = await res.json();
         setSuggestedResponses(Array.isArray(data.suggestions) ? data.suggestions : []);
@@ -169,7 +185,7 @@ function AIAssistantStep1SplitPaneContent() {
           }
         }
       }
-      setAllDocuments(latestDocs);
+      // setAllDocuments(latestDocs); // Commented out for now
 
       // Add user message to chat history
       const userMessage = { sender: "user", text: message.trim() };
@@ -291,9 +307,9 @@ ${documentInfo}
     } catch (err: unknown) {
       console.error("Chat Error:", err);
       
-      let errorMessage = "I'm having technical difficulties right now. Please try again in a moment.";
+      let errorMessage = t('chat_processing_error_message');
       if (err instanceof Error && err.message.includes('timeout')) {
-        errorMessage = "The request is taking longer than expected. Please try again.";
+        errorMessage = t('chat_timeout_message');
       }
       
       setChatHistory((prev) => [...prev, {
@@ -306,9 +322,9 @@ ${documentInfo}
     }
   };
 
-  const handleSuggestedResponseClick = (response: string) => {
-    handleUserResponse(response);
-  };
+  // const handleSuggestedResponseClick = (response: string) => {
+  //   handleUserResponse(response);
+  // };
 
   const handleClearConversation = () => {
     setShowClearModal(true);
@@ -323,7 +339,7 @@ ${documentInfo}
       localStorage.removeItem("step1_comprehensive_data");
     }
     setShowClearModal(false);
-    toast.success("Conversation cleared successfully");
+    toast.success(t('conversation_cleared_success'));
   };
 
   const cancelClearConversation = () => {
@@ -343,7 +359,7 @@ ${documentInfo}
       localStorage.removeItem("documentGeneratedAt");
     }
     setShowClearDocumentModal(false);
-    toast.success("Document cleared successfully");
+    toast.success(t('document_cleared_success'));
   };
 
   const cancelClearDocument = () => {
@@ -423,7 +439,7 @@ ${documentInfo}
     console.log("📊 Final chat history to use:", finalChatHistory.length, "messages");
     
     // Show immediate feedback - NO DELAY MESSAGES
-    setIsGeneratingDocument(true);
+    // setIsGeneratingDocument(true); // Commented out for now
     
     // CRITICAL: Enter split-pane mode IMMEDIATELY so user sees the document page
     if (!isSplitPaneMode) {
@@ -534,7 +550,7 @@ ${documentInfo}
                     setDocumentContent(accumulatedContent);
                   }
                   setDocumentId(finalDocId);
-                  setIsGeneratingDocument(false);
+                  // setIsGeneratingDocument(false); // Commented out for now
                   
                   if (!isSplitPaneMode) {
                     enterSplitPaneMode(finalDocId, accumulatedContent);
@@ -557,7 +573,7 @@ ${documentInfo}
         // If we exit loop without "done" signal, use accumulated content
         if (accumulatedContent) {
           setDocumentContent(accumulatedContent);
-          setIsGeneratingDocument(false);
+          // setIsGeneratingDocument(false); // Commented out for now
         }
       } else {
         // FALLBACK: Non-streaming response (legacy support)
@@ -578,7 +594,7 @@ ${documentInfo}
         // Display document immediately
         setDocumentContent(fullDocument);
         setDocumentId(docId);
-        setIsGeneratingDocument(false);
+        // setIsGeneratingDocument(false); // Commented out for now
         
         if (!isSplitPaneMode) {
           enterSplitPaneMode(docId, fullDocument);
@@ -593,7 +609,7 @@ ${documentInfo}
       // Show error in document viewer - NO TOAST NOTIFICATION
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       setDocumentContent(`❌ Error: ${errorMessage}\n\nPlease check the browser console (F12) for more details.\n\nIf this persists, please try refreshing the page and generating again.`);
-      setIsGeneratingDocument(false);
+      // setIsGeneratingDocument(false); // Commented out for now
     }
   };
 
@@ -662,10 +678,10 @@ ${documentInfo}
       // Simply reload the uploaded documents to keep our local state in sync.
       if (typeof window !== 'undefined') {
         try {
-          const docsRaw = localStorage.getItem('uploaded_documents');
-          const updatedDocs: UploadedDocumentData[] = docsRaw ? JSON.parse(docsRaw) : [];
-          setAllDocuments(updatedDocs);
-        } catch (error) {
+            // const docsRaw = localStorage.getItem('uploaded_documents'); // Commented out for now
+            // const updatedDocs: UploadedDocumentData[] = docsRaw ? JSON.parse(docsRaw) : []; // Commented out for now
+            // setAllDocuments(updatedDocs); // Commented out for now
+          } catch (error) {
           console.error('Error reloading uploaded documents:', error);
         }
       }
@@ -681,8 +697,8 @@ ${documentInfo}
   const chatContent = (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b bg-white">
-        <h3 className="font-semibold text-gray-900">AI Legal Assistant</h3>
-        <p className="text-sm text-gray-600">Continue your conversation</p>
+            <h3 className="font-semibold text-gray-900">{t('ai_legal_assistant_label')}</h3>
+            <p className="text-sm text-gray-600">{t('continue_your_conversation_label')}</p>
       </div>
       
       <div className="flex-1 overflow-hidden">
@@ -707,8 +723,8 @@ ${documentInfo}
       <div className="p-4 border-b bg-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Generated Legal Document</h1>
-            <p className="text-sm text-gray-600">Edit and review your document</p>
+            <h1 className="text-xl font-bold text-gray-900">{t('generated_legal_document_title')}</h1>
+            <p className="text-sm text-gray-600">{t('edit_review_document_label')}</p>
             {documentId && (
               <p className="text-xs text-gray-500">Document ID: {documentId}</p>
             )}
@@ -721,7 +737,7 @@ ${documentInfo}
               className="bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
             >
               <Save className="h-4 w-4 mr-1" />
-              Save
+              {t('save')}
             </Button>
             <Button 
               size="sm" 
@@ -730,7 +746,7 @@ ${documentInfo}
               className="bg-white border border-purple-300 text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
             >
               <Download className="h-4 w-4 mr-1" />
-              Download PDF
+              {t('download_pdf_label')}
             </Button>
           </div>
         </div>
@@ -746,20 +762,20 @@ ${documentInfo}
                   value={documentContent}
                   onChange={(e) => setDocumentContent(e.target.value)}
                   className="min-h-[calc(100vh-200px)] resize-none border-0 focus:ring-0 p-6 text-sm leading-relaxed"
-                  placeholder="Your legal document will appear here..."
+                  placeholder={t('doc_generated_placeholder')}
                 />
               </div>
               
               {/* Document Statistics */}
               <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between text-sm text-gray-600">
-                  <div className="flex items-center space-x-4">
-                    <span>Characters: {documentContent.length.toLocaleString()}</span>
-                    <span>Words: {documentContent.trim().split(/\s+/).filter(word => word.length > 0).length.toLocaleString()}</span>
-                    <span>Lines: {documentContent.split('\n').length}</span>
+                <div className="flex items-center space-x-4">
+                    <span>{t('characters_label')}: {documentContent.length.toLocaleString()}</span>
+                    <span>{t('words_label')}: {documentContent.trim().split(/\s+/).filter(word => word.length > 0).length.toLocaleString()}</span>
+                    <span>{t('lines_label')}: {documentContent.split('\n').length}</span>
                   </div>
                   <div className="text-xs text-gray-500">
-                    Last updated: {new Date().toLocaleTimeString()}
+                    {t('last_updated_label')}: {new Date().toLocaleTimeString()}
                   </div>
                 </div>
               </div>
@@ -768,12 +784,12 @@ ${documentInfo}
             <div className="bg-white border rounded-lg shadow-sm p-8 text-center">
               <div className="text-gray-500">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Document Generated</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_document_generated_title')}</h3>
                 <p className="text-gray-600 mb-4">
-                  Complete your conversation with the AI assistant to generate your legal document.
+                  {t('complete_conversation_generate_document_label')}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Once you've provided all necessary information, click "Generate Document" to create your legal document.
+                  {t('click_generate_document_label')}
                 </p>
               </div>
             </div>
@@ -789,8 +805,8 @@ ${documentInfo}
       <SplitPaneLayout
         leftContent={chatContent}
         rightContent={documentViewer}
-        leftTitle="Ask AI Legal"
-        rightTitle="Legal Document"
+        leftTitle={t('nav_chat')}
+        rightTitle={t('document_label')}
         isCollapsed={chatCollapsed}
         onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
       />
@@ -800,7 +816,7 @@ ${documentInfo}
   // Regular Step 1 layout (before document generation)
   return (
     <StepLayout
-      headerTitle="Follow the steps with your AI Legal Assistant to gather the information needed and generate your legal document."
+      headerTitle={t('ai_header_title')}
       headerSubtitle=""
     >
       <div className="max-w-screen-sm mx-auto py-6 px-4 md:px-8">
@@ -817,7 +833,7 @@ ${documentInfo}
               className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Clear Conversation
+              {t('clear_conversation_title')}
             </Button>
             {hasDocumentToClear() && (
               <Button
@@ -827,7 +843,7 @@ ${documentInfo}
                 className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
               >
                 <FileX className="h-4 w-4 mr-2" />
-                Clear Document
+                {t('clear_document_title')}
               </Button>
             )}
           </div>
@@ -853,22 +869,22 @@ ${documentInfo}
       {showClearModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Conversation?</h3>
+            <h3 className="text-lg font-bold mb-4 text-orange-600">{t('clear_conversation_title')}</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to clear the conversation? This will remove all chat history and start fresh. This action cannot be undone.
+              {t('clear_conversation_desc')}
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                 onClick={cancelClearConversation}
               >
-                Cancel
+                {t('cancel_short')}
               </button>
               <button
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
                 onClick={confirmClearConversation}
               >
-                Yes, Clear
+                {t('yes_clear')}
               </button>
             </div>
           </div>
@@ -879,22 +895,22 @@ ${documentInfo}
       {showClearDocumentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Document?</h3>
+            <h3 className="text-lg font-bold mb-4 text-orange-600">{t('clear_document_title')}</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to clear the document? This will remove the generated document and allow you to start fresh with a new document. This action cannot be undone.
+              {t('clear_document_desc')}
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                 onClick={cancelClearDocument}
               >
-                Cancel
+                {t('cancel_short')}
               </button>
               <button
                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
                 onClick={confirmClearDocument}
               >
-                Yes, Clear
+                {t('yes_clear')}
               </button>
             </div>
           </div>
@@ -905,10 +921,11 @@ ${documentInfo}
 }
 
 export default function AIAssistantStep1SplitPanePage() {
+  const { t } = useTranslation();
   return (
     <SubscriptionGuard
       fallbackTitle=""
-      fallbackMessage="Access to the AI legal assistant requires an active subscription or a one-time purchase. This interactive chat helps gather information for your legal case and generates professional legal documents."
+      fallbackMessage={t('subscription_guard_ai_fallback_message')}
     >
       <AIAssistantStep1SplitPaneContent />
     </SubscriptionGuard>

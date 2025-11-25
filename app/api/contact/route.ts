@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import * as nodemailer from 'nodemailer'
+import type { SendMailOptions } from 'nodemailer'
+import { supabase } from '../../../lib/supabaseClient'
 
 const recentSubmissions = new Map<string, number>()
 
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now()
-    for (const [key, ts] of recentSubmissions.entries()) {
+    const entries = Array.from(recentSubmissions.entries())
+    for (const [key, ts] of entries) {
       if (now - ts > 60000) recentSubmissions.delete(key)
     }
   }, 30000)
@@ -32,7 +35,7 @@ async function sendEmailViaBrevo(
 
   const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } })
 
-  const mailOptions: any = { from: fromEmail, to, subject, html: htmlContent }
+  const mailOptions: SendMailOptions = { from: fromEmail, to, subject, html: htmlContent }
   if (replyTo) mailOptions.replyTo = replyTo
   if (attachments && attachments.length > 0) {
     mailOptions.attachments = attachments.map(att => ({ filename: att.name, content: att.content, contentType: att.contentType, encoding: 'base64' }))
@@ -64,6 +67,53 @@ export async function POST(request: NextRequest) {
     if (existingTimestamp && now - existingTimestamp < 30000) return NextResponse.json({ error: 'Duplicate submission detected. Please wait a moment before submitting again.' }, { status: 429 })
     recentSubmissions.set(submissionKey, now)
 
+    // Save to Supabase database
+    let supabaseId: string | null = null
+    try {
+      console.log('📝 Attempting to save contact form to Supabase...')
+      const submissionData = {
+        name,
+        email,
+        reason: reason || 'General Inquiry',
+        message,
+        has_attachment: !!(file && file.size > 0),
+        attachment_name: file?.name || null,
+        attachment_size: file?.size || null,
+        submission_ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        user_agent: request.headers.get('user-agent') || 'unknown',
+        status: 'received'
+      }
+      console.log('📊 Submission data:', JSON.stringify(submissionData, null, 2))
+      
+      const { data, error } = await supabase
+        .from('contact_submissions')
+        .insert([submissionData])
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('❌ Supabase insertion error:', error)
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        // Continue with email sending even if database save fails
+      } else if (data) {
+        supabaseId = data.id
+        console.log('✅ Contact form saved to database with ID:', supabaseId)
+      }
+    } catch (dbError) {
+      console.error('💥 Database save failed with exception:', dbError)
+      if (dbError instanceof Error) {
+        console.error('Error name:', dbError.name)
+        console.error('Error message:', dbError.message)
+        console.error('Error stack:', dbError.stack)
+      }
+      // Continue with email sending even if database save fails
+    }
+
     const escapeHtml = (text: string): string => {
       if (!text) return ''
       return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')
@@ -78,7 +128,7 @@ export async function POST(request: NextRequest) {
       <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
     `
 
-    const toEmail = process.env.SMTP_TO || process.env.SMTP_USER || 'support@askailegal.com'
+    const toEmail = process.env.SMTP_FROM || 'support@askailegal.com'
     const subject = `Contact Form: ${reason} - ${name}`
 
     let attachments: Array<{ name: string; content: string; contentType: string }> | undefined
@@ -94,19 +144,44 @@ export async function POST(request: NextRequest) {
 
     try {
       const info = await sendEmailViaBrevo(toEmail, subject, emailContent, attachments, email)
-      return NextResponse.json({ success: true, messageId: info.messageId })
-    } catch (emailError: any) {
+      const response = { 
+        success: true, 
+        messageId: info.messageId, 
+        databaseId: supabaseId,
+        databaseStatus: supabaseId ? 'saved' : 'failed',
+        debug: {
+          hasSupabaseId: !!supabaseId,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
+          supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'configured' : 'missing'
+        }
+      }
+      console.log('📤 API Response:', JSON.stringify(response, null, 2))
+      return NextResponse.json(response)
+    } catch (emailError: unknown) {
       if (process.env.NODE_ENV === 'development') {
-        return NextResponse.json({ success: true, messageId: `dev-${Date.now()}`, warning: 'Email sending failed in development mode. Form submission was recorded.' })
+        return NextResponse.json({ success: true, messageId: `dev-${Date.now()}`, databaseId: supabaseId, warning: 'Email sending failed in development mode. Form submission was recorded.' })
       }
       throw emailError
     }
-  } catch (error: any) {
-    let errorMessage = error?.message || 'Failed to send message'
-    let errorCode = error?.code || 'UNKNOWN_ERROR'
-    if (errorMessage.includes('SMTP configuration')) { errorMessage = 'SMTP configuration error. Please verify SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in .env.local.'; errorCode = 'SMTP_CONFIG_ERROR' }
-    if (errorMessage.includes('Invalid login') || errorMessage.includes('AUTH')) { errorMessage = 'SMTP authentication failed. Please verify Brevo SMTP username and key.'; errorCode = 'SMTP_AUTH_ERROR' }
-    if (errorMessage.includes('getaddrinfo') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ETIMEDOUT')) { errorMessage = 'SMTP connection error. Please verify host, port, and network connectivity.'; errorCode = 'SMTP_CONNECTION_ERROR' }
-    return NextResponse.json({ error: errorMessage, code: errorCode, details: process.env.NODE_ENV === 'development' ? error?.stack : undefined, troubleshooting: process.env.NODE_ENV === 'development' ? { smtpHost: process.env.SMTP_HOST || 'NOT SET', smtpPort: process.env.SMTP_PORT || 'NOT SET', smtpUser: process.env.SMTP_USER || process.env.SMTP_FROM || 'NOT SET', fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER || 'NOT SET', toEmail: process.env.SMTP_TO || process.env.SMTP_USER || 'NOT SET' } : undefined }, { status: 500 })
+  } catch (error: unknown) {
+    let errorMessage = 'Failed to send message'
+    let errorCode = 'UNKNOWN_ERROR'
+    
+    if (error instanceof Error) {
+      errorMessage = error.message
+      if (error.message.includes('SMTP configuration')) { 
+        errorMessage = 'SMTP configuration error. Please verify SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in .env.local.'; 
+        errorCode = 'SMTP_CONFIG_ERROR' 
+      }
+      if (error.message.includes('Invalid login') || error.message.includes('AUTH')) { 
+        errorMessage = 'SMTP authentication failed. Please verify Brevo SMTP username and key.'; 
+        errorCode = 'SMTP_AUTH_ERROR' 
+      }
+      if (error.message.includes('getaddrinfo') || error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) { 
+        errorMessage = 'SMTP connection error. Please verify host, port, and network connectivity.'; 
+        errorCode = 'SMTP_CONNECTION_ERROR' 
+      }
+    }
+    return NextResponse.json({ error: errorMessage, code: errorCode, details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined, troubleshooting: process.env.NODE_ENV === 'development' ? { smtpHost: process.env.SMTP_HOST || 'NOT SET', smtpPort: process.env.SMTP_PORT || 'NOT SET', smtpUser: process.env.SMTP_USER || process.env.SMTP_FROM || 'NOT SET', fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER || 'NOT SET', toEmail: process.env.SMTP_TO || process.env.SMTP_USER || 'NOT SET' } : undefined }, { status: 500 })
   }
 }

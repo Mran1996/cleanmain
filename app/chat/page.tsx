@@ -62,11 +62,14 @@ interface Message {
 interface ChatInterfaceProps {
   searchOpen?: boolean
   onAttachmentUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  setSearchOpen?: (open: boolean) => void
+  t?: (key: string) => string
 }
 
 // Chat Interface Component
-function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
+function ChatInterface({ searchOpen = false, onAttachmentUpload, setSearchOpen, t }: ChatInterfaceProps) {
+  const [messageIdCounter, setMessageIdCounter] = useState(4);
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: "1",
       content: "Hi there 👋 I'm Khristian, your AI legal guide. Let's start by understanding what you're dealing with.",
@@ -105,9 +108,9 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const suggestedResponses = [
-    { emoji: "📄", text: "Yes, I have the eviction notice" },
-    { emoji: "📁", text: "I can upload my lease agreement" },
-    { emoji: "✍️", text: "How much time do I have to respond?" },
+    { emoji: "📄", text: t && t("suggestion_have_eviction_notice") || "Yes, I have the eviction notice" },
+    { emoji: "📁", text: t && t("suggestion_can_upload_lease") || "I can upload my lease agreement" },
+    { emoji: "✍️", text: t && t("suggestion_how_much_time_respond") || "How much time do I have to respond?" },
   ]
 
   const emojis = ["👍", "❤️", "😂", "😢", "😡", "👏"]
@@ -123,9 +126,12 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
   const handleSendMessage = (content: string) => {
     if (!content.trim()) return
 
+    // Increment counter for new message ID
+    setMessageIdCounter(prev => prev + 1);
+    
     // Add user message
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: `user-${messageIdCounter}`,
       content,
       sender: "user",
       timestamp: new Date(),
@@ -140,8 +146,11 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
 
     // Simulate AI response after a delay
     setTimeout(() => {
+      // Increment counter again for AI message
+      setMessageIdCounter(prev => prev + 1);
+      
       const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
+        id: `assistant-${messageIdCounter + 1}`,
         content:
           "Thank you for sharing that. For eviction cases in Washington state, landlords must provide proper notice periods depending on the reason for eviction. Could you tell me what reason was stated on your eviction notice?",
         sender: "khristian",
@@ -278,7 +287,7 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
             </Avatar>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white">Khristian AI</h1>
-              <p className="text-xs sm:text-sm text-emerald-50">{t("chat_title")}</p>
+              <p className="text-xs sm:text-sm text-emerald-50">{t && t("chat_title")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -291,7 +300,7 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSearchOpen(false)}
+                onClick={() => setSearchOpen && setSearchOpen(false)}
                 className="text-gray-600 hover:text-gray-900"
               >
                 <X className="h-4 w-4" />
@@ -487,7 +496,7 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
                   <Download className="h-4 w-4 mr-2" />
                   Export Chat History
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSearchOpen(!searchOpen)}>
+                <DropdownMenuItem onClick={() => setSearchOpen && setSearchOpen(!searchOpen)}>
                   <Search className="h-4 w-4 mr-2" />
                   {searchOpen ? "Close Search" : "Search Messages"}
                 </DropdownMenuItem>
@@ -828,7 +837,7 @@ function ChatPageContent() {
 
               {/* Chat Interface - Full Width */}
               <div className="lg:col-span-3">
-                <ChatInterface searchOpen={searchOpen} />
+                <ChatInterface searchOpen={searchOpen} setSearchOpen={setSearchOpen} t={t} />
               </div>
             </div>
           </div>

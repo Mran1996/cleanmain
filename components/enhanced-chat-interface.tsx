@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Send, Mic, MicOff, Paperclip, Globe, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/utils/translations"
 import { getSuggestedReplies } from "@/utils/chat-suggestions"
-import * as mammoth from "mammoth"
+// import * as mammoth from "mammoth" // Commented out for now
 import { v4 as uuidv4 } from 'uuid'
 import type React from "react"
 import { sanitizeHTML } from "@/lib/validation"
@@ -50,6 +51,7 @@ export function EnhancedChatInterface({
   onGenerateDocument,
   isGeneratingDocument = false,
 }: EnhancedChatInterfaceProps) {
+  const { t } = useTranslation()
   const formatContent = (content: string) => {
     // Sanitize HTML to prevent XSS attacks
     const sanitized = sanitizeHTML(content);
@@ -69,7 +71,7 @@ export function EnhancedChatInterface({
   const [interimTranscript, setInterimTranscript] = useState("")
   const [speechSupported, setSpeechSupported] = useState(false)
   const [speechServiceAvailable, setSpeechServiceAvailable] = useState(true)
-  const [micPermissionError, setMicPermissionError] = useState(false)
+  // const [micPermissionError, setMicPermissionError] = useState(false) // Commented out for now
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [searchModeEnabled, setSearchModeEnabled] = useState(false)
@@ -84,7 +86,7 @@ export function EnhancedChatInterface({
       return () => clearTimeout(timeout);
     }
   }, [isUploading]);
-  const [pdfjsLib, setPdfjsLib] = useState<any>(null)
+  // const [pdfjsLib, setPdfjsLib] = useState<any>(null) // Commented out for now
   const [rotatingSuggestions, setRotatingSuggestions] = useState<string[]>([])
   const [lastAssistantCount, setLastAssistantCount] = useState(0)
   
@@ -286,7 +288,7 @@ export function EnhancedChatInterface({
 
   // PDF.js completely disabled to prevent object property errors
   useEffect(() => {
-    setPdfjsLib(null);
+    // setPdfjsLib(null); // Commented out since pdfjsLib is not defined
   }, []);
 
   // Emoji mapping for common legal suggestions
@@ -337,6 +339,53 @@ export function EnhancedChatInterface({
     "Yes, I have the eviction notice": "📄",
     "I can upload my lease agreement": "📁",
     "How much time do I have to respond?": "✍️",
+  };
+
+  const suggestionKeyMap: Record<string, string> = {
+    "I need help with a legal document": "suggestion_need_help_legal_document",
+    "I want to understand my legal options": "suggestion_understand_legal_options",
+    "Can you explain what I should do?": "suggestion_explain_what_to_do",
+    "I'm not sure what to file.": "suggestion_not_sure_what_to_file",
+    "I need help with a post-conviction motion.": "suggestion_post_conviction_motion",
+    "I want to challenge my conviction.": "suggestion_challenge_conviction",
+    "I want to file a motion to reduce my sentence.": "suggestion_reduce_sentence_motion",
+    "I need help preparing for my criminal appeal.": "suggestion_prepare_criminal_appeal",
+    "I want to file a civil suit against the prison.": "suggestion_civil_suit_against_prison",
+    "I was assaulted by a corrections officer.": "suggestion_assaulted_by_corrections_officer",
+    "I need to report abuse or mistreatment in jail.": "suggestion_report_abuse_in_jail",
+    "I want to file a federal 1983 civil rights complaint.": "suggestion_federal_1983_complaint",
+    "I want to request a sentence reduction.": "suggestion_request_sentence_reduction",
+    "I need help filing a resentencing motion.": "suggestion_resentencing_motion",
+    "I want to correct my sentence or record.": "suggestion_correct_sentence_or_record",
+    "I'm eligible under new sentencing laws.": "suggestion_eligible_new_sentencing_laws",
+    "I want to appeal my conviction.": "suggestion_appeal_conviction",
+    "I need help filing an appeal.": "suggestion_file_appeal_help",
+    "What are my chances if I appeal?": "suggestion_chances_if_appeal",
+    "Help me write a notice of appeal.": "suggestion_write_notice_of_appeal",
+    "I want to file a motion to dismiss.": "suggestion_motion_to_dismiss",
+    "I need help with a motion to suppress evidence.": "suggestion_motion_to_suppress",
+    "I want to file a motion for discovery.": "suggestion_motion_for_discovery",
+    "I need help preparing for trial.": "suggestion_prepare_for_trial",
+    "I need help with a wage claim.": "suggestion_wage_claim_help",
+    "I want to sue my landlord.": "suggestion_sue_landlord",
+    "I'm responding to a court notice.": "suggestion_responding_court_notice",
+    "I need help writing a legal letter.": "suggestion_write_legal_letter",
+    "Yes, I have the court documents": "suggestion_yes_have_court_documents",
+    "The court is located in [County]": "suggestion_court_located_in_county",
+    "No court proceedings yet": "suggestion_no_court_proceedings_yet",
+    "I need to verify the court information": "suggestion_verify_court_information",
+    "The deadline is next week": "suggestion_deadline_next_week",
+    "I have 30 days to respond": "suggestion_thirty_days_to_respond",
+    "No deadlines mentioned": "suggestion_no_deadlines_mentioned",
+    "I need to check the exact date": "suggestion_check_exact_date",
+    "The issue started when...": "suggestion_issue_started_when",
+    "The problem began after...": "suggestion_problem_began_after",
+    "This has been ongoing since...": "suggestion_ongoing_since",
+    "The situation arose when...": "suggestion_situation_arose_when",
+    "Let me explain the situation": "suggestion_explain_situation",
+    "I have documentation to support this": "suggestion_have_documentation",
+    "I can provide more details": "suggestion_provide_more_details",
+    "I need guidance on this matter": "suggestion_need_guidance_matter"
   };
 
   // Check if speech recognition is supported
@@ -505,7 +554,7 @@ export function EnhancedChatInterface({
     }
 
     // Reset error state
-    setMicPermissionError(false)
+    // setMicPermissionError(false) // Commented out for now
     setIsListening(true)
 
     try {
@@ -517,7 +566,7 @@ export function EnhancedChatInterface({
       } catch (permErr: any) {
         console.warn("Microphone permission error:", permErr?.name || permErr)
         setIsListening(false)
-        setMicPermissionError(true)
+        // setMicPermissionError(true) // Commented out for now
         if (permErr?.name === 'NotAllowedError') {
           alert("Microphone permission denied. Please allow microphone access in your browser's site settings and try again.")
         } else if (permErr?.name === 'NotFoundError') {
@@ -528,7 +577,7 @@ export function EnhancedChatInterface({
         return
       }
 
-      // @ts-ignore - TypeScript doesn't know about webkitSpeechRecognition
+      // @ts-expect-error - TypeScript doesn't know about webkitSpeechRecognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       
       if (!SpeechRecognition) {
@@ -571,7 +620,7 @@ export function EnhancedChatInterface({
         // Handle service-not-allowed with specific user guidance
         if (event.error === 'service-not-allowed') {
           console.warn("Speech recognition service not available - this may be due to browser restrictions or network policies")
-          setMicPermissionError(true)
+          // setMicPermissionError(true) // Commented out for now
           setSpeechServiceAvailable(false)
           // Show a helpful message instead of just failing silently
           alert("Voice input is not available in your current browser/network environment. This can happen due to:\n\n• Corporate network restrictions\n• Browser security policies\n• VPN or firewall settings\n\nPlease try typing your message instead, or try a different browser/network.")
@@ -582,7 +631,7 @@ export function EnhancedChatInterface({
         switch (event.error) {
           case 'not-allowed':
             alert("Microphone permission denied. Please allow microphone access and try again.")
-            setMicPermissionError(true)
+            // setMicPermissionError(true) // Commented out for now
             break
           case 'no-speech':
             // Don't show alert for no-speech, just log it
@@ -596,7 +645,7 @@ export function EnhancedChatInterface({
             break
           case 'audio-capture':
             alert("No microphone found. Please check your microphone connection.")
-            setMicPermissionError(true)
+            // setMicPermissionError(true) // Commented out for now
             break
           case 'language-not-supported':
             alert("Language not supported. Please try again.")
@@ -613,12 +662,12 @@ export function EnhancedChatInterface({
       }
 
       recognition.start()
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to start speech recognition:", error)
       setIsListening(false)
-      setMicPermissionError(true)
+      // setMicPermissionError(true) // Commented out for now
       // Don't show alert for service-not-allowed errors
-      if (!error.message?.includes('service-not-allowed')) {
+      if (error instanceof Error && !error.message?.includes('service-not-allowed')) {
         alert("Failed to start speech recognition. Please try again.")
       }
     }
@@ -627,23 +676,26 @@ export function EnhancedChatInterface({
   const stopListening = () => {
     try {
       recognitionRef.current?.stop()
-    } catch {}
+    } catch {
+      // Error stopping speech recognition, ignore
+    }
     setIsListening(false)
     setInterimTranscript("")
   }
 
-  const handleRetryMicPermission = async () => {
-    setMicPermissionError(false)
-    setSpeechServiceAvailable(true)
-    await startListening()
-  }
+  // Commented out unused functions for now - voice input features disabled
+  // const handleRetryMicPermission = async () => {
+  //   // setMicPermissionError(false) // Commented out for now
+  //   setSpeechServiceAvailable(true)
+  //   await startListening()
+  // }
 
-  const handleDisableVoiceInput = () => {
-    setMicPermissionError(false)
-    setSpeechServiceAvailable(false)
-    setIsListening(false)
-    setInterimTranscript("")
-  }
+  // const handleDisableVoiceInput = () => {
+  //   // setMicPermissionError(false) // Commented out for now
+  //   setSpeechServiceAvailable(false)
+  //   setIsListening(false)
+  //   setInterimTranscript("")
+  // }
 
   // Updated to send the message immediately when suggested response is clicked
   const handleSuggestedResponse = (text: string) => {
@@ -981,7 +1033,7 @@ export function EnhancedChatInterface({
                     style={{ animationDelay: "300ms" }}
                   ></div>
                 </div>
-                <span className="text-sm text-blue-700">Processing document...</span>
+                <span className="text-sm text-blue-700">{t('processing_document')}</span>
               </div>
             </div>
           </div>
@@ -1011,7 +1063,7 @@ export function EnhancedChatInterface({
               onDoubleClick={handleUploadReset}
               className="rounded-full shadow-md h-9 w-9 sm:h-10 sm:w-10 bg-emerald-500 hover:bg-emerald-600 text-white"
               disabled={false}
-              title={isUploading ? "Double-click to reset if stuck" : "Upload document"}
+              title={isUploading ? t('double_click_reset') : t('upload_document')}
             >
               <Paperclip className="h-4 w-4" />
             </Button>
@@ -1032,7 +1084,7 @@ export function EnhancedChatInterface({
                   : "bg-blue-500 hover:bg-blue-600"
               } text-white`}
               disabled={isWaitingForResponse || isUploading}
-              title={searchModeEnabled ? "Search mode enabled - your next message will use internet search" : "Enable internet search for your next message"}
+              title={searchModeEnabled ? t('search_mode_enabled_title') : t('enable_search_title')}
             >
               <Globe className="h-4 w-4" />
             </Button>
@@ -1049,7 +1101,7 @@ export function EnhancedChatInterface({
                   handleSubmit(e);
                 }
               }}
-              placeholder={searchModeEnabled ? "Type your search question (internet search enabled)..." : (currentQuestion ? "Type your answer..." : "Type a message...")}
+              placeholder={searchModeEnabled ? t('search_placeholder') : (currentQuestion ? t('answer_placeholder') : t('message_placeholder'))}
               className={`flex-grow border-2 rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none overflow-hidden placeholder:text-gray-500 shadow-sm ${
                 searchModeEnabled ? "focus:ring-blue-500 border-blue-300" : "border-emerald-200 focus:ring-emerald-500 focus:border-emerald-400"
               }`}
@@ -1081,9 +1133,9 @@ export function EnhancedChatInterface({
                 }`}
                 disabled={isWaitingForResponse || isUploading}
                 title={
-                  isListening ? "Stop recording" : 
-                  !speechServiceAvailable ? "Voice service unavailable - try typing instead" :
-                  "Start voice input"
+                  isListening ? t('stop_recording_title') : 
+                  !speechServiceAvailable ? t('voice_service_unavailable_title') :
+                  t('start_voice_input_title')
                 }
               >
                 {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -1094,7 +1146,7 @@ export function EnhancedChatInterface({
                 size="icon"
                 className="rounded-full h-9 w-9 sm:h-10 sm:w-10 bg-gray-400 cursor-not-allowed"
                 disabled
-                title="Voice input not supported in this browser"
+                title={t('voice_not_supported_title')}
               >
                 <Mic className="h-4 w-4" />
               </Button>
@@ -1121,13 +1173,13 @@ export function EnhancedChatInterface({
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span>AI can search the internet for current case law and legal information</span>
+              <span>{t('ai_search_internet_label')}</span>
             </div>
           </div>
 
           {/* Suggested Responses - Always visible */}
           <div className="mt-4 sm:mt-4">
-            <p className="text-xs sm:text-sm text-gray-700 font-semibold mb-3 mt-4">Suggested responses:</p>
+            <p className="text-xs sm:text-sm text-gray-700 font-semibold mb-3 mt-4">{t('suggested_responses_label')}</p>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               {allSuggestions.length > 0 ? (
                 allSuggestions.map((suggestion, idx) => (
@@ -1135,17 +1187,18 @@ export function EnhancedChatInterface({
                     key={idx}
                     type="button"
                     onClick={() => {
-                      handleSuggestedResponse(suggestion);
+                      const displayText = t(suggestionKeyMap[suggestion] || suggestion);
+                      handleSuggestedResponse(displayText);
                     }}
                     className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 flex items-center gap-1 border-2 border-emerald-300/60 shadow-sm hover:shadow-md hover:border-emerald-400"
                   >
                     <span>{suggestionEmojiMap[suggestion] || null}</span>
-                    {suggestion}
+                    {t(suggestionKeyMap[suggestion] || suggestion)}
                   </button>
                 ))
               ) : (
                 // Show placeholder if no suggestions are available yet
-                <div className="text-xs text-gray-400 italic">Loading suggestions...</div>
+                <div className="text-xs text-gray-400 italic">{t('loading_suggestions_label')}</div>
               )}
             </div>
           </div>
@@ -1160,7 +1213,7 @@ export function EnhancedChatInterface({
                 
                 // Test if handler exists
                 if (!onGenerateDocument) {
-                  alert('Document generation handler is not available. Please refresh the page.');
+                  alert(t('document_handler_unavailable'));
                   return;
                 }
                 
@@ -1170,7 +1223,7 @@ export function EnhancedChatInterface({
                 } catch (error) {
                   console.error('Error in document generation button:', error);
                   const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-                  alert(`Document generation failed: ${errorMsg}`);
+                  alert(`${t('document_generation_failed_prefix')} ${errorMsg}`);
                 }
               }}
               disabled={isGeneratingDocument}
@@ -1181,19 +1234,19 @@ export function EnhancedChatInterface({
                 position: 'relative'
               }}
               className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-full"
-              aria-label="Generate Document and Case Analysis"
+              aria-label={t('generate_document_and_analysis_aria')}
             >
               {isGeneratingDocument ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating Document...
+                  {t('generating_document')}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span className="text-center">Generate Document and Case Analysis</span>
+                  <span className="text-center">{t('generate_document_and_analysis')}</span>
                 </>
               )}
             </button>
