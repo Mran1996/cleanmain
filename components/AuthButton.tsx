@@ -25,6 +25,7 @@ export default function AuthButton() {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const supabase = useSupabase()
   const router = useRouter()
+  const { t } = useTranslation() // Move hook before conditional return
 
   useEffect(() => {
     const getUser = async () => {
@@ -75,7 +76,6 @@ export default function AuthButton() {
   }
 
   const isSignedIn = !!user
-  const { t } = useTranslation()
 
   return (
     <button
