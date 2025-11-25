@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EnhancedChatInterface } from "@/components/enhanced-chat-interface";
@@ -34,6 +34,7 @@ function AIAssistantStep1Content() {
   // Real prior chats loaded from database
   const [priorChats, setPriorChats] = useState<any[]>([]);
   const [loadingChats, setLoadingChats] = useState(false);
+  const loadingChatsRef = useRef(false); // Prevent multiple simultaneous calls
   
   const colorOptions = [
     { name: "Blue", class: "bg-blue-500" },
@@ -520,6 +521,13 @@ function AIAssistantStep1Content() {
   }
   };
 
+  // Load chat conversations once on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      loadChatConversations();
+    }
+  }, []); // Only run once on mount
+
   // Load chat history and initialize conversation
   useEffect(() => {
     if (typeof window !== 'undefined' && chatHistory.length === 0) {
@@ -534,15 +542,12 @@ function AIAssistantStep1Content() {
         }
       }
       
-      // Load chat conversations from database
-      loadChatConversations();
-      
       // Initialize with greeting if no saved history
       if (!isProcessing) {
         const firstName = localStorage.getItem("firstName") || "there";
         const hasDocument = getUploadedParsedText().trim().length > 0;
         
-        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant, and I'm here to help.\n\nI'm going to conduct a **comprehensive consultation** with you. This thorough process involves **15-25 detailed questions** across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information\n• Detailed factual background\n• Legal analysis and issues\n• Your goals and strategy\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, **court-ready legal document** and show it in the **preview panel on the right**.\n\nYou can **upload documents anytime** during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of legal matter are we dealing with today?`;
+        let initialMessage = `Hi there! I'm Khristian, your AI legal assistant specializing in criminal law, post-conviction relief, and helping incarcerated individuals.\n\nI'm here to help you with:\n• Criminal appeals (state and federal)\n• Post-conviction relief (PCR, habeas corpus)\n• Early release motions\n• Overturning convictions\n• Sentence reductions\n• Prison civil rights issues\n\nI'm going to conduct a comprehensive consultation with you. This involves 15-25 detailed questions across 5 phases to gather all the information needed for your legal document.\n\nThis consultation will cover:\n• Basic case information (charges, conviction, sentence)\n• Detailed factual background\n• Legal errors and constitutional violations\n• Your goals (release, sentence reduction, new trial)\n• Document preparation requirements\n\nOnce we complete this consultation, I'll generate your comprehensive, court-ready legal document and show it in the preview panel on the right.\n\nYou can upload documents anytime during our conversation to help me better understand your case.\n\nLet's start with the basics. What type of criminal or post-conviction matter are we dealing with today?`;
         
       setChatHistory([{ sender: "assistant", text: initialMessage }]);
       }
@@ -908,9 +913,34 @@ ${documentInfo}
 
   // Load chat conversations from database
   const loadChatConversations = async () => {
+    // Prevent multiple simultaneous calls
+    if (loadingChatsRef.current) {
+      console.log('Load already in progress, skipping...');
+      return;
+    }
+    
+    loadingChatsRef.current = true;
     setLoadingChats(true);
+    
+    // Create AbortController for timeout
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 8000); // 8 second timeout
+    
+    // Set a fallback timeout to ensure loading state is reset even if the request hangs
+    const fallbackTimeoutId = setTimeout(() => {
+      if (loadingChatsRef.current) {
+        console.warn('Load conversations timeout, resetting loading state');
+        loadingChatsRef.current = false;
+        setLoadingChats(false);
+      }
+    }, 10000); // 10 second fallback timeout
+    
     try {
-      const response = await fetch('/api/chat-conversations');
+      const response = await fetch('/api/chat-conversations', {
+        signal: abortController.signal
+      });
       
       if (!response.ok) {
         // Handle authentication errors gracefully
@@ -934,11 +964,17 @@ ${documentInfo}
       }));
       
       setPriorChats(transformedChats);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
+    } catch (error: any) {
+      // Ignore abort errors (timeout)
+      if (error.name !== 'AbortError') {
+        console.error('Error loading conversations:', error);
+      }
       // Don't show error to user, just leave priorChats empty
       setPriorChats([]);
     } finally {
+      clearTimeout(timeoutId);
+      clearTimeout(fallbackTimeoutId);
+      loadingChatsRef.current = false;
       setLoadingChats(false);
     }
   };
@@ -1453,48 +1489,48 @@ ${documentInfo}
 
   // Chat content for left pane
   const chatContent = (
-    <div className="min-h-full flex flex-col">
-      {/* Chat Header with Clear Conversation button - Always show to align with document header */}
-      <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between gap-4">
-        <div className="flex items-center space-x-3 flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-white" />
+    <div className="min-h-full flex flex-col bg-white/95 backdrop-blur-xl">
+      {/* Chat Header with Clear Conversation button - Compact Modern Design */}
+      <div className="px-4 py-2.5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-transparent flex items-center justify-between gap-3">
+        <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <MessageSquare className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <span className="font-semibold text-gray-900">Chat</span>
-            <p className="text-xs text-gray-500">AI Legal Assistant</p>
+            <span className="text-sm font-bold text-slate-900">Chat</span>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide">AI Legal Assistant</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {chatHistory.length > 0 && (
             <>
               <Button
                 onClick={handleClearConversation}
                 variant="outline"
                 size="sm"
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear Conversation
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Clear
               </Button>
               {hasDocumentToClear() && (
                 <Button
                   onClick={handleClearDocument}
                   variant="outline"
                   size="sm"
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
                 >
-                  <FileX className="h-4 w-4 mr-2" />
-                  Clear Document
+                  <FileX className="h-3.5 w-3.5 mr-1" />
+                  Clear Doc
                 </Button>
               )}
             </>
           )}
         </div>
       </div>
-      <div className="overflow-y-auto px-6 pt-4 pb-0">
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4">
         
-        {/* Enhanced Chat Interface */}
+        {/* Enhanced Chat Interface - Suggestions are always visible */}
         <EnhancedChatInterface
           messages={chatHistory}
           onSendMessage={handleUserResponse}
@@ -1514,27 +1550,27 @@ ${documentInfo}
 
   // Document preview content for right pane - matches Step 2 layout
   const documentPreviewContent = (
-    <div className="min-h-full flex flex-col">
-      {/* Match chat header spacing/style so rows align horizontally */}
-      <div className="px-6 py-4 border-b border-gray-300 bg-white flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-            <FileText className="h-4 w-4 text-white" />
+    <div className="min-h-full flex flex-col bg-white/95 backdrop-blur-xl">
+      {/* Match chat header spacing/style so rows align horizontally - Compact Modern Design */}
+      <div className="px-4 py-2.5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-transparent flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <FileText className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <span className="font-semibold text-gray-900">Document</span>
-            <p className="text-xs text-gray-500">Legal Document Preview</p>
+            <span className="text-sm font-bold text-slate-900">Document</span>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Legal Preview</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button 
             onClick={handleSave}
             disabled={!documentPreview.trim()} 
             size="sm"
             variant="outline"
-            className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 px-2.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="h-4 w-4 mr-1" />
+            <Save className="h-3.5 w-3.5 mr-1" />
             Save
           </Button>
           <Button 
@@ -1542,9 +1578,9 @@ ${documentInfo}
             disabled={!documentPreview.trim()} 
             size="sm"
             variant="outline"
-            className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 px-2.5 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Mail className="h-4 w-4 mr-1" />
+            <Mail className="h-3.5 w-3.5 mr-1" />
             Email
           </Button>
           <Button 
@@ -1552,23 +1588,23 @@ ${documentInfo}
             disabled={!documentPreview.trim()} 
             size="sm"
             variant="outline"
-            className="text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-7 px-2.5 text-xs text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="h-4 w-4 mr-1" />
+            <Download className="h-3.5 w-3.5 mr-1" />
             Download
           </Button>
           <Button
             onClick={() => setShowSplitPane(!showSplitPane)}
             variant="outline"
             size="sm"
-            className="border-gray-300 hover:bg-gray-50"
+            className="h-7 px-2.5 text-xs border-slate-300 hover:bg-slate-50"
           >
-            {showSplitPane ? "Hide Preview" : "Show Preview"}
+            Hide
           </Button>
         </div>
       </div>
       {/* Content area */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         <div className="max-w-5xl mx-auto">
           {/* Rich Text Editor */}
           <RichTextEditor
@@ -1800,7 +1836,7 @@ ${documentInfo}
         headerTitle="Let's get you the legal help that you deserve"
         headerSubtitle=""
       >
-        <div className="min-h-[calc(100vh-200px)] mt-8">
+        <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20 p-3">
           <SplitPaneLayout
             leftContent={chatContent}
             rightContent={documentPreviewContent}
@@ -1870,44 +1906,43 @@ ${documentInfo}
       headerTitle="Let's get you the legal help that you deserve"
       headerSubtitle=""
     >
-      <div className="max-w-7xl mx-auto py-6 px-4 md:px-8">
-        <div className="flex gap-6 h-[calc(100vh-200px)] relative">
-          {/* Sidebar for Prior Chats - same level as chat */}
-          <div className="w-80 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 flex flex-col h-full shadow-lg shadow-gray-200/50">
+      <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20">
+        <div className="flex gap-3 h-full p-3">
+          {/* Sidebar for Prior Chats - Compact Modern Design */}
+          <div className="w-72 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-3 flex flex-col h-full shadow-2xl">
             {/* Header with Prior Chats title and New Chat button */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Prior Chats</h3>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-700/50">
+              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">Conversations</h3>
               <Button 
                 onClick={handleNewChat}
-                variant="outline"
                 size="sm"
-                className="flex items-center justify-center text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-500/30 transition-all"
                 title="Start a new chat"
               >
-                <span className="mr-1.5">+</span>
-                New Chat
+                <span className="mr-1">+</span>
+                New
               </Button>
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto">
+            <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 -mr-1">
               {loadingChats ? (
-                <div className="text-center py-4 text-gray-500">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto mb-2"></div>
-                  Loading conversations...
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent mb-2"></div>
+                  <p className="text-xs text-slate-400">Loading...</p>
                 </div>
               ) : priorChats.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  {/* Conversations will appear here as you chat */}
+                <div className="text-center py-8">
+                  <p className="text-xs text-slate-500">No conversations yet</p>
                 </div>
               ) : (
                 priorChats.map((chat) => (
-                <div key={chat.id} className="group flex items-center p-3 rounded-lg hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-blue-50/30 cursor-pointer border border-gray-200/60 bg-white/60 backdrop-blur-sm transition-all duration-200 shadow-sm hover:shadow-md">
+                <div key={chat.id} className="group flex items-center p-2 rounded-lg hover:bg-slate-700/50 cursor-pointer border border-slate-700/30 bg-slate-800/40 transition-all duration-200 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10">
                   {editingFolder === chat.id ? (
                     <div className="w-full">
                       <input
                         type="text"
                         value={folderName}
                         onChange={(e) => setFolderName(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded mb-2 text-sm"
+                        className="w-full p-1.5 border border-slate-600 rounded-lg mb-2 text-sm bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         placeholder="Folder name"
                         autoFocus
                       />
@@ -1916,8 +1951,8 @@ ${documentInfo}
                           <button
                             key={color.name}
                             onClick={() => setSelectedColor(color.class)}
-                            className={`w-6 h-6 rounded ${color.class} ${
-                              selectedColor === color.class ? 'ring-2 ring-gray-400' : ''
+                            className={`w-5 h-5 rounded ${color.class} ${
+                              selectedColor === color.class ? 'ring-2 ring-slate-400' : ''
                             }`}
                             title={color.name}
                           />
@@ -1926,13 +1961,13 @@ ${documentInfo}
                       <div className="flex gap-2">
                         <button
                           onClick={handleSaveFolder}
-                          className="px-3 py-1 text-emerald-600 border border-emerald-200 text-xs rounded hover:bg-emerald-50 hover:border-emerald-300"
+                          className="px-2 py-1 text-emerald-400 border border-emerald-500/50 text-xs rounded-lg hover:bg-emerald-500/20"
                         >
                           Save
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="px-3 py-1 text-gray-600 border border-gray-300 text-xs rounded hover:bg-gray-50"
+                          className="px-2 py-1 text-slate-400 border border-slate-600 text-xs rounded-lg hover:bg-slate-700"
                         >
                           Cancel
                         </button>
@@ -1941,37 +1976,41 @@ ${documentInfo}
                   ) : (
                     <>
                       <div 
-                        className="flex-1 flex items-center cursor-pointer"
+                        className="flex-1 flex items-center cursor-pointer min-w-0"
                         onClick={() => handleSelectChat(chat.id)}
                       >
-                        <div className={`w-8 h-8 ${chat.color} rounded-lg flex items-center justify-center mr-3`}>
-                          <span className="text-white text-sm font-bold">📁</span>
+                        <div className={`w-7 h-7 ${chat.color} rounded-lg flex items-center justify-center mr-2 flex-shrink-0 shadow-md`}>
+                          <span className="text-white text-xs">📁</span>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800">{chat.name}</p>
-                          <p className="text-xs text-gray-500">{chat.timestamp}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-100 truncate">{chat.name}</p>
+                          <p className="text-[10px] text-slate-400">{chat.timestamp}</p>
                         </div>
                       </div>
-                      <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+                      <div className="opacity-0 group-hover:opacity-100 flex gap-1 flex-shrink-0">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditFolder(chat.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-blue-500"
+                          className="p-1 text-slate-400 hover:text-emerald-400 transition-colors"
                           title="Edit folder"
                         >
-                          ✏️
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteFolder(chat.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-red-500"
+                          className="p-1 text-slate-400 hover:text-red-400 transition-colors"
                           title="Delete folder"
                         >
-                          🗑️
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </>
@@ -1982,59 +2021,61 @@ ${documentInfo}
             </div>
           </div>
           
-          {/* Main Chat Interface - use single card style from EnhancedChatInterface */}
-          <div className="flex-1 bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-xl p-4 md:p-6 flex flex-col h-full shadow-lg shadow-gray-200/50">
+          {/* Main Chat Interface - Modern Compact Design - Matches Split Pane */}
+          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden">
         
-        {/* Chat Controls */}
+        {/* Chat Controls - Compact Header */}
         {chatHistory.length > 0 && (
-          <div className="mb-4 pb-4 border-b border-gray-200/60 bg-gradient-to-r from-transparent via-gray-50/50 to-transparent -mx-4 md:-mx-6 px-4 md:px-6 pt-2">
-            <div className="flex justify-center gap-2 flex-wrap">
+          <div className="px-4 py-2.5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50/50 to-transparent">
+            <div className="flex justify-center gap-2">
               <Button
                 onClick={handleClearConversation}
                 variant="outline"
                 size="sm"
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear Conversation
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Clear
               </Button>
               {hasDocumentToClear() && (
                 <Button
                   onClick={handleClearDocument}
                   variant="outline"
                   size="sm"
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
                 >
-                  <FileX className="h-4 w-4 mr-2" />
-                  Clear Document
+                  <FileX className="h-3.5 w-3.5 mr-1" />
+                  Clear Doc
                 </Button>
               )}
               <Button
                 onClick={() => setShowSplitPane(!showSplitPane)}
                 variant="outline"
                 size="sm"
-                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                className="h-7 px-2.5 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
               >
-                <FileText className="h-4 w-4 mr-2" />
-                {showSplitPane ? "Hide Document Preview" : "Show Document Preview"}
+                <FileText className="h-3.5 w-3.5 mr-1" />
+                {showSplitPane ? "Hide" : "Preview"}
               </Button>
             </div>
           </div>
         )}
         
-        {/* Enhanced Chat Interface */}
-        <EnhancedChatInterface
-          messages={chatHistory}
-          onSendMessage={handleUserResponse}
-          isWaitingForResponse={isWaiting}
-          currentQuestion=""
-          userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
-          suggestedResponses={suggestedResponses.map((text) => ({ text }))}
-          onDocumentUpload={() => {}}
-          legalCategory={getLegalCategory()}
-          onGenerateDocument={handleGenerateDocument}
-          isGeneratingDocument={isProcessing}
-        />
+        {/* Enhanced Chat Interface - Same styling as split pane */}
+        <div className="flex-1 overflow-y-auto px-4 pt-3 pb-0">
+          <EnhancedChatInterface
+            messages={chatHistory}
+            onSendMessage={handleUserResponse}
+            isWaitingForResponse={isWaiting}
+            currentQuestion=""
+            userName={typeof window !== 'undefined' ? localStorage.getItem("firstName") || "User" : "User"}
+            suggestedResponses={suggestedResponses.map((text) => ({ text }))}
+            onDocumentUpload={() => {}}
+            legalCategory={getLegalCategory()}
+            onGenerateDocument={handleGenerateDocument}
+            isGeneratingDocument={isProcessing}
+          />
+        </div>
 
           </div>
         </div>
@@ -2100,7 +2141,7 @@ export default function AIAssistantStep1Page() {
   return (
     <SubscriptionGuard
       fallbackTitle=""
-      fallbackMessage="Access to the AI legal assistant requires an active subscription or a one-time purchase. This interactive chat helps gather information for your legal case and generates professional legal documents."
+      fallbackMessage="Access to the AI legal assistant requires an active subscription or a one-time purchase. This interactive chat helps incarcerated individuals gather information for criminal appeals, post-conviction relief, and early release matters, and generates professional court-ready legal documents."
     >
       <AIAssistantStep1Content />
     </SubscriptionGuard>

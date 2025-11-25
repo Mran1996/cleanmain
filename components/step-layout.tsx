@@ -19,10 +19,12 @@ export function StepLayout({ children, headerTitle, headerSubtitle }: StepLayout
       />
       <Navigation />
       <main className="flex-grow relative">
-        <div className="bg-gradient-to-r from-[#00A884] to-emerald-600 text-white pt-12 pb-4 px-6 md:pt-16 md:pb-6 shadow-lg">
+        <div className="bg-gradient-to-r from-[#00A884] to-emerald-600 text-white pt-6 pb-3 px-4 md:pt-8 md:pb-4 shadow-lg">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <h1 className="text-4xl font-bold drop-shadow-sm">{headerTitle || "Your Document is Ready"}</h1>
-            <p className="text-xl mt-2 opacity-95">{headerSubtitle || "Chat, review, edit, and download your legal document"}</p>
+            <h1 className="text-2xl md:text-3xl font-bold drop-shadow-sm">{headerTitle || "Your Document is Ready"}</h1>
+            {headerSubtitle && (
+              <p className="text-sm md:text-base mt-1 opacity-95">{headerSubtitle}</p>
+            )}
           </div>
         </div>
         <div className="relative z-10">

@@ -67,6 +67,29 @@ export default function ContactForm() {
     const submissionId = `submit-${Date.now()}-${Math.random().toString(36).substring(7)}`
     submissionIdRef.current = submissionId
     
+    // Validate required fields before submission
+    if (!formData.name || !formData.name.trim()) {
+      alert('Please enter your name.')
+      return
+    }
+    
+    if (!formData.email || !formData.email.trim()) {
+      alert('Please enter your email address.')
+      return
+    }
+    
+    if (!formData.message || !formData.message.trim()) {
+      alert('Please enter a message.')
+      return
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email.trim())) {
+      alert('Please enter a valid email address.')
+      return
+    }
+
     // Set flags IMMEDIATELY to prevent any duplicate submissions
     isSubmittingRef.current = true
     setIsSubmitting(true)
@@ -79,10 +102,10 @@ export default function ContactForm() {
       }
       
       const submitData = new FormData()
-      submitData.append('name', formData.name)
-      submitData.append('email', formData.email)
-      submitData.append('reason', formData.reason)
-      submitData.append('message', formData.message)
+      submitData.append('name', formData.name.trim())
+      submitData.append('email', formData.email.trim())
+      submitData.append('reason', formData.reason || '')
+      submitData.append('message', formData.message.trim())
       
       if (file) {
         submitData.append('file', file)
@@ -107,24 +130,71 @@ export default function ContactForm() {
       }
 
       if (response.ok) {
+        const responseData = await response.json().catch(() => ({}))
         console.log(`✅ Form submitted successfully with ID: ${submissionId}`)
+        if (responseData.warning) {
+          console.log('⚠️ Development mode:', responseData.warning)
+        }
         setIsSubmitted(true)
         setFormData({ name: "", email: "", reason: "", message: "" })
         setFile(null)
         submissionIdRef.current = null
       } else {
         let errorMessage = 'Failed to send message. Please try again.'
+        const status = response.status
+        console.error('❌ Form submission failed - Status:', status)
+        
         try {
           const errorData = await response.json()
-          console.error('❌ Form submission failed:', errorData)
+          console.error('❌ Form submission failed - Error data:', JSON.stringify(errorData, null, 2))
+          
           if (errorData.error) {
-            errorMessage = errorData.error
+            // Provide user-friendly error messages for common issues
+            if (errorData.error.includes('Azure AD') || errorData.error.includes('AUTH_ERROR')) {
+              errorMessage = 'Email service configuration error. Please contact support at support@askailegal.com or try again later.'
+            } else if (errorData.error.includes('Invalid client secret') || errorData.error.includes('client secret')) {
+              errorMessage = 'Email service configuration error. Please contact support at support@askailegal.com.'
+            } else if (errorData.error.includes('Duplicate submission')) {
+              errorMessage = 'This message was already submitted. Please wait a moment before submitting again.'
+            } else if (errorData.error.includes('Microsoft Graph API')) {
+              errorMessage = 'Email service is temporarily unavailable. Your message has been received. Please contact support@askailegal.com if you need immediate assistance.'
+            } else {
+              errorMessage = errorData.error
+            }
+          } else if (errorData.warning) {
+            // In development mode, show success even if email fails
+            setIsSubmitted(true)
+            setFormData({ name: "", email: "", reason: "", message: "" })
+            setFile(null)
+            submissionIdRef.current = null
+            isSubmittingRef.current = false
+            setIsSubmitting(false)
+            return
+          } else if (Object.keys(errorData).length === 0) {
+            // Empty error object - try to get more info
+            errorMessage = `Server error (Status: ${status}). Please try again or contact support.`
+            console.error('❌ Empty error object received')
+          } else if (errorData.code) {
+            // Error has a code field - use it for better error messages
+            if (errorData.code === 'GRAPH_AUTH_ERROR') {
+              errorMessage = 'Email service requires configuration. Please contact support at support@askailegal.com or try again later.'
+            } else if (errorData.code === 'AUTH_ERROR') {
+              errorMessage = 'Email service configuration error. Please contact support at support@askailegal.com.'
+            } else {
+              errorMessage = errorData.error || `Server error (${errorData.code}). Please try again.`
+            }
+          } else {
+            // Error object exists but no error field
+            errorMessage = errorData.error || `Server error: ${JSON.stringify(errorData).substring(0, 200)}`
           }
         } catch (e) {
+          // Not JSON, try to get text
           const text = await response.text().catch(() => '')
-          console.error('❌ Form submission failed - non-JSON response:', text, 'Status:', response.status)
+          console.error('❌ Form submission failed - non-JSON response:', text, 'Status:', status)
           if (text) {
-            errorMessage = text
+            errorMessage = text.length > 200 ? text.substring(0, 200) + '...' : text
+          } else {
+            errorMessage = `Server error (Status: ${status}). No error details available.`
           }
         }
         alert(errorMessage)

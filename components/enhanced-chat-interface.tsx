@@ -397,8 +397,20 @@ export function EnhancedChatInterface({
       const issueSpecificSuggestions = detectLegalIssueAndGetSuggestions(messages, legalCategory);
       const shuffled = [...issueSpecificSuggestions].sort(() => 0.5 - Math.random());
       setRotatingSuggestions(shuffled.slice(0, Math.min(4, shuffled.length)));
+    } else {
+      // Show default suggestions when there are no messages yet
+      const defaultSuggestions = MASTER_SUGGESTED_RESPONSES.default.slice(0, 4);
+      setRotatingSuggestions(defaultSuggestions);
     }
   }, [messages, legalCategory]);
+  
+  // Initialize suggestions on mount if none exist
+  useEffect(() => {
+    if (rotatingSuggestions.length === 0 && (!messages || messages.length === 0)) {
+      const defaultSuggestions = MASTER_SUGGESTED_RESPONSES.default.slice(0, 4);
+      setRotatingSuggestions(defaultSuggestions);
+    }
+  }, []);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -879,6 +891,19 @@ export function EnhancedChatInterface({
 
   // Use dynamic suggestions from the last AI message instead of the passed-in suggestions
   const displaySuggestions = dynamicSuggestions.length > 0 ? dynamicSuggestions : (suggestedResponses || []).map((s) => s.text)
+  
+  // Combine all available suggestions - prioritize rotatingSuggestions, then displaySuggestions, then fallback to defaults
+  // Always ensure we have suggestions to show
+  const allSuggestions = (() => {
+    if (rotatingSuggestions.length > 0) {
+      return rotatingSuggestions;
+    }
+    if (displaySuggestions.length > 0) {
+      return displaySuggestions;
+    }
+    // Fallback to default suggestions if nothing else is available
+    return MASTER_SUGGESTED_RESPONSES.default.slice(0, 4);
+  })()
 
   return (
     <div className="flex flex-col h-full">
@@ -891,7 +916,7 @@ export function EnhancedChatInterface({
               className={`max-w-[80%] rounded-lg p-3 sm:p-4 text-sm sm:text-base ${
                 message.sender === "user"
                   ? "bg-emerald-500 text-white rounded-br-none"
-                  : "bg-gradient-to-br from-slate-50 to-gray-100/80 text-gray-800 rounded-bl-none border border-gray-200/50 shadow-sm"
+                  : "bg-gradient-to-br from-slate-100 to-slate-200/90 text-gray-900 rounded-bl-none border-2 border-slate-300/60 shadow-md"
               }`}
             >
               {message.sender === "assistant" && (
@@ -918,7 +943,7 @@ export function EnhancedChatInterface({
         {/* Typing indicator when waiting for response */}
         {isWaitingForResponse && (
           <div className="flex justify-start">
-            <div className="bg-gradient-to-br from-slate-50 to-gray-100/80 rounded-lg p-3 rounded-bl-none border border-gray-200/50 shadow-sm">
+            <div className="bg-gradient-to-br from-slate-100 to-slate-200/90 rounded-lg p-3 rounded-bl-none border-2 border-slate-300/60 shadow-md">
               <div className="flex space-x-1">
                 <div
                   className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
@@ -1025,8 +1050,8 @@ export function EnhancedChatInterface({
                 }
               }}
               placeholder={searchModeEnabled ? "Type your search question (internet search enabled)..." : (currentQuestion ? "Type your answer..." : "Type a message...")}
-              className={`flex-grow border rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none overflow-hidden placeholder:text-gray-500 shadow-sm ${
-                searchModeEnabled ? "focus:ring-blue-500 border-blue-300" : "focus:ring-emerald-500"
+              className={`flex-grow border-2 rounded-2xl px-3 py-2 sm:px-4 sm:py-2 text-base text-gray-900 bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 resize-none overflow-hidden placeholder:text-gray-500 shadow-sm ${
+                searchModeEnabled ? "focus:ring-blue-500 border-blue-300" : "border-emerald-200 focus:ring-emerald-500 focus:border-emerald-400"
               }`}
               disabled={isWaitingForResponse || isUploading}
               readOnly={false}
@@ -1100,27 +1125,30 @@ export function EnhancedChatInterface({
             </div>
           </div>
 
-          {/* Rotating Suggested Responses - Mobile-first */}
-          {rotatingSuggestions.length > 0 && (
-            <div className="mt-4 sm:mt-4">
-              <p className="text-xs sm:text-sm text-gray-400 mb-4 mt-4">Suggested responses:</p>
-              <div className="flex flex-wrap gap-3 sm:gap-3">
-                {rotatingSuggestions.map((suggestion, idx) => (
+          {/* Suggested Responses - Always visible */}
+          <div className="mt-4 sm:mt-4">
+            <p className="text-xs sm:text-sm text-gray-700 font-semibold mb-3 mt-4">Suggested responses:</p>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              {allSuggestions.length > 0 ? (
+                allSuggestions.map((suggestion, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => {
                       handleSuggestedResponse(suggestion);
                     }}
-                    className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 flex items-center gap-1 border border-emerald-200/50 shadow-sm hover:shadow-md"
+                    className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-800 rounded-full font-medium text-xs sm:text-sm hover:from-emerald-100 hover:to-emerald-200 transition-all duration-200 flex items-center gap-1 border-2 border-emerald-300/60 shadow-sm hover:shadow-md hover:border-emerald-400"
                   >
                     <span>{suggestionEmojiMap[suggestion] || null}</span>
                     {suggestion}
                   </button>
-                ))}
-              </div>
+                ))
+              ) : (
+                // Show placeholder if no suggestions are available yet
+                <div className="text-xs text-gray-400 italic">Loading suggestions...</div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Generate Document Button - Always visible and clickable */}
           <div className="mt-6 mb-4 flex flex-col items-center" style={{ zIndex: 1000, position: 'relative', width: '100%' }}>
