@@ -2042,7 +2042,7 @@ ${documentInfo}
           </div>
           
           {/* Main Chat Interface - Modern Compact Design - Matches Split Pane */}
-          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden">
+          <div className="flex-1 bg-white/95 backdrop-blur-xl border-2 border-emerald-200/60 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden">
         
         {/* Chat Controls - Compact Header */}
         {chatHistory.length > 0 && (
