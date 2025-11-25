@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env.local.backup
+SECRET_ID_VS_SECRET_VALUE.md
+TEST_AFTER_ADDING_PERMISSIONS.md
