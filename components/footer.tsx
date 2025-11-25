@@ -24,6 +24,7 @@ import {
   Mail,
   Star,
 } from "lucide-react";
+import { useTranslation } from "@/utils/translations"
 
 // Footer link configurations
 const QUICK_LINKS = [
@@ -62,6 +63,18 @@ const SUPPORT_EMAIL = "support@askailegal.com";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { t } = useTranslation()
+  const quickKeyMap: Record<string, string> = {
+    "Privacy Policy": "link_privacy",
+    "Terms of Service": "link_terms",
+    "FAQ": "link_faq",
+    "Contact": "link_contact",
+  }
+  const legalKeyMap: Record<string, string> = {
+    "Accessibility": "link_accessibility",
+    "Legal Disclaimer": "link_legal_disclaimer",
+    "Sitemap": "link_sitemap",
+  }
 
   return (
     <footer className="border-t bg-white text-gray-700 flex flex-col mt-auto">
@@ -73,19 +86,18 @@ export default function Footer() {
             <Logo size="sm" />
           </div>
           <p className="leading-tight">
-            Your AI-powered legal assistant, helping you navigate 
-            legal matters with confidence.
+            {t("footer_desc")}
           </p>
         </div>
         
         {/* Quick navigation links */}
         <div>
-          <h3 className="font-bold mb-0.5 text-xs">QUICK LINKS</h3>
+          <h3 className="font-bold mb-0.5 text-xs">{t("footer_quick_links")}</h3>
           <ul className="space-y-0.5">
             {QUICK_LINKS.map(({ href, label }) => (
               <li key={href}>
                 <Link href={href} className="hover:underline text-xs">
-                  {label}
+                  {t(quickKeyMap[label] ?? label)}
                 </Link>
               </li>
             ))}
@@ -94,7 +106,7 @@ export default function Footer() {
         
         {/* Support contact information */}
         <div>
-          <h3 className="font-bold mb-0.5 text-xs">SUPPORT</h3>
+          <h3 className="font-bold mb-0.5 text-xs">{t("footer_support_title")}</h3>
           <a 
             href={`mailto:${SUPPORT_EMAIL}`} 
             className="flex items-center gap-1 hover:underline mb-0.5 text-xs"
@@ -111,13 +123,13 @@ export default function Footer() {
             aria-label="Leave us a review on Google"
           >
             <Star className="w-3 h-3 text-yellow-500" /> 
-            Leave a Review
+            {t("footer_leave_review")}
           </a>
         </div>
         
         {/* Social media links */}
         <div>
-          <h3 className="font-bold mb-0.5 text-xs">SOCIAL MEDIA</h3>
+          <h3 className="font-bold mb-0.5 text-xs">{t("footer_social_media_title")}</h3>
           <ul className="space-y-0.5">
             {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
               <li key={href}>
@@ -149,7 +161,7 @@ export default function Footer() {
           {/* Accessibility statement */}
           <span className="flex items-center gap-1">
             <span className="text-green-600 text-lg" aria-hidden="true">●</span>
-            This site aims to meet WCAG 2.1 Level AA accessibility standards.
+            {t("footer_accessibility_text")}
           </span>
           
           <span className="hidden md:inline" aria-hidden="true">|</span>
@@ -158,7 +170,7 @@ export default function Footer() {
           {LEGAL_LINKS.map(({ href, label }, index) => (
             <div key={href} className="flex items-center">
               <Link href={href} className="hover:underline">
-                {label}
+                {t(legalKeyMap[label] ?? label)}
               </Link>
               {index < LEGAL_LINKS.length - 1 && (
                 <span className="hidden md:inline ml-4" aria-hidden="true">|</span>

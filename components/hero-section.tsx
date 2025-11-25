@@ -12,10 +12,12 @@
  * the value proposition and guide users toward conversion.
  */
 
+"use client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { LanguageSelector } from "@/components/language-selector"
 import { Logo } from "@/components/Logo"
+import { useTranslation } from "@/utils/translations"
 
 // Feature highlights configuration
 const FEATURE_HIGHLIGHTS = [
@@ -37,6 +39,7 @@ const FEATURE_HIGHLIGHTS = [
 ] as const;
 
 export function HeroSection() {
+  const { t } = useTranslation()
   return (
     <section className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 text-white py-12 sm:py-16 md:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,31 +52,28 @@ export function HeroSection() {
             </div>
           </div>
           
-          {/* Main headline */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 leading-tight px-2">
-            Powerful Legal Help — When You Need It Most
+            {t("hero_headline")}
           </h1>
           
-          {/* Value proposition */}
           <p className="text-base sm:text-lg md:text-xl mb-4 max-w-3xl mx-auto px-2 sm:px-4">
-            Get court-ready legal documents, outcome strategy, and expert-level support — 100% AI-powered and always on your side.
+            {t("hero_value")}
           </p>
           
-          {/* Service coverage */}
           <p className="mt-2 text-xs sm:text-sm text-white/90 font-semibold text-center px-2">
-            Covers criminal motions, civil claims, post-conviction filings, and more.
+            {t("hero_coverage")}
           </p>
           
           {/* Call-to-action buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mt-6 mb-2 px-2">
             <Link href="/pricing" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto bg-white text-emerald-500 hover:bg-gray-100 px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-semibold rounded-lg shadow-lg">
-                Purchase Now
+                {t("cta_purchase_now")}
               </Button>
             </Link>
             <Link href="/learn-more" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full sm:w-auto text-emerald-500 bg-white border-white hover:text-white hover:bg-emerald-500 px-6 py-2.5 text-base">
-                Learn More
+                {t("cta_learn_more")}
               </Button>
             </Link>
           </div>
@@ -90,7 +90,11 @@ export function HeroSection() {
                 <span role="img" aria-label={ariaLabel} className="text-xl sm:text-2xl">
                   {icon}
                 </span>
-                <span className="text-sm sm:text-base">{label}</span>
+                <span className="text-sm sm:text-base">{
+                  label === "Court-Ready Docs" ? t("feature_court_ready_docs") :
+                  label === "24/7 Legal Help" ? t("feature_24_7_help") :
+                  label === "Attorney-Style AI" ? t("feature_attorney_style_ai") : label
+                }</span>
               </div>
             ))}
           </div>

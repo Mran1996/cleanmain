@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, Send, CheckCircle, ChevronDown } from "lucide-react"
+import { useTranslation } from "@/utils/translations"
 
 export default function ContactForm() {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -157,15 +159,13 @@ export default function ContactForm() {
         <CardContent className="pt-6">
           <div className="text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Message Sent Successfully!</h3>
-            <p className="text-gray-600 mb-4">
-              Thank you for contacting us. We'll get back to you as soon as possible.
-            </p>
+            <h3 className="text-xl font-semibold mb-2">{t("contact_form_success_title")}</h3>
+            <p className="text-gray-600 mb-4">{t("contact_form_success_desc")}</p>
             <Button 
               onClick={() => setIsSubmitted(false)}
               variant="outline"
             >
-              Send Another Message
+              {t("contact_form_success_action")}
             </Button>
           </div>
         </CardContent>
@@ -176,23 +176,21 @@ export default function ContactForm() {
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-lg border border-gray-200">
       <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200">
-        <CardTitle className="text-2xl font-bold text-center text-gray-900">Contact Us</CardTitle>
-        <CardDescription className="text-center text-gray-600">
-          Have a question or need assistance? Send us a message and we'll get back to you.
-        </CardDescription>
+        <CardTitle className="text-2xl font-bold text-center text-gray-900">{t("contact_form_title")}</CardTitle>
+        <CardDescription className="text-center text-gray-600">{t("contact_form_desc")}</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium mb-2 text-gray-700">
-                Full Name *
+                {t("contact_form_name_label")}
               </label>
               <Input
                 id="name"
                 name="name"
                 type="text"
-                placeholder="Your full name"
+                placeholder={t("contact_form_name_placeholder")}
                 value={formData.name}
                 onChange={handleInputChange}
                 required
@@ -201,13 +199,13 @@ export default function ContactForm() {
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium mb-2 text-gray-700">
-                Email Address *
+                {t("contact_form_email_label")}
               </label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="your.email@example.com"
+                placeholder={t("contact_form_email_placeholder")}
                 value={formData.email}
                 onChange={handleInputChange}
                 required
@@ -218,7 +216,7 @@ export default function ContactForm() {
 
           <div>
             <label htmlFor="reason" className="block text-sm font-medium mb-2 text-gray-700">
-              Reason for Contact
+              {t("contact_form_reason_label")}
             </label>
             <div className="relative">
               <select
@@ -228,13 +226,13 @@ export default function ContactForm() {
                 onChange={handleInputChange}
                 className="w-full h-10 px-3 py-2 text-sm border border-emerald-500 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none cursor-pointer pr-10"
               >
-                <option value="">Select a reason</option>
-                <option value="general">General Inquiry</option>
-                <option value="technical">Technical Support</option>
-                <option value="billing">Billing Question</option>
-                <option value="feature">Feature Request</option>
-                <option value="bug">Bug Report</option>
-                <option value="other">Other</option>
+                <option value="">{t("contact_form_reason_placeholder")}</option>
+                <option value="general">{t("contact_form_reason_general")}</option>
+                <option value="technical">{t("contact_form_reason_technical")}</option>
+                <option value="billing">{t("contact_form_reason_billing")}</option>
+                <option value="feature">{t("contact_form_reason_feature")}</option>
+                <option value="bug">{t("contact_form_reason_bug")}</option>
+                <option value="other">{t("contact_form_reason_other")}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
@@ -242,12 +240,12 @@ export default function ContactForm() {
 
           <div>
             <label htmlFor="message" className="block text-sm font-medium mb-2 text-gray-700">
-              Message *
+              {t("contact_form_message_label")}
             </label>
             <Textarea
               id="message"
               name="message"
-              placeholder="Please describe your question or issue in detail..."
+              placeholder={t("contact_form_message_placeholder")}
               value={formData.message}
               onChange={handleInputChange}
               required
@@ -258,7 +256,7 @@ export default function ContactForm() {
 
           <div>
             <label htmlFor="file" className="block text-sm font-medium mb-2 text-gray-700">
-              Attach Document (Optional)
+              {t("contact_form_attach_label")}
             </label>
             <div className="flex items-center space-x-2">
               <Input
@@ -271,7 +269,7 @@ export default function ContactForm() {
               <Upload className="h-4 w-4 text-gray-400" />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB)
+              {t("contact_form_supported_formats")}
             </p>
             {file && (
               <p className="text-sm text-green-600 mt-1 font-medium">
@@ -288,12 +286,12 @@ export default function ContactForm() {
             {isSubmitting ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Sending...
+                {t("contact_form_sending")}
               </>
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Send Message
+                {t("contact_form_send")}
               </>
             )}
           </Button>

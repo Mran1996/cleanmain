@@ -6,8 +6,10 @@ import { ChatInterface } from "@/components/chat-interface"
 import { Button } from "@/components/ui/button"
 import { FileUp, Download, Save } from "lucide-react"
 import { SubscriptionGuard } from "@/components/subscription-guard"
+import { useTranslation } from "@/utils/translations"
 
 function ChatPageContent() {
+  const { t } = useTranslation()
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -15,19 +17,19 @@ function ChatPageContent() {
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Your Legal Assistant</h1>
+              <h1 className="text-2xl font-bold">{t("chat_title")}</h1>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="flex items-center gap-1">
                   <FileUp className="h-4 w-4" />
-                  <span>Upload Document</span>
+                  <span>{t("chat_upload_document")}</span>
                 </Button>
                 <Button variant="outline" size="sm" className="flex items-center gap-1">
                   <Save className="h-4 w-4" />
-                  <span>Save Chat</span>
+                  <span>{t("chat_save_chat")}</span>
                 </Button>
                 <Button variant="outline" size="sm" className="flex items-center gap-1">
                   <Download className="h-4 w-4" />
-                  <span>Export</span>
+                  <span>{t("chat_export")}</span>
                 </Button>
               </div>
             </div>
@@ -36,33 +38,33 @@ function ChatPageContent() {
               {/* Sidebar */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-                  <h2 className="font-bold mb-2">Case Information</h2>
+                  <h2 className="font-bold mb-2">{t("chat_case_info")}</h2>
                   <div className="text-sm">
                     <p className="flex justify-between py-1 border-b">
-                      <span className="text-gray-600">Category:</span>
+                      <span className="text-gray-600">{t("chat_category")}</span>
                       <span className="font-medium">Housing</span>
                     </p>
                     <p className="flex justify-between py-1 border-b">
-                      <span className="text-gray-600">Issue:</span>
+                      <span className="text-gray-600">{t("chat_issue")}</span>
                       <span className="font-medium">Eviction Notice</span>
                     </p>
                     <p className="flex justify-between py-1 border-b">
-                      <span className="text-gray-600">State:</span>
+                      <span className="text-gray-600">{t("chat_state")}</span>
                       <span className="font-medium">Washington</span>
                     </p>
                     <p className="flex justify-between py-1">
-                      <span className="text-gray-600">Started:</span>
+                      <span className="text-gray-600">{t("chat_started")}</span>
                       <span className="font-medium">Apr 28, 2025</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h2 className="font-bold mb-2">Uploaded Documents</h2>
+                  <h2 className="font-bold mb-2">{t("chat_uploaded_documents")}</h2>
                   <div className="text-sm">
-                    <p className="text-gray-600 italic">No documents uploaded yet.</p>
+                    <p className="text-gray-600 italic">{t("chat_no_documents")}</p>
                     <Button variant="outline" size="sm" className="w-full mt-2 text-teal-600 border-teal-600">
-                      Upload Document
+                      {t("chat_upload_document")}
                     </Button>
                   </div>
                 </div>
@@ -82,10 +84,11 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
+  const { t } = useTranslation()
   return (
     <SubscriptionGuard
-      fallbackTitle="AI Legal Chat"
-      fallbackMessage="Access to the AI legal chat requires an active subscription. This premium feature provides unlimited conversations with your AI legal assistant."
+      fallbackTitle={t("subguard_title")}
+      fallbackMessage={t("subguard_message")}
     >
       <ChatPageContent />
     </SubscriptionGuard>

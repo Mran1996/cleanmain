@@ -1,10 +1,13 @@
+"use client"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
 import StripeCheckoutButton from "@/components/StripeCheckoutButton";
 import { PRODUCTS } from "@/lib/stripe-config";
+import { useTranslation } from "@/utils/translations"
 
 export function PricingSection({ isHomePage = false }: { isHomePage?: boolean }) {
+  const { t } = useTranslation()
 
 
   console.log(PRODUCTS,"PRODUCTS")
@@ -13,13 +16,12 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
-            "Justice Shouldn't Be Out of Reach<br className="hidden sm:block" />
-            <span className="sm:hidden"> </span>— Let AI Level the Playing Field."
+            {t("pricing_headline")}
           </h1>
           {!isHomePage && (
             <div className="mt-4 sm:mt-6">
-              <p className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Real Results. Real Justice. No Lawyer Required.</p>
-              <p className="text-base sm:text-lg text-gray-600">Artificial Intelligence</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{t("pricing_subtitle")}</p>
+              <p className="text-base sm:text-lg text-gray-600">{t("pricing_ai_label")}</p>
             </div>
           )}
         </div>
@@ -68,7 +70,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                   plan={PRODUCTS.FULL_SERVICE}
                   className="w-full mt-4 text-white bg-emerald-600 hover:bg-emerald-700"
                 >
-                  Purchase Now
+                  {t("cta_purchase_now")}
                 </StripeCheckoutButton>
               </CardContent>
             </Card>
@@ -105,7 +107,7 @@ export function PricingSection({ isHomePage = false }: { isHomePage?: boolean })
                 plan={PRODUCTS.COURT_READY}
                 className="w-full mt-4 text-white bg-green-600 hover:bg-green-700"
               >
-                Purchase Now
+                {t("cta_purchase_now")}
               </StripeCheckoutButton>
             </CardContent>
           </Card>

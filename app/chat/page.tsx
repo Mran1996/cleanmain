@@ -38,6 +38,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useTranslation } from "@/utils/translations"
 
 // Define types
 interface Message {
@@ -269,7 +270,7 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
   return (
     <div className="w-full mx-auto bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden flex flex-col" style={{ maxHeight: '85vh', minHeight: '650px' }}>
       {/* Header - Redesigned */}
-      <div className="border-b-2 border-gray-200 bg-gradient-to-r from-emerald-500 to-emerald-600 p-5 sm:p-6">
+  <div className="border-b-2 border-gray-200 bg-gradient-to-r from-emerald-500 to-emerald-600 p-5 sm:p-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 sm:h-16 sm:w-16 bg-white text-emerald-600 shadow-lg ring-4 ring-white/50">
@@ -277,7 +278,7 @@ function ChatInterface({ searchOpen = false, onAttachmentUpload }: ChatInterface
             </Avatar>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-white">Khristian AI</h1>
-              <p className="text-xs sm:text-sm text-emerald-50">Your Legal Assistant</p>
+              <p className="text-xs sm:text-sm text-emerald-50">{t("chat_title")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -699,6 +700,7 @@ function ChatPageContent() {
   const router = useRouter()
   const [searchOpen, setSearchOpen] = useState(false)
   const sidebarFileInputRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation()
   
   const handleSidebarAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     // File upload from sidebar - messages will be handled by ChatInterface
@@ -731,8 +733,8 @@ function ChatPageContent() {
                     <span className="hidden sm:inline">Back</span>
                   </Button>
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Legal Assistant Chat</h1>
-                    <p className="text-sm text-gray-600 mt-1">Get instant legal guidance and document help</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t("chat_title")}</h1>
+                    <p className="text-sm text-gray-600 mt-1">{t("chat_subtitle")}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -755,19 +757,19 @@ function ChatPageContent() {
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem>
                         <FileUp className="h-4 w-4 mr-2" />
-                        Upload Document
+                        {t("chat_upload_document")}
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Save className="h-4 w-4 mr-2" />
-                        Save Chat
+                        {t("chat_save_chat")}
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Download className="h-4 w-4 mr-2" />
-                        Export
+                        {t("chat_export")}
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Settings className="h-4 w-4 mr-2" />
-                        Settings
+                        {t("settings")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -781,23 +783,23 @@ function ChatPageContent() {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-md p-5 hover:shadow-lg transition-shadow">
                   <h2 className="font-bold text-base mb-4 text-gray-900 flex items-center gap-2">
                     <div className="h-2.5 w-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                    Case Information
+                    {t("chat_case_info")}
                   </h2>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                      <span className="text-gray-600 font-medium">Category:</span>
+                      <span className="text-gray-600 font-medium">{t("chat_category")}</span>
                       <span className="font-semibold text-gray-900 bg-emerald-50 px-2 py-1 rounded">Housing</span>
                     </div>
                     <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                      <span className="text-gray-600 font-medium">Issue:</span>
+                      <span className="text-gray-600 font-medium">{t("chat_issue")}</span>
                       <span className="font-semibold text-gray-900">Eviction Notice</span>
                     </div>
                     <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-                      <span className="text-gray-600 font-medium">State:</span>
+                      <span className="text-gray-600 font-medium">{t("chat_state")}</span>
                       <span className="font-semibold text-gray-900">Washington</span>
                     </div>
                     <div className="flex justify-between items-center py-2.5">
-                      <span className="text-gray-600 font-medium">Started:</span>
+                      <span className="text-gray-600 font-medium">{t("chat_started")}</span>
                       <span className="font-semibold text-gray-900">Apr 28, 2025</span>
                     </div>
                   </div>
@@ -806,10 +808,10 @@ function ChatPageContent() {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-md p-5 hover:shadow-lg transition-shadow">
                   <h2 className="font-bold text-base mb-4 text-gray-900 flex items-center gap-2">
                     <div className="h-2.5 w-2.5 bg-blue-500 rounded-full"></div>
-                    Documents
+                    {t("chat_uploaded_documents")}
                   </h2>
                   <div className="text-sm">
-                    <p className="text-gray-500 italic mb-4 text-xs">No documents uploaded yet.</p>
+                    <p className="text-gray-500 italic mb-4 text-xs">{t("chat_no_documents")}</p>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -817,7 +819,7 @@ function ChatPageContent() {
                       onClick={() => sidebarFileInputRef.current?.click()}
                     >
                       <FileUp className="h-4 w-4 mr-2" />
-                      Upload Document
+                      {t("chat_upload_document")}
                     </Button>
                     <input type="file" ref={sidebarFileInputRef} className="hidden" onChange={handleSidebarAttachmentUpload} multiple />
                   </div>
@@ -838,10 +840,11 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
+  const { t } = useTranslation()
   return (
     <SubscriptionGuard
-      fallbackTitle="Premium Feature"
-      fallbackMessage="Access to the AI chat assistant requires an active subscription. Upgrade to start chatting with our legal AI."
+      fallbackTitle={t("subguard_title")}
+      fallbackMessage={t("subguard_message")}
     >
       <ChatPageContent />
     </SubscriptionGuard>
