@@ -1233,7 +1233,7 @@ export function EnhancedChatInterface({
                 zIndex: 1001,
                 position: 'relative'
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-full"
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-5 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-auto max-w-sm"
               aria-label={t('generate_document_and_analysis_aria')}
             >
               {isGeneratingDocument ? (
