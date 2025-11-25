@@ -1927,7 +1927,7 @@ ${documentInfo}
       headerSubtitle=""
     >
       <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20">
-        <div className="flex gap-3 h-full p-3">
+        <div className="flex gap-3 h-full pl-6 pt-3 pb-3 pr-8">
           {/* Sidebar for Prior Chats - Compact Modern Design */}
           <div className="w-72 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-3 flex flex-col h-full shadow-2xl">
             {/* Header with Prior Chats title and New Chat button */}
