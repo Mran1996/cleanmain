@@ -87,6 +87,10 @@ export function EnhancedChatInterface({
   const [pdfjsLib, setPdfjsLib] = useState<any>(null)
   const [rotatingSuggestions, setRotatingSuggestions] = useState<string[]>([])
   const [lastAssistantCount, setLastAssistantCount] = useState(0)
+  const [buttonPosition, setButtonPosition] = useState<number>(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const buttonRef = useRef<HTMLDivElement>(null)
+  const dragStartY = useRef<number>(0)
   
   // Master Suggested Response List
   const MASTER_SUGGESTED_RESPONSES = {
@@ -411,6 +415,73 @@ export function EnhancedChatInterface({
       setRotatingSuggestions(defaultSuggestions);
     }
   }, []);
+
+  // Load saved button position from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPosition = localStorage.getItem('generateDocumentButtonPosition');
+      if (savedPosition) {
+        setButtonPosition(parseInt(savedPosition, 10));
+      }
+    }
+  }, []);
+
+  // Save button position to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && buttonPosition !== 0) {
+      localStorage.setItem('generateDocumentButtonPosition', buttonPosition.toString());
+    }
+  }, [buttonPosition]);
+
+  // Handle drag start
+  const handleDragStart = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left mouse button
+    setIsDragging(true);
+    const container = buttonRef.current?.parentElement;
+    if (container && buttonRef.current) {
+      const containerRect = container.getBoundingClientRect();
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      dragStartY.current = e.clientY - buttonRect.top;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Handle drag
+  const handleDrag = useCallback((e: MouseEvent) => {
+    const container = buttonRef.current?.parentElement;
+    if (!container || !buttonRef.current) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const buttonHeight = buttonRef.current.offsetHeight;
+    const newPosition = e.clientY - containerRect.top - dragStartY.current;
+    
+    // Constrain to container bounds
+    const minPosition = 0;
+    const maxPosition = containerRect.height - buttonHeight;
+    const constrainedPosition = Math.max(minPosition, Math.min(maxPosition, newPosition));
+    
+    setButtonPosition(constrainedPosition);
+  }, []);
+
+  // Handle drag end
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Set up drag event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDrag);
+      document.addEventListener('mouseup', handleDragEnd);
+      document.body.style.userSelect = 'none';
+      return () => {
+        document.removeEventListener('mousemove', handleDrag);
+        document.removeEventListener('mouseup', handleDragEnd);
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isDragging, handleDrag, handleDragEnd]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -906,9 +977,9 @@ export function EnhancedChatInterface({
   })()
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Chat Messages container - background removed since parent provides it */}
-      <div className="flex-1">
+      <div className="flex-1 pb-4">
         <div className="space-y-4">
         {(messages || []).map((message, index) => (
           <div key={index} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
@@ -1150,11 +1221,30 @@ export function EnhancedChatInterface({
             </div>
           </div>
 
-          {/* Generate Document Button - Always visible and clickable */}
-          <div className="mt-6 mb-4 flex flex-col items-center" style={{ zIndex: 1000, position: 'relative', width: '100%' }}>
+          {/* Generate Document Button - Draggable vertically */}
+          <div 
+            ref={buttonRef}
+            className="mt-6 mb-4 flex flex-col items-center" 
+            style={{ 
+              zIndex: 1000, 
+              position: buttonPosition > 0 ? 'absolute' : 'relative',
+              width: '100%',
+              top: buttonPosition > 0 ? `${buttonPosition}px` : 'auto',
+              bottom: buttonPosition === 0 ? 'auto' : 'auto',
+              left: 0,
+              right: 0,
+              padding: '0 1rem'
+            }}
+          >
             <button
               type="button"
+              onMouseDown={handleDragStart}
               onClick={async (e) => {
+                // Only trigger click if not dragging
+                if (isDragging) {
+                  e.preventDefault();
+                  return;
+                }
                 e.preventDefault();
                 e.stopPropagation();
                 
@@ -1176,11 +1266,12 @@ export function EnhancedChatInterface({
               disabled={isGeneratingDocument}
               style={{
                 pointerEvents: isGeneratingDocument ? 'none' : 'auto',
-                cursor: isGeneratingDocument ? 'not-allowed' : 'pointer',
+                cursor: isDragging ? 'grabbing' : (isGeneratingDocument ? 'not-allowed' : 'grab'),
                 zIndex: 1001,
-                position: 'relative'
+                position: 'relative',
+                userSelect: 'none'
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-full"
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-6 py-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] w-auto max-w-md"
               aria-label="Generate Document and Case Analysis"
             >
               {isGeneratingDocument ? (

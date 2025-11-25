@@ -1511,19 +1511,17 @@ ${documentInfo}
                 className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Clear
+                Clear Conversation
               </Button>
-              {hasDocumentToClear() && (
-                <Button
-                  onClick={handleClearDocument}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                >
-                  <FileX className="h-3.5 w-3.5 mr-1" />
-                  Clear Doc
-                </Button>
-              )}
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-3.5 w-3.5 mr-1" />
+                Clear Document
+              </Button>
             </>
           )}
         </div>
@@ -1563,6 +1561,15 @@ ${documentInfo}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <Button
+            onClick={handleClearDocument}
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+          >
+            <FileX className="h-3.5 w-3.5 mr-1" />
+            Clear Document
+          </Button>
           <Button 
             onClick={handleSave}
             disabled={!documentPreview.trim()} 
@@ -1907,7 +1914,7 @@ ${documentInfo}
       headerSubtitle=""
     >
       <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20">
-        <div className="flex gap-3 h-full p-3">
+        <div className="flex gap-3 h-full pl-6 pt-3 pb-3 pr-6">
           {/* Sidebar for Prior Chats - Compact Modern Design */}
           <div className="w-72 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-3 flex flex-col h-full shadow-2xl">
             {/* Header with Prior Chats title and New Chat button */}
@@ -2022,7 +2029,7 @@ ${documentInfo}
           </div>
           
           {/* Main Chat Interface - Modern Compact Design - Matches Split Pane */}
-          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden">
+          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden mr-3">
         
         {/* Chat Controls - Compact Header */}
         {chatHistory.length > 0 && (
@@ -2035,19 +2042,17 @@ ${documentInfo}
                 className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Clear
+                Clear Conversation
               </Button>
-              {hasDocumentToClear() && (
-                <Button
-                  onClick={handleClearDocument}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                >
-                  <FileX className="h-3.5 w-3.5 mr-1" />
-                  Clear Doc
-                </Button>
-              )}
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-3.5 w-3.5 mr-1" />
+                Clear Document
+              </Button>
               <Button
                 onClick={() => setShowSplitPane(!showSplitPane)}
                 variant="outline"
