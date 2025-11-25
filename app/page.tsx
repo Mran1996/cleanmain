@@ -23,6 +23,7 @@ import { PricingSection } from "@/components/pricing-section"
 import { SuccessStories } from "@/components/success-stories"
 import Footer from "@/components/footer"
 import type { Metadata } from 'next';
+import { HomeTopline } from "@/components/home-topline"
 
 // SEO metadata for homepage
 export const metadata: Metadata = {

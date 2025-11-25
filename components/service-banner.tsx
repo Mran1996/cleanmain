@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react"
 import { X, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
+import { useTranslation } from "@/utils/translations"
 
 export function ServiceBanner() {
   const [isVisible, setIsVisible] = useState(true)
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { t } = useTranslation()
 
   // Check localStorage for banner visibility preference
   useEffect(() => {
@@ -52,15 +54,13 @@ export function ServiceBanner() {
             <div className="flex-1 text-center min-w-0">
               <div className="flex items-center justify-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
                 <span className="text-amber-300 font-bold text-base sm:text-lg">✨</span>
-                <span className="font-bold text-sm sm:text-base md:text-lg truncate">Let us handle it for you!</span>
+                <span className="font-bold text-sm sm:text-base md:text-lg truncate">{t("banner_headline")}</span>
                 <span className="text-amber-300 font-bold text-base sm:text-lg">✨</span>
               </div>
               
               {!isCollapsed && (
                 <div className="text-xs sm:text-sm text-slate-200 px-1">
-                  We now offer a <span className="font-semibold text-amber-300">full service option</span> - 
-                  document preparation, legal analysis, and more - 
-                  <span className="font-bold text-amber-300"> starting at $499</span>
+                  {t("banner_subtext")}
                 </div>
               )}
             </div>
@@ -70,7 +70,7 @@ export function ServiceBanner() {
               {!isCollapsed && (
                 <Link href="/learn-more">
                   <button className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-semibold px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap">
-                    Learn More
+                    {t("cta_learn_more")}
                   </button>
                 </Link>
               )}

@@ -24,6 +24,7 @@ import {
   Mail,
   Star,
 } from "lucide-react";
+import { useTranslation } from "@/utils/translations"
 
 // Footer link configurations
 const QUICK_LINKS = [
@@ -62,6 +63,18 @@ const SUPPORT_EMAIL = "support@askailegal.com";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { t } = useTranslation()
+  const quickKeyMap: Record<string, string> = {
+    "Privacy Policy": "link_privacy",
+    "Terms of Service": "link_terms",
+    "FAQ": "link_faq",
+    "Contact": "link_contact",
+  }
+  const legalKeyMap: Record<string, string> = {
+    "Accessibility": "link_accessibility",
+    "Legal Disclaimer": "link_legal_disclaimer",
+    "Sitemap": "link_sitemap",
+  }
 
   return (
     <footer className="border-t bg-white mt-8 sm:mt-12 text-gray-700 mb-0 pb-0 flex flex-col">

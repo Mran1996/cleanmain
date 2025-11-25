@@ -24,6 +24,7 @@ import { LanguageSelector } from "@/components/language-selector"
 import AuthButton from "@/components/AuthButton"
 import { Logo } from "@/components/Logo"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useTranslation } from "@/utils/translations"
 
 // Navigation link configuration
 const NAVIGATION_LINKS = [
@@ -37,6 +38,7 @@ const NAVIGATION_LINKS = [
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { t } = useTranslation()
 
   /**
    * Renders a navigation link with proper styling and active state
@@ -126,7 +128,17 @@ export function Navigation() {
                   <nav className="flex flex-col space-y-1 flex-1">
                     {NAVIGATION_LINKS.map(({ href, label }) => (
                       <div key={href}>
-                        {renderNavLink(href, label, true)}
+                        {renderNavLink(
+                          href,
+                          {
+                            "/": t("nav_home"),
+                            "/features": t("nav_features"),
+                            "/ai-assistant/step-1": t("nav_chat"),
+                            "/pricing": t("nav_pricing"),
+                            "/account": t("nav_account"),
+                          }[href] || label,
+                          true
+                        )}
                       </div>
                     ))}
                   </nav>

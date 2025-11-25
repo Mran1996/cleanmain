@@ -1,9 +1,13 @@
+"use client"
+import { useTranslation } from "@/utils/translations"
+
 export function KeyFeatures() {
+  const { t } = useTranslation()
   return (
     <section className="bg-white py-12 sm:py-16 md:py-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-12 md:mb-16">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">Ask AI Legal's Key Features</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">{t("features_title")}</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-10 md:gap-x-16 md:gap-y-12 max-w-5xl mx-auto">
@@ -14,10 +18,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Precision-Trained AI</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Trained on millions of real legal documents, Ask AI Legal remembers facts, spots key issues, and builds smart, strategic responses — instantly.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_precision_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_precision_desc")}</p>
             </div>
           </div>
 
@@ -28,10 +30,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Smart Legal Intake</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                It asks the right questions, in the right order — guiding you through the facts it needs to build your strongest possible legal draft.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_intake_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_intake_desc")}</p>
             </div>
           </div>
 
@@ -42,10 +42,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Court-Ready Drafts</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Get fully formatted legal documents — motions, letters, complaints, or responses — ready to file, edit, or send.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_court_ready_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_court_ready_desc")}</p>
             </div>
           </div>
 
@@ -56,10 +54,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Intelligent Document Upload</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Upload your motion, complaint, or charge sheet. Ask AI Legal will read it, pull out the key info, and tailor your legal response around it.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_doc_upload_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_doc_upload_desc")}</p>
             </div>
           </div>
 
@@ -70,10 +66,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Real Case Law + Citations</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Includes citations and case law that match your facts — powered by advanced legal search tools to strengthen your position.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_case_law_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_case_law_desc")}</p>
             </div>
           </div>
 
@@ -84,10 +78,8 @@ export function KeyFeatures() {
               </span>
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">Always-On Legal Help</h3>
-              <p className="text-sm sm:text-base text-gray-600">
-                Ask AI Legal works 24/7. Whether you're in court tomorrow or just got served — we're here when you need fast answers and real help.
-              </p>
+              <h3 className="text-lg sm:text-xl font-medium text-emerald-600 mb-1.5 sm:mb-2">{t("features_always_on_title")}</h3>
+              <p className="text-sm sm:text-base text-gray-600">{t("features_always_on_desc")}</p>
             </div>
           </div>
         </div>

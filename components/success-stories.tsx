@@ -1,4 +1,8 @@
+"use client"
+import { useTranslation } from "@/utils/translations"
+
 export function SuccessStories() {
+  const { t } = useTranslation()
   return (
     <section className="py-8 sm:py-12 md:py-16 bg-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -23,8 +27,8 @@ export function SuccessStories() {
               "While on a jail call, my wife and I walked through the Ask AI Legal steps together. We used it to file a post-conviction motion — and for the first time, it feels like we actually have a shot. It gave us hope, fast."
             </p>
             <div className="text-center mt-auto">
-              <div className="font-bold text-sm sm:text-base text-gray-800">MICHAEL T.</div>
-              <div className="text-xs sm:text-sm text-gray-500">California</div>
+              <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_michael_name")}</div>
+              <div className="text-xs sm:text-sm text-gray-500">{t("stories_michael_state")}</div>
             </div>
           </div>
           {/* Testimonial 2 */}
@@ -38,8 +42,8 @@ export function SuccessStories() {
               "My brother needed to respond to a motion and we didn't know where to start. Ask AI Legal gave us a full draft with citations. It saved us thousands — and gave us control when everything felt stacked against us."
             </p>
             <div className="text-center mt-auto">
-              <div className="font-bold text-sm sm:text-base text-gray-800">SARAH J.</div>
-              <div className="text-xs sm:text-sm text-gray-500">Texas</div>
+              <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_sarah_name")}</div>
+              <div className="text-xs sm:text-sm text-gray-500">{t("stories_sarah_state")}</div>
             </div>
           </div>
           {/* Testimonial 3 */}
@@ -53,8 +57,8 @@ export function SuccessStories() {
               "I told my sister what to upload and what to say. She used Ask AI Legal to file for early release. The motion actually went through — and I finally feel like something's moving forward."
             </p>
             <div className="text-center mt-auto">
-              <div className="font-bold text-sm sm:text-base text-gray-800">MARCUS L.</div>
-              <div className="text-xs sm:text-sm text-gray-500">Washington</div>
+              <div className="font-bold text-sm sm:text-base text-gray-800">{t("stories_marcus_name")}</div>
+              <div className="text-xs sm:text-sm text-gray-500">{t("stories_marcus_state")}</div>
             </div>
           </div>
         </div>
