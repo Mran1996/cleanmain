@@ -1527,17 +1527,15 @@ ${documentInfo}
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 {t('clear_short')}
               </Button>
-              {hasDocumentToClear() && (
-                <Button
-                  onClick={handleClearDocument}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                >
-                  <FileX className="h-3.5 w-3.5 mr-1" />
-                  {t('clear_doc_short')}
-                </Button>
-              )}
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-3.5 w-3.5 mr-1" />
+                {t('clear_doc_short')}
+              </Button>
             </>
           )}
         </div>
@@ -1577,6 +1575,15 @@ ${documentInfo}
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <Button
+            onClick={handleClearDocument}
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+          >
+            <FileX className="h-3.5 w-3.5 mr-1" />
+            {t('clear_doc_short')}
+          </Button>
           <Button 
             onClick={handleSave}
             disabled={!documentPreview.trim()} 
@@ -2050,17 +2057,15 @@ ${documentInfo}
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 {t('clear_short')}
               </Button>
-              {hasDocumentToClear() && (
-                <Button
-                  onClick={handleClearDocument}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-                >
-                  <FileX className="h-3.5 w-3.5 mr-1" />
-                  {t('clear_doc_short')}
-                </Button>
-              )}
+              <Button
+                onClick={handleClearDocument}
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              >
+                <FileX className="h-3.5 w-3.5 mr-1" />
+                {t('clear_doc_short')}
+              </Button>
               <Button
                 onClick={() => setShowSplitPane(!showSplitPane)}
                 variant="outline"
