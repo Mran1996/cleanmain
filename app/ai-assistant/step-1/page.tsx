@@ -18,6 +18,7 @@ import { SplitPaneLayout } from "@/components/split-pane-layout";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { createClient } from "@/utils/supabase/client";
+import { useTranslation } from "@/utils/translations";
 
 function AIAssistantStep1Content() {
   const router = useRouter();
@@ -87,6 +88,7 @@ function AIAssistantStep1Content() {
   const [downloadingAnalysis, setDownloadingAnalysis] = useState(false);
   const [isMessageButtonSelected, setIsMessageButtonSelected] = useState(false);
   const [inspirationalMessage, setInspirationalMessage] = useState<string | null>(null);
+  const { t } = useTranslation();
   const { 
     chatHistory, 
     setChatHistory, 
@@ -312,7 +314,7 @@ function AIAssistantStep1Content() {
         userId = user?.id || null;
       } catch {}
 
-      toast.info('Generating AI Case Analysis...');
+      toast.info(t('analysis_generating'));
 
       const analysisResponse = await fetch('/api/case-success-analysis', {
         method: 'POST',
@@ -361,10 +363,10 @@ function AIAssistantStep1Content() {
       }
 
       setCaseAnalysis(parsed);
-      toast.success('AI Case Analysis generated successfully!');
+      toast.success(t('analysis_generated_success'));
     } catch (error) {
       console.error('Case analysis error:', error);
-      toast.error(`Failed to generate case analysis${error instanceof Error && error.message ? `: ${error.message}` : ''}`);
+      toast.error(`${t('analysis_generate_failed')}${error instanceof Error && error.message ? `: ${error.message}` : ''}`);
     } finally {
       setAnalysisLoading(false);
     }
@@ -468,7 +470,7 @@ function AIAssistantStep1Content() {
     try {
       const docId = generatedDocId || (typeof window !== 'undefined' ? localStorage.getItem('currentDocumentId') : null);
       if (!docId) {
-        toast.error('No document ID found. Generate a document first.');
+        toast.error(t('no_document_id'));
         return;
       }
       if (downloadingAnalysis) return;
@@ -561,11 +563,23 @@ function AIAssistantStep1Content() {
       if (!lastMsg || lastMsg.sender !== "assistant" || isProcessing || isWaiting) return;
       
       const selectedCategory = getLegalCategory();
+      let lang: string | undefined = undefined;
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem('preferredLanguage');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed.value === 'string') {
+              lang = parsed.value;
+            }
+          }
+        } catch {}
+      }
       try {
         const res = await fetch("/api/suggested-replies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: chatHistory, category: selectedCategory }),
+          body: JSON.stringify({ messages: chatHistory, category: selectedCategory, language: lang }),
         });
         const data = await res.json();
         setSuggestedResponses(Array.isArray(data.suggestions) ? data.suggestions : []);
@@ -1497,8 +1511,8 @@ ${documentInfo}
             <MessageSquare className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <span className="text-sm font-bold text-slate-900">Chat</span>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wide">AI Legal Assistant</p>
+            <span className="text-sm font-bold text-slate-900">{t('chat_label')}</span>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide">{t('ai_legal_assistant_label')}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1511,17 +1525,19 @@ ${documentInfo}
                 className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Clear Conversation
+                {t('clear_short')}
               </Button>
-              <Button
-                onClick={handleClearDocument}
-                variant="outline"
-                size="sm"
-                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-              >
-                <FileX className="h-3.5 w-3.5 mr-1" />
-                Clear Document
-              </Button>
+              {hasDocumentToClear() && (
+                <Button
+                  onClick={handleClearDocument}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                >
+                  <FileX className="h-3.5 w-3.5 mr-1" />
+                  {t('clear_doc_short')}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -1556,20 +1572,11 @@ ${documentInfo}
             <FileText className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <span className="text-sm font-bold text-slate-900">Document</span>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wide">Legal Preview</p>
+            <span className="text-sm font-bold text-slate-900">{t('document_label')}</span>
+            <p className="text-[10px] text-slate-500 uppercase tracking-wide">{t('legal_preview_label')}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button
-            onClick={handleClearDocument}
-            variant="outline"
-            size="sm"
-            className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-          >
-            <FileX className="h-3.5 w-3.5 mr-1" />
-            Clear Document
-          </Button>
           <Button 
             onClick={handleSave}
             disabled={!documentPreview.trim()} 
@@ -1578,7 +1585,7 @@ ${documentInfo}
             className="h-7 px-2.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="h-3.5 w-3.5 mr-1" />
-            Save
+            {t('save')}
           </Button>
           <Button 
             onClick={handleEmail}
@@ -1588,7 +1595,7 @@ ${documentInfo}
             className="h-7 px-2.5 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Mail className="h-3.5 w-3.5 mr-1" />
-            Email
+            {t('email')}
           </Button>
           <Button 
             onClick={handleDownload}
@@ -1598,7 +1605,7 @@ ${documentInfo}
             className="h-7 px-2.5 text-xs text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-3.5 w-3.5 mr-1" />
-            Download
+            {t('download')}
           </Button>
           <Button
             onClick={() => setShowSplitPane(!showSplitPane)}
@@ -1606,7 +1613,7 @@ ${documentInfo}
             size="sm"
             className="h-7 px-2.5 text-xs border-slate-300 hover:bg-slate-50"
           >
-            Hide
+            {t('hide_label')}
           </Button>
         </div>
       </div>
@@ -1624,21 +1631,20 @@ ${documentInfo}
             }}
             disabled={isProcessing}
             placeholder={
-              documentPreview ? "Your generated legal document appears above..." :
-              "Your generated legal document will appear here as it's being generated..."
+              documentPreview ? t('doc_generated_above_label') : t('doc_generated_placeholder')
             }
             className="font-mono text-base"
           />
           {documentPreview && !isProcessing && (
             <div className="flex items-center mt-2 text-green-600">
               <FileText className="mr-2 h-4 w-4" />
-              Document generated successfully! You can edit it above.
+              {t('doc_generated_success_label')}
             </div>
           )}
 
           {/* AI Case Success Analysis Section */}
           <div className="bg-white border border-gray-300 rounded-lg shadow-sm p-6 mb-6 mt-2">
-            <div className="text-xl font-bold text-green-800 mb-2">AI-Powered Case Success Analysis</div>
+            <div className="text-xl font-bold text-green-800 mb-2">{t('ai_case_success_analysis_title')}</div>
             
             {/* Generate AI Case Analysis Buttons */}
             <div className="w-full max-w-5xl mx-auto flex flex-row flex-wrap gap-2 mb-4 justify-center overflow-x-auto pb-2">
@@ -1655,10 +1661,10 @@ ${documentInfo}
                 {analysisLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing Case...
+                    {t('analyzing_case')}
                   </>
                 ) : (
-                  'Generate AI Case Analysis'
+                  t('generate_ai_case_analysis')
                 )}
               </Button>
               <Button 
@@ -1667,7 +1673,7 @@ ${documentInfo}
                 className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:border-teal-300" 
                 disabled={isProcessing || !(generatedDocId || (typeof window !== 'undefined' && localStorage.getItem('currentDocumentId')))}
               >
-                Download AI Case Analysis
+                {t('download_ai_case_analysis')}
               </Button>
               <Button 
                 variant="outline"
@@ -1678,7 +1684,7 @@ ${documentInfo}
                 } transition-all duration-200`}
                 onClick={handleMessageButtonClick}
               >
-                Message
+                {t('message_button_label')}
               </Button>
             </div>
             
@@ -1688,7 +1694,7 @@ ${documentInfo}
                   <div className="flex items-start">
                     <div className="text-3xl mr-4">💪</div>
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-green-800 mb-3">Never Give Up!</h3>
+                      <h3 className="text-lg font-bold text-green-800 mb-3">{t('never_give_up_title')}</h3>
                       <p className="text-gray-700 italic text-base leading-relaxed whitespace-pre-line">
                         {inspirationalMessage}
                       </p>
@@ -1699,7 +1705,7 @@ ${documentInfo}
                         }}
                         className="mt-4 text-sm text-green-600 hover:text-green-800 underline"
                       >
-                        Close
+                        {t('close_label')}
                       </button>
                     </div>
                   </div>
@@ -1825,7 +1831,7 @@ ${documentInfo}
                 </div>
               ) : (
                 <div className="text-gray-500 mb-4">
-                  {analysisLoading ? "Generating case analysis..." : "Generate a document first, then click 'Generate AI Case Analysis' to see expert insights for your legal matter."}
+                  {analysisLoading ? t('analysis_generating') : t('generate_document_first_message')}
                 </div>
               )}
             </div>
@@ -1840,7 +1846,7 @@ ${documentInfo}
   if (showSplitPane && chatHistory.length > 0) {
     return (
       <StepLayout
-        headerTitle="Let's get you the legal help that you deserve"
+        headerTitle={t('ai_header_title')}
         headerSubtitle=""
       >
         <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20 p-3">
@@ -1848,7 +1854,7 @@ ${documentInfo}
             leftContent={chatContent}
             rightContent={documentPreviewContent}
             leftTitle="Ask AI Legal"
-            rightTitle="Document Preview"
+            rightTitle={t('legal_preview_label')}
           />
         </div>
         
@@ -1856,22 +1862,22 @@ ${documentInfo}
         {showClearModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-bold mb-4 text-orange-600">Clear Conversation?</h3>
+              <h3 className="text-lg font-bold mb-4 text-orange-600">{t('clear_conversation_title')}</h3>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to clear the conversation? This will remove all chat history and start fresh. This action cannot be undone.
+                {t('clear_conversation_desc')}
               </p>
               <div className="flex gap-3 justify-end">
                 <button
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
                   onClick={cancelClearConversation}
                 >
-                  Cancel
+                  {t('cancel_short')}
                 </button>
                 <button
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
                   onClick={confirmClearConversation}
                 >
-                  Yes, Clear
+                  {t('yes_clear')}
                 </button>
               </div>
             </div>
@@ -1910,11 +1916,11 @@ ${documentInfo}
   // Original layout for single pane with sidebar
   return (
     <StepLayout
-      headerTitle="Let's get you the legal help that you deserve"
+      headerTitle={t('ai_header_title')}
       headerSubtitle=""
     >
       <div className="w-full h-[calc(100vh-160px)] bg-gradient-to-br from-slate-50 via-emerald-50/30 to-blue-50/20">
-        <div className="flex gap-3 h-full pl-6 pt-3 pb-3 pr-6">
+        <div className="flex gap-3 h-full p-3">
           {/* Sidebar for Prior Chats - Compact Modern Design */}
           <div className="w-72 bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-3 flex flex-col h-full shadow-2xl">
             {/* Header with Prior Chats title and New Chat button */}
@@ -1924,21 +1930,21 @@ ${documentInfo}
                 onClick={handleNewChat}
                 size="sm"
                 className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-500/30 transition-all"
-                title="Start a new chat"
+                title={t('start_new_chat_title')}
               >
                 <span className="mr-1">+</span>
-                New
+                {t('new_label')}
               </Button>
             </div>
             <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 -mr-1">
               {loadingChats ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent mb-2"></div>
-                  <p className="text-xs text-slate-400">Loading...</p>
+                  <p className="text-xs text-slate-400">{t('loading_label')}</p>
                 </div>
               ) : priorChats.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-xs text-slate-500">No conversations yet</p>
+                  <p className="text-xs text-slate-500">{t('no_conversations_yet')}</p>
                 </div>
               ) : (
                 priorChats.map((chat) => (
@@ -1950,7 +1956,7 @@ ${documentInfo}
                         value={folderName}
                         onChange={(e) => setFolderName(e.target.value)}
                         className="w-full p-1.5 border border-slate-600 rounded-lg mb-2 text-sm bg-slate-700 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Folder name"
+                        placeholder={t('folder_name_placeholder')}
                         autoFocus
                       />
                       <div className="flex flex-wrap gap-1 mb-2">
@@ -2001,7 +2007,7 @@ ${documentInfo}
                             handleEditFolder(chat.id);
                           }}
                           className="p-1 text-slate-400 hover:text-emerald-400 transition-colors"
-                          title="Edit folder"
+                          title={t('edit_folder_title')}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -2013,7 +2019,7 @@ ${documentInfo}
                             handleDeleteFolder(chat.id);
                           }}
                           className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                          title="Delete folder"
+                          title={t('delete_folder_title')}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2029,7 +2035,7 @@ ${documentInfo}
           </div>
           
           {/* Main Chat Interface - Modern Compact Design - Matches Split Pane */}
-          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden mr-3">
+          <div className="flex-1 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl flex flex-col h-full shadow-2xl overflow-hidden">
         
         {/* Chat Controls - Compact Header */}
         {chatHistory.length > 0 && (
@@ -2042,17 +2048,19 @@ ${documentInfo}
                 className="h-7 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Clear Conversation
+                {t('clear_short')}
               </Button>
-              <Button
-                onClick={handleClearDocument}
-                variant="outline"
-                size="sm"
-                className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
-              >
-                <FileX className="h-3.5 w-3.5 mr-1" />
-                Clear Document
-              </Button>
+              {hasDocumentToClear() && (
+                <Button
+                  onClick={handleClearDocument}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+                >
+                  <FileX className="h-3.5 w-3.5 mr-1" />
+                  {t('clear_doc_short')}
+                </Button>
+              )}
               <Button
                 onClick={() => setShowSplitPane(!showSplitPane)}
                 variant="outline"
@@ -2060,7 +2068,7 @@ ${documentInfo}
                 className="h-7 px-2.5 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
               >
                 <FileText className="h-3.5 w-3.5 mr-1" />
-                {showSplitPane ? "Hide" : "Preview"}
+                {showSplitPane ? t('hide_label') : t('legal_preview_label')}
               </Button>
             </div>
           </div>

@@ -40,6 +40,17 @@ export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { t } = useTranslation()
 
+  const getLocalizedLabel = (href: string, fallback: string) => {
+    const map: Record<string, string> = {
+      "/": t("nav_home"),
+      "/features": t("nav_features"),
+      "/ai-assistant/step-1": t("nav_chat"),
+      "/pricing": t("nav_pricing"),
+      "/account": t("nav_account"),
+    }
+    return map[href] || fallback
+  }
+
   /**
    * Renders a navigation link with proper styling and active state
    */
@@ -74,7 +85,7 @@ export function Navigation() {
                 Ask AI Legal<sup className="text-xs">™</sup>
               </span>
               <span className="text-xs sm:text-sm text-gray-600 font-medium leading-tight -mt-0.5">
-                Where Law Meets Intelligence
+                {t("tagline")}
               </span>
             </div>
           </div>
@@ -83,7 +94,7 @@ export function Navigation() {
           <nav className="hidden md:flex items-center gap-x-6 lg:gap-x-8 flex-1 justify-center">
             {NAVIGATION_LINKS.map(({ href, label }) => (
               <div key={href}>
-                {renderNavLink(href, label, false)}
+                {renderNavLink(href, getLocalizedLabel(href, label), false)}
               </div>
             ))}
           </nav>
@@ -126,21 +137,11 @@ export function Navigation() {
                     </div>
                   </div>
                   <nav className="flex flex-col space-y-1 flex-1">
-                    {NAVIGATION_LINKS.map(({ href, label }) => (
-                      <div key={href}>
-                        {renderNavLink(
-                          href,
-                          {
-                            "/": t("nav_home"),
-                            "/features": t("nav_features"),
-                            "/ai-assistant/step-1": t("nav_chat"),
-                            "/pricing": t("nav_pricing"),
-                            "/account": t("nav_account"),
-                          }[href] || label,
-                          true
-                        )}
-                      </div>
-                    ))}
+                  {NAVIGATION_LINKS.map(({ href, label }) => (
+                    <div key={href}>
+                      {renderNavLink(href, getLocalizedLabel(href, label), true)}
+                    </div>
+                  ))}
                   </nav>
                   <div className="pt-4 border-t border-gray-200">
                     <LanguageSelector />

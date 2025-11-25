@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSupabase } from '@/components/SupabaseProvider'
+import { useTranslation } from '@/utils/translations'
 import { User } from '@supabase/supabase-js'
 
 export default function AuthButton() {
@@ -74,6 +75,7 @@ export default function AuthButton() {
   }
 
   const isSignedIn = !!user
+  const { t } = useTranslation()
 
   return (
     <button
@@ -83,9 +85,9 @@ export default function AuthButton() {
           ? 'bg-red-600 text-white hover:bg-red-700' 
           : 'bg-green-600 text-white hover:bg-green-700'
       }`}
-      aria-label={isSignedIn ? 'Sign out of your account' : 'Sign in to your account'}
+      aria-label={isSignedIn ? t('aria_sign_out') : t('aria_sign_in')}
     >
-      {isSignedIn ? 'Sign Out' : 'Sign In'}
+      {isSignedIn ? t('auth_sign_out') : t('auth_sign_in')}
     </button>
   )
 }

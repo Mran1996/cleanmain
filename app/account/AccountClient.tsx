@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BillingData, StripeSubscription, Purchase } from "@/types/billing";
 import { getPlanFeatures } from "@/lib/plan-features";
+import { useTranslation } from "@/utils/translations";
 import { BillingService } from "@/services/billing";
 import { createClient } from "@/utils/supabase/client";
 import UsageStats from "@/components/UsageStats";
@@ -34,6 +35,7 @@ export default function AccountClient({
 }: AccountClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   
   // Get initial tab from URL params, default to 'settings' (account)
   const getInitialTab = (): 'settings' | 'billing' | 'documents' => {
@@ -667,26 +669,26 @@ export default function AccountClient({
             /> */}
           </div>
           <div className="text-center mb-3">
-            <p className="text-xs md:text-sm text-gray-700 font-semibold leading-tight">Empowering access to justice with Artificial Intelligence</p>
+            <p className="text-xs md:text-sm text-gray-700 font-semibold leading-tight">{t("account_empower_tagline")}</p>
           </div>
           <div className="w-full flex flex-col gap-2 px-2 md:px-2">
             <button
               className={`font-semibold rounded py-2 w-full mb-2 transition-colors text-sm ${activeTab === 'settings' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
               onClick={() => handleTabChange('settings')}
             >
-              Account
+              {t("account_sidebar_account")}
             </button>
             <button
               className={`font-semibold rounded py-2 w-full mb-2 transition-colors text-sm ${activeTab === 'billing' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
               onClick={() => handleTabChange('billing')}
             >
-              Billing
+              {t("account_sidebar_billing")}
             </button>
             <button
               className={`font-semibold rounded py-2 w-full transition-colors text-sm ${activeTab === 'documents' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500'}`}
               onClick={() => handleTabChange('documents')}
             >
-              Documents
+              {t("account_sidebar_documents")}
             </button>
           </div>
         </div>
@@ -694,31 +696,31 @@ export default function AccountClient({
         <div className="flex-1 p-2 md:p-6 w-full">
           {activeTab === 'settings' ? (
             <div className="bg-white border rounded-xl shadow-sm p-4 md:p-6 max-w-xl w-full mx-auto">
-              <h1 className="text-lg md:text-xl font-bold mb-2 flex items-center gap-2">👋 Welcome back, {displayName || "User"}!</h1>
-              <p className="text-gray-600 mb-2 text-sm md:text-base">Here's your account info. You can update your details or view your subscription below.</p>
-              <h2 className="text-base md:text-lg font-semibold mb-2">Account Information</h2>
+              <h1 className="text-lg md:text-xl font-bold mb-2 flex items-center gap-2">👋 {t("account_welcome_back")}, {displayName || t("account_user")}!</h1>
+              <p className="text-gray-600 mb-2 text-sm md:text-base">{t("account_info_intro")}</p>
+              <h2 className="text-base md:text-lg font-semibold mb-2">{t("account_info_title")}</h2>
               <div className="text-gray-700 mb-2 text-sm md:text-base">
-                <div>Full Name: <span className="font-medium">{displayName || "N/A"}</span></div>
-                <div>Email: <span className="font-medium">{email || "N/A"}</span></div>
-                <div>Account Created: <span className="font-medium">{createdAt || "N/A"}</span></div>
+                <div>{t("account_full_name_label")}: <span className="font-medium">{displayName || "N/A"}</span></div>
+                <div>{t("email_label")}: <span className="font-medium">{email || "N/A"}</span></div>
+                <div>{t("account_created_label")}: <span className="font-medium">{createdAt || "N/A"}</span></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium mb-1">First Name</label>
-                  <Input id="firstName" value={first} onChange={e => setFirst(e.target.value)} placeholder="First Name" className="w-full" />
+                  <label htmlFor="firstName" className="block text-sm font-medium mb-1">{t("first_name_label")}</label>
+                  <Input id="firstName" value={first} onChange={e => setFirst(e.target.value)} placeholder={t("first_name_placeholder")} className="w-full" />
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium mb-1">Last Name</label>
-                  <Input id="lastName" value={last} onChange={e => setLast(e.target.value)} placeholder="Last Name" className="w-full" />
+                  <label htmlFor="lastName" className="block text-sm font-medium mb-1">{t("last_name_label")}</label>
+                  <Input id="lastName" value={last} onChange={e => setLast(e.target.value)} placeholder={t("last_name_placeholder")} className="w-full" />
                 </div>
               </div>
               <div className="mb-2">
-                <label htmlFor="email" className="block text-sm font-medium mb-1">Email Address</label>
+                <label htmlFor="email" className="block text-sm font-medium mb-1">{t("email_address_label")}</label>
                 <Input id="email" value={email || ""} disabled className="bg-gray-100 w-full" />
               </div>
               <div className="flex justify-end mt-2 mb-1">
                 <Button onClick={handleSaveChanges} disabled={saving} className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white">
-                  {saving ? "Saving..." : "Save Changes"}
+                  {saving ? t("saving") : t("save_changes")}
                 </Button>
               </div>
               <div className="mt-6 relative">

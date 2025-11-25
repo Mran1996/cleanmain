@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+// Define proper types
+interface Message {
+  sender: string;
+  text: string;
+}
+
+interface RequestBody {
+  messages?: Message[];
+  category?: string;
+  language?: string;
+}
+
+
+
 // Initialize OpenAI client if available
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -9,7 +23,7 @@ const openai = process.env.OPENAI_API_KEY
 // Lightweight heuristic suggestions generator based on recent chat content and category.
 // Returns simple string suggestions consumed by Step 1 and split-pane pages.
 
-async function generateAISuggestions(messages: Array<{ sender: string; text: string }>, category?: string): Promise<string[]> {
+async function generateAISuggestions(messages: Array<{ sender: string; text: string }>, category?: string, language?: string): Promise<string[]> {
   // Get the last assistant message to understand what question was asked
   const assistantMessages = messages.filter(m => m.sender === 'assistant');
   const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
@@ -37,6 +51,9 @@ Rules:
 - Make suggestions relevant to the legal consultation context
 - Return a JSON object with a "suggestions" key containing an array of strings
 
+Language:
+- Return all suggestions in ${language || 'English'}
+
 Example format: {"suggestions": ["Response 1", "Response 2", "Response 3", "Response 4"]}`;
 
     const userPrompt = `Conversation context:
@@ -44,7 +61,7 @@ ${conversationContext}
 
 The assistant just asked: "${lastAssistantMessage.text}"
 
-Generate 3-4 suggested responses that would be helpful for the user to respond to this question or continue the conversation. Return as JSON object with "suggestions" array.`;
+Generate 3-4 suggested responses that would be helpful for the user to respond to this question or continue the conversation. Return as JSON object with "suggestions" array. Use ${language || 'English'} for the responses.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini', // Use cheaper model for suggestions
@@ -63,11 +80,11 @@ Generate 3-4 suggested responses that would be helpful for the user to respond t
     try {
       const parsed = JSON.parse(content);
       if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-        return parsed.suggestions.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+        return parsed.suggestions.slice(0, 4).filter((s: string) => typeof s === 'string' && s.trim().length > 0);
       }
       // Fallback: if it's already an array
       if (Array.isArray(parsed)) {
-        return parsed.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+        return parsed.slice(0, 4).filter((s: string) => typeof s === 'string' && s.trim().length > 0);
       }
     } catch {
       // If not JSON, try to extract array from text
@@ -76,7 +93,7 @@ Generate 3-4 suggested responses that would be helpful for the user to respond t
         try {
           const suggestions = JSON.parse(arrayMatch[0]);
           if (Array.isArray(suggestions)) {
-            return suggestions.slice(0, 4).filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+            return suggestions.slice(0, 4).filter((s: string) => typeof s === 'string' && s.trim().length > 0);
           }
         } catch {
           // Fall through to keyword-based
@@ -112,10 +129,10 @@ function detectSuggestions(messages: Array<{ sender: string; text: string }>, ca
       'I want to file a federal 1983 civil rights complaint.',
     ],
     civil: [
-      'I need help with a civil lawsuit.',
-      'I want to file a demand letter.',
-      'I have an employment dispute regarding unpaid wages.',
-      'I need help with a landlord-tenant issue.',
+      'I need help with a wage claim.',
+      'I want to sue my landlord.',
+      "I'm responding to a court notice.",
+      'I need help writing a legal letter.',
     ],
     motions: [
       'I want to file a motion to dismiss.',
@@ -198,7 +215,7 @@ function detectSuggestions(messages: Array<{ sender: string; text: string }>, ca
 }
 
 export async function POST(req: NextRequest) {
-  let body: any = {};
+  let body: RequestBody = {};
   let messages: Array<{ sender: string; text: string }> = [];
   let category: string | undefined = undefined;
 
@@ -207,16 +224,17 @@ export async function POST(req: NextRequest) {
     try {
       const raw = await req.text();
       body = raw && raw.trim().length > 0 ? JSON.parse(raw) : {};
-    } catch (parseErr) {
+    } catch {
       // Fallback to empty body on parse errors
       body = {};
     }
 
     messages = Array.isArray(body?.messages) ? body.messages : [];
     category = typeof body?.category === 'string' ? body.category : undefined;
+    const language = typeof body?.language === 'string' ? body.language : undefined;
 
     // Try AI-generated suggestions first, fallback to keyword-based
-    const suggestions = await generateAISuggestions(messages, category);
+    const suggestions = await generateAISuggestions(messages, category, language);
     
     // Ensure we always return at least some suggestions
     const finalSuggestions = suggestions.length > 0 
