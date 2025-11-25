@@ -557,11 +557,24 @@ function AIAssistantStep1Content() {
   }, [chatHistory.length, isProcessing]);
 
   // Fetch dynamic suggestions from OpenAI after each assistant message
+  // Fetch contextual suggestions after every message (user or assistant)
   useEffect(() => {
+    // Don't fetch if we're currently processing a message
+    if (isProcessing || isWaiting) return;
+    
+    // Don't fetch if there are no messages yet
+    if (!chatHistory || chatHistory.length === 0) {
+      // Show default suggestions for new conversations
+      setSuggestedResponses([
+        "I want to appeal my conviction.",
+        "I need help filing an appeal.",
+        "Help me write a notice of appeal.",
+        "What are my chances if I appeal?"
+      ]);
+      return;
+    }
+    
     const fetchSuggestions = async () => {
-      const lastMsg = chatHistory[chatHistory.length - 1];
-      if (!lastMsg || lastMsg.sender !== "assistant" || isProcessing || isWaiting) return;
-      
       const selectedCategory = getLegalCategory();
       let lang: string | undefined = undefined;
       if (typeof window !== 'undefined') {
@@ -579,24 +592,34 @@ function AIAssistantStep1Content() {
         const res = await fetch("/api/suggested-replies", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: chatHistory, category: selectedCategory, language: lang }),
+          body: JSON.stringify({ 
+            messages: chatHistory, 
+            category: selectedCategory, 
+            language: lang 
+          }),
         });
         const data = await res.json();
-        setSuggestedResponses(Array.isArray(data.suggestions) ? data.suggestions : []);
-      } catch {
-        setSuggestedResponses([]);
+        if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+          setSuggestedResponses(data.suggestions);
+        } else {
+          // Keep previous suggestions if API returns empty
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        // Don't clear suggestions on error, keep previous ones
       }
     };
     
-    const timeoutId = setTimeout(fetchSuggestions, 500);
+    // Fetch immediately when chat history changes (after user or assistant message)
+    const timeoutId = setTimeout(fetchSuggestions, 300);
     return () => clearTimeout(timeoutId);
   }, [chatHistory, isProcessing, isWaiting]);
 
   const handleUserResponse = async (message: string) => {
     if (!message.trim() || isWaiting || isProcessing) return;
     
-    // Clear suggestions when user sends a message
-    setSuggestedResponses([]);
+    // Don't clear suggestions - let them update naturally after the response
+    // This way users can still see helpful suggestions while waiting
     
     setIsWaiting(true);
     setIsProcessing(true);
@@ -754,6 +777,41 @@ ${documentInfo}
         if (newHistory.length >= 2 && newHistory.length % 2 === 0) {
           setTimeout(() => autoSaveChat(), 1000); // Delay to avoid too frequent saves
         }
+        
+        // Fetch new contextual suggestions immediately after assistant responds
+        // This ensures suggestions are always relevant to the current question
+        setTimeout(async () => {
+          try {
+            const selectedCategory = getLegalCategory();
+            let lang: string | undefined = undefined;
+            if (typeof window !== 'undefined') {
+              try {
+                const saved = localStorage.getItem('preferredLanguage');
+                if (saved) {
+                  const parsed = JSON.parse(saved);
+                  if (parsed && typeof parsed.value === 'string') {
+                    lang = parsed.value;
+                  }
+                }
+              } catch {}
+            }
+            const res = await fetch("/api/suggested-replies", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                messages: newHistory, 
+                category: selectedCategory, 
+                language: lang 
+              }),
+            });
+            const data = await res.json();
+            if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+              setSuggestedResponses(data.suggestions);
+            }
+          } catch (error) {
+            console.error('Error fetching suggestions after assistant response:', error);
+          }
+        }, 500);
         
         return newHistory;
       });

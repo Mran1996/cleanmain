@@ -440,10 +440,13 @@ export function EnhancedChatInterface({
   }, [messages, lastAssistantCount, legalCategory]);
 
   // Update suggestions more frequently based on conversation content
+  // This updates after EVERY message change (both user and assistant messages)
   useEffect(() => {
     // Update suggestions whenever messages change (not just assistant messages)
     if (messages && messages.length > 0) {
-      const issueSpecificSuggestions = detectLegalIssueAndGetSuggestions(messages, legalCategory);
+      // Get the most recent messages for better context
+      const recentMessages = messages.slice(-6); // Last 6 messages for context
+      const issueSpecificSuggestions = detectLegalIssueAndGetSuggestions(recentMessages, legalCategory);
       const shuffled = [...issueSpecificSuggestions].sort(() => 0.5 - Math.random());
       setRotatingSuggestions(shuffled.slice(0, Math.min(4, shuffled.length)));
     } else {
